@@ -19,46 +19,32 @@ std::stack<std::pair<const void *, TypePtr>> trivial_types;
 }  // namespace
 
 // definition of static member variables in 'BaseType'
-std::size_t BaseType::ptr_size_ = sizeof(void *);
+// default to 32-bit
+std::size_t BaseType::ptr_size_ = 4;
 
 bool PrimType::CanAccept(const TypePtr &type) const {
-  if (is_right_ || IsVoid() || IsNull()) return false;
+  if (is_right_ || IsVoid()) return false;
   return IsIdentical(type);
 }
 
 bool PrimType::CanCastTo(const TypePtr &type) const {
   if (IsVoid()) return false;
-  // cast between float types and pointer types is invalid
-  if (IsFloat() &&
-      (type->IsNull() || type->IsPointer() || type->IsFunction())) {
-    return false;
-  }
-  if (type->IsFloat() && (IsNull() || IsPointer() || IsFunction())) {
-    return false;
-  }
-  return !type->IsReference() && (type->IsBasic() || type->IsEnum());
+  return type->IsBasic() || type->IsEnum();
 }
 
 bool PrimType::IsIdentical(const TypePtr &type) const {
   if (IsVoid() && type->IsVoid()) return true;
-  if (IsNull() && type->IsNull()) return true;
   if (IsInteger() && type->IsInteger()) {
     return IsUnsigned() == type->IsUnsigned() &&
            GetSize() == type->GetSize();
   }
-  if (IsFloat() && type->IsFloat()) return GetSize() == type->GetSize();
-  if (IsBool() && type->IsBool()) return true;
   return false;
 }
 
 std::size_t PrimType::GetSize() const {
   switch (type_) {
-    case Type::Bool: return 1;
     case Type::Int8: case Type::UInt8: return 1;
-    case Type::Int16: case Type::UInt16: return 2;
-    case Type::Int32: case Type::UInt32: case Type::Float32: return 4;
-    case Type::Int64: case Type::UInt64: case Type::Float64: return 8;
-    case Type::Null: return ptr_size();
+    case Type::Int32: case Type::UInt32: return 4;
     default: return 0;
   }
 }
@@ -66,17 +52,9 @@ std::size_t PrimType::GetSize() const {
 std::string PrimType::GetTypeId() const {
   switch (type_) {
     case Type::Int8: return "i8";
-    case Type::Int16: return "i16";
     case Type::Int32: return "i32";
-    case Type::Int64: return "i64";
     case Type::UInt8: return "u8";
-    case Type::UInt16: return "u16";
     case Type::UInt32: return "u32";
-    case Type::UInt64: return "u64";
-    case Type::Bool: return "bool";
-    case Type::Float32: return "f32";
-    case Type::Float64: return "f64";
-    case Type::Null: return "null";
     default: return "";
   }
 }
@@ -176,17 +154,13 @@ TypePtr EnumType::GetValueType(bool is_right) const {
 
 TypePtr ConstType::GetElem(std::size_t index) const {
   auto type = type_->GetElem(index);
-  return type_->IsReference()
-             ? std::move(type)
-             : std::make_shared<ConstType>(std::move(type));
+  return std::make_shared<ConstType>(std::move(type));
 }
 
 TypePtr ConstType::GetElem(const std::string &name) const {
   auto type = type_->GetElem(name);
   if (!type) return nullptr;
-  return type_->IsReference()
-             ? std::move(type)
-             : std::make_shared<ConstType>(std::move(type));
+  return std::make_shared<ConstType>(std::move(type));
 }
 
 TypePtr ConstType::GetValueType(bool is_right) const {
@@ -199,7 +173,7 @@ bool FuncType::CanAccept(const TypePtr &type) const {
 }
 
 bool FuncType::CanCastTo(const TypePtr &type) const {
-  return !type->IsReference() && (type->IsInteger() || type->IsPointer());
+  return type->IsInteger() || type->IsPointer();
 }
 
 bool FuncType::IsIdentical(const TypePtr &type) const {
@@ -216,17 +190,7 @@ TypePtr FuncType::GetReturnType(const TypePtrList &args) const {
   if (args_.size() != args.size()) return nullptr;
   for (std::size_t i = 0; i < args_.size(); ++i) {
     if (!args_[i]->IsIdentical(args[i])) return nullptr;
-    if (args_[i]->IsReference()) {
-      // check referencing right value
-      if (!args[i]->IsReference() && args[i]->IsRightValue()) {
-        return nullptr;
-      }
-      // check reference's const cast
-      if (args[i]->IsConst() && !args_[i]->GetDerefedType()->IsConst()) {
-        return nullptr;
-      }
-    }
-    else if (args_[i]->IsPointer()) {
+    if (args_[i]->IsPointer()) {
       // check pointer's const cast
       if (args[i]->GetDerefedType()->IsConst() &&
           !args_[i]->GetDerefedType()->IsConst()) {
@@ -257,28 +221,12 @@ TypePtr FuncType::GetTrivialType() const {
                                     ret_->GetTrivialType(), false);
 }
 
-TypePtr VolaType::GetDeconstedType() const {
-  auto type = type_->GetDeconstedType();
-  return std::make_shared<VolaType>(std::move(type));
-}
-
-TypePtr VolaType::GetValueType(bool is_right) const {
-  auto type = type_->GetValueType(is_right);
-  return std::make_shared<VolaType>(std::move(type));
-}
-
-TypePtr VolaType::GetTrivialType() const {
-  auto type = type_->GetTrivialType();
-  return std::make_shared<VolaType>(std::move(type));
-}
-
 bool ArrayType::CanAccept(const TypePtr &type) const {
   return !is_right_ && IsIdentical(type);
 }
 
 bool ArrayType::CanCastTo(const TypePtr &type) const {
-  return !is_right_ && !type->IsReference() &&
-         (type->IsInteger() || type->IsPointer());
+  return !is_right_ && (type->IsInteger() || type->IsPointer());
 }
 
 bool ArrayType::IsIdentical(const TypePtr &type) const {
@@ -313,7 +261,7 @@ bool PointerType::CanCastTo(const TypePtr &type) const {
       !type->GetDerefedType()->IsConst()) {
     return false;
   }
-  return !type->IsReference() && type->IsBasic();
+  return type->IsBasic();
 }
 
 bool PointerType::IsIdentical(const TypePtr &type) const {
@@ -336,25 +284,5 @@ TypePtr PointerType::GetValueType(bool is_right) const {
 }
 
 TypePtr PointerType::GetTrivialType() const {
-  return std::make_shared<PointerType>(base_->GetTrivialType(), false);
-}
-
-TypePtr RefType::GetDeconstedType() const {
-  auto type = base_->GetDeconstedType();
-  return std::make_shared<RefType>(std::move(type));
-}
-
-TypePtr RefType::GetValueType(bool is_right) const {
-  if (is_right) {
-    // return non-referenced right value type
-    return base_->GetValueType(is_right);
-  }
-  else {
-    // return self
-    return std::make_shared<RefType>(base_);
-  }
-}
-
-TypePtr RefType::GetTrivialType() const {
   return std::make_shared<PointerType>(base_->GetTrivialType(), false);
 }
