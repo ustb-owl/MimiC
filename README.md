@@ -1,3 +1,7 @@
-# Compiler of SysY Lang by USTB-deadbeef
+# MimiC
 
-This is a readme file.
+MimiC is a compiler of SysY lang by USTB-deadbeef.
+
+## Details
+
+> Under construction...
