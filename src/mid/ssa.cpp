@@ -25,13 +25,11 @@ const char *kBinOps[] = {
   "add", "sub", "mul", "udiv", "sdiv", "urem", "srem", "eq", "neq",
   "ult", "slt", "ule", "sle", "ugt", "sgt", "uge", "sge",
   "and", "or", "xor", "shl", "lshr", "ashr",
-  "fadd", "fsub", "fmul", "fdiv", "frem",
-  "feq", "fne", "flt", "fle", "fgt", "fge",
 };
 
 // unary operators
 const char *kUnaOps[] = {
-  "neg", "lnot", "not", "fneg",
+  "neg", "lnot", "not",
 };
 
 // null stream buffer
@@ -320,20 +318,7 @@ void ArgRefSSA::Dump(std::ostream &os, IdManager &idm) const {
   os << "arg " << index_;
 }
 
-void AsmSSA::Dump(std::ostream &os, IdManager &idm) const {
-  os << kIndent << "asm \"";
-  for (const auto &c : asm_str_) ConvertChar(os, c);
-  os << '"' << std::endl;
-}
-
 void ConstIntSSA::Dump(std::ostream &os, IdManager &idm) const {
-  assert(in_expr);
-  os << "constant ";
-  PrintType(os, type());
-  os << ' ' << value_;
-}
-
-void ConstFloatSSA::Dump(std::ostream &os, IdManager &idm) const {
   assert(in_expr);
   os << "constant ";
   PrintType(os, type());

@@ -28,9 +28,7 @@ class CodeGenInterface {
   virtual void GenerateOn(mid::AllocaSSA &ssa) = 0;
   virtual void GenerateOn(mid::BlockSSA &ssa) = 0;
   virtual void GenerateOn(mid::ArgRefSSA &ssa) = 0;
-  virtual void GenerateOn(mid::AsmSSA &ssa) = 0;
   virtual void GenerateOn(mid::ConstIntSSA &ssa) = 0;
-  virtual void GenerateOn(mid::ConstFloatSSA &ssa) = 0;
   virtual void GenerateOn(mid::ConstStrSSA &ssa) = 0;
   virtual void GenerateOn(mid::ConstStructSSA &ssa) = 0;
   virtual void GenerateOn(mid::ConstArraySSA &ssa) = 0;

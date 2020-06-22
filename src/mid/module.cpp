@@ -219,12 +219,6 @@ SSAPtr Module::CreateCall(const SSAPtr &callee, const SSAPtrList &args) {
   return call;
 }
 
-SSAPtr Module::CreateAsm(const std::string &asm_str) {
-  auto asm_inst = AddInst<AsmSSA>(asm_str);
-  asm_inst->set_types(nullptr);
-  return asm_inst;
-}
-
 SSAPtr Module::CreatePtrAccess(const SSAPtr &ptr, const SSAPtr &index) {
   // assertion for type checking
   assert(ptr->type()->IsPointer() && index->type()->IsInteger());
@@ -425,15 +419,6 @@ SSAPtr Module::GetBool(bool value) {
   auto type = MakePrimType(PrimType::Type::Int32, false);
   return GetInt(value, type);
 }
-
-// SSAPtr Module::GetFloat(double value, const TypePtr &type) {
-//   // assertion for type checking
-//   assert(type->IsFloat());
-//   // create constant float
-//   auto const_float = MakeSSA<ConstFloatSSA>(value);
-//   const_float->set_types(type);
-//   return const_float;
-// }
 
 SSAPtr Module::GetString(const std::string &str, const TypePtr &type) {
   // assertion for type checking

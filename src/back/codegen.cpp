@@ -65,15 +65,7 @@ void ArgRefSSA::GenerateCode(CodeGen &gen) {
   gen.GenerateOn(*this);
 }
 
-void AsmSSA::GenerateCode(CodeGen &gen) {
-  gen.GenerateOn(*this);
-}
-
 void ConstIntSSA::GenerateCode(CodeGen &gen) {
-  gen.GenerateOn(*this);
-}
-
-void ConstFloatSSA::GenerateCode(CodeGen &gen) {
   gen.GenerateOn(*this);
 }
 

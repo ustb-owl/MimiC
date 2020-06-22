@@ -67,8 +67,6 @@ class Module {
   SSAPtr CreateLoad(const SSAPtr &ptr, bool is_ref);
   // create a call instruction
   SSAPtr CreateCall(const SSAPtr &callee, const SSAPtrList &args);
-  // create a inline assemble instruction
-  SSAPtr CreateAsm(const std::string &asm_str);
   // create a pointer access instruction
   SSAPtr CreatePtrAccess(const SSAPtr &ptr, const SSAPtr &index);
   // create a element access instruction
@@ -130,8 +128,6 @@ class Module {
   SSAPtr GetInt32(std::uint32_t value);
   // get a constant boolean
   SSAPtr GetBool(bool value);
-  // get a constant float
-  SSAPtr GetFloat(double value, const define::TypePtr &type);
   // get a constant string
   SSAPtr GetString(const std::string &str, const define::TypePtr &type);
   // get a constant structure
