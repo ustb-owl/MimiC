@@ -99,15 +99,14 @@ func_param  ::= type ID_VAL ["[" "]" {"[" expr "]"}];
 struct_def  ::= "struct" ID_VAL "{" {struct_elem} "}" ";";
 enum_def    ::= "enum" [ID_VAL] "{" enum_elems "}" ";";
 type_alias  ::= "typedef" type ID_VAL ";";
-struct_elem ::= type ID_VAL {"[" expr "]"} ";";
+struct_elem ::= type var_def {"," var_def} ";";
 enum_elems  ::= ID_VAL ["=" expr] ["," enum_elems] [","];
 
 block       ::= "{" {block_item} "}";
 block_item  ::= decl | stmt;
 
-stmt        ::= bare | assign | block | if_else | while | control;
+stmt        ::= bare | block | if_else | while | control;
 bare        ::= expr ";";
-assign      ::= expr "=" expr ";";
 if_else     ::= "if" "(" expr ")" stmt ["else" stmt];
 while       ::= "while" "(" expr ")" stmt;
 control     ::= ("break" | "continue" | ("return" [expr])) ";";
@@ -124,15 +123,17 @@ bin_op      ::= "+"   | "-"   | "*"   | "/"   | "%"   | "&"
               | "&="  | "|="  | "^="  | "<<=" | ">>=";
 unary_op    ::= "+"   | "-"   | "!"   | "~"   | "*"   | "&";
 
-value       ::= INT_VAL | ID_VAL;
+value       ::= INT_VAL | CHAR_VAL | STR_VAL | ID_VAL;
 index       ::= expr "[" expr "]";
 func_call   ::= expr "(" [expr {"," expr}] ")";
-access      ::= factor ("." | "->") id;
+access      ::= factor ("." | "->") ID_VAL;
 
-type        ::= prim_type | "struct" ID_VAL | const | pointer;
+type        ::= prim_type | struct_type | enum_type | const | pointer;
 prim_type   ::= "void" | ["unsigned"] "int" | "char";
+struct_type ::= "struct" ID_VAL;
+enum_type   ::= "enum" ID_VAL;
 const       ::= "const" type;
-pointer     ::= type "*";
+pointer     ::= type "*" {"*"};
 ```
 
 相比扩展前, 扩展后的 SysY 语言新增了以下内容:
