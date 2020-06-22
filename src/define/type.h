@@ -472,6 +472,11 @@ class PointerType : public BaseType {
   bool is_right_;
 };
 
+// create a new primitive type
+inline TypePtr MakePrimType(PrimType::Type type, bool is_right) {
+  return std::make_shared<PrimType>(type, is_right);
+}
+
 // create a new void type
 inline TypePtr MakeVoid() {
   return std::make_shared<PrimType>(PrimType::Type::Void, true);
