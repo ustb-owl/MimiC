@@ -36,8 +36,6 @@ class BaseType {
   virtual bool IsInteger() const = 0;
   // return true if is unsigned
   virtual bool IsUnsigned() const = 0;
-  // return true if is boolean
-  virtual bool IsBool() const = 0;
   // return true if is structure type
   virtual bool IsStruct() const = 0;
   // return true if is enumeration type
@@ -231,7 +229,6 @@ class EnumType : public BaseType {
   bool IsBasic() const override { return false; }
   bool IsInteger() const override { return false; }
   bool IsUnsigned() const override { return type_->IsUnsigned(); }
-  bool IsBool() const override { return false; }
   bool IsStruct() const override { return false; }
   bool IsEnum() const override { return true; }
   bool IsConst() const override { return false; }
@@ -343,7 +340,6 @@ class FuncType : public BaseType {
   bool IsBasic() const override { return true; }
   bool IsInteger() const override { return false; }
   bool IsUnsigned() const override { return false; }
-  bool IsBool() const override { return false; }
   bool IsStruct() const override { return false; }
   bool IsEnum() const override { return false; }
   bool IsConst() const override { return false; }
@@ -389,7 +385,6 @@ class ArrayType : public BaseType {
   bool IsBasic() const override { return false; }
   bool IsInteger() const override { return false; }
   bool IsUnsigned() const override { return false; }
-  bool IsBool() const override { return false; }
   bool IsStruct() const override { return false; }
   bool IsEnum() const override { return false; }
   bool IsConst() const override { return false; }
@@ -441,7 +436,6 @@ class PointerType : public BaseType {
   bool IsBasic() const override { return true; }
   bool IsInteger() const override { return false; }
   bool IsUnsigned() const override { return false; }
-  bool IsBool() const override { return false; }
   bool IsStruct() const override { return false; }
   bool IsEnum() const override { return false; }
   bool IsConst() const override { return false; }
