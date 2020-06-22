@@ -27,7 +27,7 @@ class BaseAST {
  public:
   virtual ~BaseAST() = default;
 
-  // dump the content of AST to output stream
+  // dump the content of AST (XML format) to output stream
   virtual void Dump(std::ostream &os) const = 0;
   // run sematic analysis on current AST
   virtual TypePtr SemaAnalyze(mid::Analyzer &ana) = 0;
@@ -170,10 +170,11 @@ class StructDefAST : public BaseAST {
 };
 
 // enumeration definition
+// NOTE: property 'id' can be empty
 class EnumDefAST : public BaseAST {
  public:
-  EnumDefAST(std::optional<std::string> id, ASTPtrList elems)
-      : id_(std::move(id)), elems_(std::move(elems)) {}
+  EnumDefAST(const std::string &id, ASTPtrList elems)
+      : id_(id), elems_(std::move(elems)) {}
 
   void Dump(std::ostream &os) const override;
   TypePtr SemaAnalyze(mid::Analyzer &ana) override;
@@ -181,7 +182,7 @@ class EnumDefAST : public BaseAST {
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
  private:
-  std::optional<std::string> id_;
+  std::string id_;
   ASTPtrList elems_;
 };
 
