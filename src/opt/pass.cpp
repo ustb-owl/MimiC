@@ -65,15 +65,7 @@ void ArgRefSSA::RunPass(PassBase &pass) {
   pass.RunOn(*this);
 }
 
-void AsmSSA::RunPass(PassBase &pass) {
-  pass.RunOn(*this);
-}
-
 void ConstIntSSA::RunPass(PassBase &pass) {
-  pass.RunOn(*this);
-}
-
-void ConstFloatSSA::RunPass(PassBase &pass) {
   pass.RunOn(*this);
 }
 

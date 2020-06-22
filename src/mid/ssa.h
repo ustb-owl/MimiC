@@ -90,13 +90,9 @@ class AccessSSA : public User {
 class BinarySSA : public User {
  public:
   enum class Operator {
-    // integer
     Add, Sub, Mul, UDiv, SDiv, URem, SRem, Equal, NotEq,
     ULess, SLess, ULessEq, SLessEq, UGreat, SGreat, UGreatEq, SGreatEq,
     And, Or, Xor, Shl, LShr, AShr,
-    // float
-    FAdd, FSub, FMul, FDiv, FRem,
-    FEqual, FNotEq, FLess, FLessEq, FGreat, FGreatEq,
   };
 
   BinarySSA(Operator op, const SSAPtr &lhs, const SSAPtr &rhs) : op_(op) {
@@ -123,7 +119,7 @@ class BinarySSA : public User {
 class UnarySSA : public User {
  public:
   enum class Operator {
-    Neg, LogicNot, Not, FNeg,
+    Neg, LogicNot, Not,
   };
 
   UnarySSA(Operator op, const SSAPtr &opr) : op_(op) {
@@ -346,24 +342,6 @@ class ArgRefSSA : public Value {
   std::size_t index_;
 };
 
-// inline assemble
-class AsmSSA : public Value {
- public:
-  AsmSSA(const std::string &asm_str) : asm_str_(asm_str) {}
-
-  void Dump(std::ostream &os, IdManager &idm) const override;
-  bool IsConst() const override { return false; }
-
-  void RunPass(opt::PassBase &pass) override;
-  void GenerateCode(back::CodeGen &gen) override;
-
-  // getters
-  const std::string &asm_str() const { return asm_str_; }
-
- private:
-  std::string asm_str_;
-};
-
 // constant integer
 class ConstIntSSA : public Value {
  public:
@@ -380,24 +358,6 @@ class ConstIntSSA : public Value {
 
  private:
   std::uint64_t value_;
-};
-
-// constant float
-class ConstFloatSSA : public Value {
- public:
-  ConstFloatSSA(double value) : value_(value) {}
-
-  void Dump(std::ostream &os, IdManager &idm) const override;
-  bool IsConst() const override { return true; }
-
-  void RunPass(opt::PassBase &pass) override;
-  void GenerateCode(back::CodeGen &gen) override;
-
-  // getters
-  double value() const { return value_; }
-
- private:
-  double value_;
 };
 
 // constant string

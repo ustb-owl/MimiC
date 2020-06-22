@@ -43,9 +43,7 @@ class PassBase {
   virtual void RunOn(mid::AllocaSSA &ssa) {}
   virtual void RunOn(mid::BlockSSA &ssa) {}
   virtual void RunOn(mid::ArgRefSSA &ssa) {}
-  virtual void RunOn(mid::AsmSSA &ssa) {}
   virtual void RunOn(mid::ConstIntSSA &ssa) {}
-  virtual void RunOn(mid::ConstFloatSSA &ssa) {}
   virtual void RunOn(mid::ConstStrSSA &ssa) {}
   virtual void RunOn(mid::ConstStructSSA &ssa) {}
   virtual void RunOn(mid::ConstArraySSA &ssa) {}
