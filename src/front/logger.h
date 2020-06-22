@@ -2,12 +2,14 @@
 #define MIMIC_FRONT_LOGGER_H_
 
 #include <string_view>
+#include <memory>
 #include <cstddef>
 
 namespace mimic::front {
 
 class Logger {
  public:
+  Logger() : line_pos_(0), col_pos_(0) {}
   Logger(std::size_t line_pos, std::size_t col_pos)
       : line_pos_(line_pos), col_pos_(col_pos) {}
 
@@ -40,6 +42,9 @@ class Logger {
   static bool warn_as_err_;
   std::size_t line_pos_, col_pos_;
 };
+
+// pointer of logger
+using LogPtr = std::shared_ptr<Logger>;
 
 }  // namespace mimic::front
 
