@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <tuple>
 #include <utility>
+#include <sstream>
 #include <cctype>
 
 #include "xstl/guard.h"
@@ -274,11 +275,15 @@ void IntAST::Dump(std::ostream &os) const {
 }
 
 void CharAST::Dump(std::ostream &os) const {
-  ATOM(Char, std::make_tuple("c", static_cast<int>(c_)));
+  std::ostringstream oss;
+  ConvertChar(oss, c_, true);
+  ATOM(Char, std::make_tuple("c", oss.str()));
 }
 
 void StringAST::Dump(std::ostream &os) const {
-  ATOM(String, AST_ATTR(str));
+  std::ostringstream oss;
+  for (const auto &c : str_) ConvertChar(oss, c, false);
+  ATOM(String, std::make_tuple("str", oss.str()));
 }
 
 void IdAST::Dump(std::ostream &os) const {
