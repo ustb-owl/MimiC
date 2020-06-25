@@ -94,7 +94,7 @@ init_val    ::= expr | "{" [init_val {"," init_val}] "}";
 func_decl   ::= func_header ";";
 func_header ::= type ID_VAL "(" [func_params] ")";
 func_params ::= func_param {"," func_param};
-func_param  ::= type ID_VAL ["[" "]" {"[" expr "]"}];
+func_param  ::= type ID_VAL ["[" [expr] "]" {"[" expr "]"}];
 
 struct_def  ::= "struct" ID_VAL "{" {struct_elem} "}" ";";
 enum_def    ::= "enum" [ID_VAL] "{" enum_elems "}" ";";
