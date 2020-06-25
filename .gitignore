@@ -36,3 +36,6 @@ Temporary Items
 # Build & Debug
 build
 debug
+
+# front working directory
+src/front/work/*
