@@ -35,7 +35,7 @@ while       ::= "while" "(" expr ")" stmt;
 control     ::= ("break" | "continue" | ("return" [expr])) ";";
 
 expr        ::= unary {bin_op unary};
-unary       ::= unary_op factor;
+unary       ::= [unary_op] factor;
 factor      ::= value | index | func_call | "(" expr ")";
 
 bin_op      ::= "+"   | "-"   | "*" | "/" | "%"
@@ -113,7 +113,7 @@ control     ::= ("break" | "continue" | ("return" [expr])) ";";
 
 expr        ::= cast {bin_op cast};
 cast        ::= {"(" type ")"} unary;
-unary       ::= unary_op factor | "sizeof" type;
+unary       ::= [unary_op] factor | "sizeof" type;
 factor      ::= value | index | func_call | access | "(" expr ")";
 
 bin_op      ::= "+"   | "-"   | "*"   | "/"   | "%"   | "&"
