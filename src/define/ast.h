@@ -342,7 +342,7 @@ class CastAST : public BaseAST {
 class UnaryAST : public BaseAST {
  public:
   enum class Operator {
-    Pos, Neg, Not, LNot, Deref, Addr,
+    Pos, Neg, Not, LNot, Deref, Addr, SizeOf,
   };
 
   UnaryAST(Operator op, ASTPtr opr)
