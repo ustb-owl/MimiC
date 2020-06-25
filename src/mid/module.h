@@ -123,7 +123,7 @@ class Module {
   // create a constant zero
   SSAPtr GetZero(const define::TypePtr &type);
   // get a constant integer
-  SSAPtr GetInt(std::uint64_t value, const define::TypePtr &type);
+  SSAPtr GetInt(std::uint32_t value, const define::TypePtr &type);
   // get a 32-bit signed constant integer
   SSAPtr GetInt32(std::uint32_t value);
   // get a constant boolean

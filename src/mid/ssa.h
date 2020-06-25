@@ -345,7 +345,7 @@ class ArgRefSSA : public Value {
 // constant integer
 class ConstIntSSA : public Value {
  public:
-  ConstIntSSA(std::uint64_t value) : value_(value) {}
+  ConstIntSSA(std::uint32_t value) : value_(value) {}
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return true; }
@@ -354,10 +354,10 @@ class ConstIntSSA : public Value {
   void GenerateCode(back::CodeGen &gen) override;
 
   // getters
-  std::uint64_t value() const { return value_; }
+  std::uint32_t value() const { return value_; }
 
  private:
-  std::uint64_t value_;
+  std::uint32_t value_;
 };
 
 // constant string

@@ -401,7 +401,7 @@ SSAPtr Module::GetZero(const TypePtr &type) {
   return zero;
 }
 
-SSAPtr Module::GetInt(std::uint64_t value, const TypePtr &type) {
+SSAPtr Module::GetInt(std::uint32_t value, const TypePtr &type) {
   // assertion for type checking
   assert(type->IsInteger() || type->IsEnum());
   // create constant integer
