@@ -111,10 +111,10 @@ template <typename... Attrs>
 void DumpSimpleAST(std::ostream &os, std::string_view name,
                    Attrs &&... attrs) {
   // dump starting tag and name
-  os << indent << "<ast name=\"" << name << "\" ";
+  os << indent << "<ast name=\"" << name << "\"";
   // dump inline attributes
   UnfoldAttrs(os, std::forward<Attrs>(attrs)...);
-  os << "/>" << std::endl;
+  os << " />" << std::endl;
 }
 
 xstl::Guard DumpAttr(std::ostream &os, std::string_view name) {
