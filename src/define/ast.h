@@ -66,6 +66,10 @@ class VarDeclAST : public BaseAST {
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
+  // getters
+  const ASTPtr &type() const { return type_; }
+  const ASTPtrList &defs() const { return defs_; }
+
  private:
   ASTPtr type_;
   ASTPtrList defs_;
@@ -81,6 +85,14 @@ class VarDefAST : public BaseAST {
   // TypePtr SemaAnalyze(mid::Analyzer &ana) override;
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+  // setters
+  void set_init(ASTPtr init) { init_ = std::move(init); }
+
+  // getters
+  const std::string &id() const { return id_; }
+  const ASTPtrList &arr_lens() const { return arr_lens_; }
+  const ASTPtr &init() const { return init_; }
 
  private:
   std::string id_;
@@ -98,6 +110,9 @@ class InitListAST : public BaseAST {
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
+  // getters
+  const ASTPtrList &exprs() const { return exprs_; }
+
  private:
   ASTPtrList exprs_;
 };
@@ -112,6 +127,11 @@ class FuncDeclAST : public BaseAST {
   // TypePtr SemaAnalyze(mid::Analyzer &ana) override;
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+  // getters
+  const ASTPtr &type() const { return type_; }
+  const std::string &id() const { return id_; }
+  const ASTPtrList &params() const { return params_; }
 
  private:
   ASTPtr type_;
@@ -130,6 +150,10 @@ class FuncDefAST : public BaseAST {
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
+  // getters
+  const ASTPtr &header() const { return header_; }
+  const ASTPtr &body() const { return body_; }
+
  private:
   ASTPtr header_, body_;
 };
@@ -146,6 +170,11 @@ class FuncParamAST : public BaseAST {
   // TypePtr SemaAnalyze(mid::Analyzer &ana) override;
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+  // getters
+  const ASTPtr &type() const { return type_; }
+  const std::string &id() const { return id_; }
+  const ASTPtrList &arr_lens() const { return arr_lens_; }
 
  private:
   ASTPtr type_;
@@ -164,6 +193,10 @@ class StructDefAST : public BaseAST {
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
+  // getters
+  const std::string &id() const { return id_; }
+  const ASTPtrList &elems() const { return elems_; }
+
  private:
   std::string id_;
   ASTPtrList elems_;
@@ -181,6 +214,10 @@ class EnumDefAST : public BaseAST {
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
+  // getters
+  const std::string &id() const { return id_; }
+  const ASTPtrList &elems() const { return elems_; }
+
  private:
   std::string id_;
   ASTPtrList elems_;
@@ -197,6 +234,10 @@ class TypeAliasAST : public BaseAST {
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
+  // getters
+  const ASTPtr &type() const { return type_; }
+  const std::string &id() const { return id_; }
+
  private:
   ASTPtr type_;
   std::string id_;
@@ -212,6 +253,10 @@ class StructElemAST : public BaseAST {
   // TypePtr SemaAnalyze(mid::Analyzer &ana) override;
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+  // getters
+  const ASTPtr &type() const { return type_; }
+  const ASTPtrList &defs() const { return defs_; }
 
  private:
   ASTPtr type_;
@@ -245,6 +290,10 @@ class EnumElemAST : public BaseAST {
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
+  // getters
+  const std::string &id() const { return id_; }
+  const ASTPtr &expr() const { return expr_; }
+
  private:
   std::string id_;
   ASTPtr expr_;
@@ -259,6 +308,9 @@ class BlockAST : public BaseAST {
   // TypePtr SemaAnalyze(mid::Analyzer &ana) override;
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+  // getters
+  const ASTPtrList &stmts() const { return stmts_; }
 
  private:
   ASTPtrList stmts_;
@@ -276,6 +328,11 @@ class IfElseAST : public BaseAST {
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
+  // getters
+  const ASTPtr &cond() const { return cond_; }
+  const ASTPtr &then() const { return then_; }
+  const ASTPtr &else_then() const { return else_then_; }
+
  private:
   ASTPtr cond_, then_, else_then_;
 };
@@ -290,6 +347,10 @@ class WhileAST : public BaseAST {
   // TypePtr SemaAnalyze(mid::Analyzer &ana) override;
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+  // getters
+  const ASTPtr &cond() const { return cond_; }
+  const ASTPtr &body() const { return body_; }
 
  private:
   ASTPtr cond_, body_;
@@ -307,6 +368,10 @@ class ControlAST : public BaseAST {
   // TypePtr SemaAnalyze(mid::Analyzer &ana) override;
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+  // getters
+  Type type() const { return type_; }
+  const ASTPtr &expr() const { return expr_; }
 
  private:
   Type type_;
@@ -334,6 +399,11 @@ class BinaryAST : public BaseAST {
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
+  // getters
+  Operator op() const { return op_; }
+  const ASTPtr &lhs() const { return lhs_; }
+  const ASTPtr &rhs() const { return rhs_; }
+
  private:
   Operator op_;
   ASTPtr lhs_, rhs_;
@@ -349,6 +419,10 @@ class CastAST : public BaseAST {
   // TypePtr SemaAnalyze(mid::Analyzer &ana) override;
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+  // getters
+  const ASTPtr &type() const { return type_; }
+  const ASTPtr &expr() const { return expr_; }
 
  private:
   ASTPtr type_, expr_;
@@ -369,6 +443,10 @@ class UnaryAST : public BaseAST {
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
+  // getters
+  Operator op() const { return op_; }
+  const ASTPtr &opr() const { return opr_; }
+
  private:
   Operator op_;
   ASTPtr opr_;
@@ -385,6 +463,10 @@ class IndexAST : public BaseAST {
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
+  // getters
+  const ASTPtr &expr() const { return expr_; }
+  const ASTPtr &index() const { return index_; }
+
  private:
   ASTPtr expr_, index_;
 };
@@ -399,6 +481,10 @@ class FuncCallAST : public BaseAST {
   // TypePtr SemaAnalyze(mid::Analyzer &ana) override;
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+  // getters
+  const ASTPtr &expr() const { return expr_; }
+  const ASTPtrList &args() const { return args_; }
 
  private:
   ASTPtr expr_;
@@ -418,6 +504,11 @@ class AccessAST : public BaseAST {
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
+  // getters
+  bool is_arrow() const { return is_arrow_; }
+  const ASTPtr &expr() const { return expr_; }
+  const std::string &id() const { return id_; }
+
  private:
   bool is_arrow_;
   ASTPtr expr_;
@@ -434,6 +525,9 @@ class IntAST : public BaseAST {
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
+  // getters
+  std::uint32_t value() const { return value_; }
+
  private:
   std::uint32_t value_;
 };
@@ -447,6 +541,9 @@ class CharAST : public BaseAST {
   // TypePtr SemaAnalyze(mid::Analyzer &ana) override;
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+  // getters
+  std::uint8_t c() const { return c_; }
 
  private:
   std::uint8_t c_;
@@ -462,6 +559,9 @@ class StringAST : public BaseAST {
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
+  // getters
+  const std::string &str() const { return str_; }
+
  private:
   std::string str_;
 };
@@ -475,6 +575,9 @@ class IdAST : public BaseAST {
   // TypePtr SemaAnalyze(mid::Analyzer &ana) override;
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+  // getters
+  const std::string &id() const { return id_; }
 
  private:
   std::string id_;
@@ -492,6 +595,9 @@ class PrimTypeAST : public BaseAST {
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
+  // getters
+  Type type() const { return type_; }
+
  private:
   Type type_;
 };
@@ -505,6 +611,9 @@ class StructTypeAST : public BaseAST {
   // TypePtr SemaAnalyze(mid::Analyzer &ana) override;
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+  // getters
+  const std::string &id() const { return id_; }
 
  private:
   std::string id_;
@@ -520,6 +629,9 @@ class EnumTypeAST : public BaseAST {
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
+  // getters
+  const std::string &id() const { return id_; }
+
  private:
   std::string id_;
 };
@@ -533,6 +645,9 @@ class ConstTypeAST : public BaseAST {
   // TypePtr SemaAnalyze(mid::Analyzer &ana) override;
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+  // getters
+  const ASTPtr &base() const { return base_; }
 
  private:
   ASTPtr base_;
@@ -549,6 +664,10 @@ class PointerTypeAST : public BaseAST {
   // TypePtr SemaAnalyze(mid::Analyzer &ana) override;
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+  // getters
+  const ASTPtr &base() const { return base_; }
+  std::size_t depth() const { return depth_; }
 
  private:
   ASTPtr base_;
