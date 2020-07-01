@@ -204,7 +204,7 @@ void StructElemDefAST::Dump(std::ostream &os) const {
 
 void EnumElemAST::Dump(std::ostream &os) const {
   AST(EnumElem, AST_ATTR(id));
-  ATTR(expr);
+  ATTR_NULL(expr);
 }
 
 void BlockAST::Dump(std::ostream &os) const {
