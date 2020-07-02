@@ -103,6 +103,7 @@ std::optional<std::uint32_t> Evaluator::EvalOn(EnumElemAST &ast) {
 }
 
 std::optional<std::uint32_t> Evaluator::EvalOn(BlockAST &ast) {
+  NewEnv();
   for (const auto &i : ast.stmts()) i->Eval(*this);
   return {};
 }
