@@ -113,7 +113,7 @@ control     ::= ("break" | "continue" | ("return" [expr])) ";";
 
 expr        ::= cast {bin_op cast};
 cast        ::= {"(" type ")"} unary;
-unary       ::= [unary_op] factor | "sizeof" ["("] (expr | type) [")"];
+unary       ::= [unary_op] factor | "sizeof" (factor | "(" type ")");
 factor      ::= value | index | func_call | access | "(" expr ")";
 
 bin_op      ::= "+"   | "-"   | "*"   | "/"   | "%"   | "&"
