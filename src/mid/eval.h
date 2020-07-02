@@ -2,16 +2,27 @@
 #define MIMIC_MID_EVAL_H_
 
 #include <optional>
+#include <string>
 #include <cstdint>
 
 #include "define/ast.h"
 
+#include "xstl/nested.h"
+#include "xstl/guard.h"
+
 namespace mimic::mid {
 
 // perform compile time evaluation
+// NOTE: this evaluator will only try to eval all 'const' definitions
 class Evaluator {
  public:
-  Evaluator() {}
+  Evaluator() { Reset(); }
+
+  // reset internal status
+  void Reset() {
+    values_ =
+        xstl::MakeNestedMap<std::string, std::optional<std::uint32_t>>();
+  }
 
   std::optional<std::uint32_t> EvalOn(define::VarDeclAST &ast);
   std::optional<std::uint32_t> EvalOn(define::VarDefAST &ast);
@@ -45,7 +56,19 @@ class Evaluator {
   std::optional<std::uint32_t> EvalOn(define::PointerTypeAST &ast);
 
  private:
-  //
+  // definition of environment that storing evaluated values
+  using EvalEnvPtr =
+      xstl::NestedMapPtr<std::string, std::optional<std::uint32_t>>;
+
+  // switch to new environment
+  xstl::Guard NewEnv();
+  // add value to environment
+  void AddValue(const std::string &id, std::uint32_t val);
+
+  // evaluated values
+  EvalEnvPtr values_;
+  // enumeration related stuffs
+  std::int32_t last_enum_val_;
 };
 
 }  // namespace mimic::mid
