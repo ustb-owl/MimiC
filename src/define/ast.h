@@ -290,6 +290,9 @@ class EnumElemAST : public BaseAST {
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
+  // setters
+  void set_expr(ASTPtr expr) { expr_ = std::move(expr); }
+
   // getters
   const std::string &id() const { return id_; }
   const ASTPtr &expr() const { return expr_; }
@@ -399,6 +402,10 @@ class BinaryAST : public BaseAST {
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
+  // setters
+  void set_lhs(ASTPtr lhs) { lhs_ = std::move(lhs); }
+  void set_rhs(ASTPtr rhs) { rhs_ = std::move(rhs); }
+
   // getters
   Operator op() const { return op_; }
   const ASTPtr &lhs() const { return lhs_; }
@@ -419,6 +426,9 @@ class CastAST : public BaseAST {
   // TypePtr SemaAnalyze(mid::Analyzer &ana) override;
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+  // setters
+  void set_expr(ASTPtr expr) { expr_ = std::move(expr); }
 
   // getters
   const ASTPtr &type() const { return type_; }
@@ -442,6 +452,9 @@ class UnaryAST : public BaseAST {
   // TypePtr SemaAnalyze(mid::Analyzer &ana) override;
   // std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   // mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+  // setters
+  void set_opr(ASTPtr opr) { opr_ = std::move(opr); }
 
   // getters
   Operator op() const { return op_; }
