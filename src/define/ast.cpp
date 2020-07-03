@@ -312,3 +312,7 @@ void PointerTypeAST::Dump(std::ostream &os) const {
   AST(PointerType, AST_ATTR(depth));
   ATTR(base);
 }
+
+void UserTypeAST::Dump(std::ostream &os) const {
+  ATOM(UserType, AST_ATTR(id));
+}

@@ -539,6 +539,20 @@ class PointerTypeAST : public BaseAST {
   std::size_t depth_;
 };
 
+// user defined type (type aliases)
+class UserTypeAST : public BaseAST {
+ public:
+  UserTypeAST(const std::string &id) : id_(id) {}
+
+  void Dump(std::ostream &os) const override;
+  TypePtr SemaAnalyze(mid::Analyzer &ana) override;
+  std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+ private:
+  std::string id_;
+};
+
 }  // namespace mimic::define
 
 #endif  // MIMIC_DEFINE_AST_H_
