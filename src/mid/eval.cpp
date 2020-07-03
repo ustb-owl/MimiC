@@ -255,3 +255,7 @@ std::optional<std::uint32_t> Evaluator::EvalOn(ConstTypeAST &ast) {
 std::optional<std::uint32_t> Evaluator::EvalOn(PointerTypeAST &ast) {
   return {};
 }
+
+std::optional<std::uint32_t> Evaluator::EvalOn(UserTypeAST &ast) {
+  return {};
+}

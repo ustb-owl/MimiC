@@ -54,6 +54,7 @@ class Evaluator {
   std::optional<std::uint32_t> EvalOn(define::EnumTypeAST &ast);
   std::optional<std::uint32_t> EvalOn(define::ConstTypeAST &ast);
   std::optional<std::uint32_t> EvalOn(define::PointerTypeAST &ast);
+  std::optional<std::uint32_t> EvalOn(define::UserTypeAST &ast);
 
  private:
   // definition of environment that storing evaluated values
