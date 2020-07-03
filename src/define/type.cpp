@@ -29,7 +29,7 @@ bool PrimType::CanAccept(const TypePtr &type) const {
 
 bool PrimType::CanCastTo(const TypePtr &type) const {
   if (IsVoid()) return false;
-  return type->IsBasic() || type->IsEnum();
+  return type->IsInteger() || type->IsPointer();
 }
 
 bool PrimType::IsIdentical(const TypePtr &type) const {
@@ -134,22 +134,6 @@ TypePtr StructType::GetTrivialType() const {
   type->set_elems(std::move(elems));
   trivial_types.pop();
   return type;
-}
-
-bool EnumType::CanAccept(const TypePtr &type) const {
-  return !is_right_ && IsIdentical(type);
-}
-
-bool EnumType::IsIdentical(const TypePtr &type) const {
-  return type->IsEnum() && id_ == type->GetTypeId();
-}
-
-TypePtr EnumType::GetElem(const std::string &name) const {
-  return elems_.find(name) != elems_.end() ? type_ : nullptr;
-}
-
-TypePtr EnumType::GetValueType(bool is_right) const {
-  return std::make_shared<EnumType>(type_, elems_, id_, is_right);
 }
 
 TypePtr ConstType::GetElem(std::size_t index) const {
@@ -261,7 +245,7 @@ bool PointerType::CanCastTo(const TypePtr &type) const {
       !type->GetDerefedType()->IsConst()) {
     return false;
   }
-  return type->IsBasic();
+  return type->IsInteger() || type->IsPointer();
 }
 
 bool PointerType::IsIdentical(const TypePtr &type) const {
