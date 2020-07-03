@@ -128,12 +128,14 @@ index       ::= expr "[" expr "]";
 func_call   ::= expr "(" [expr {"," expr}] ")";
 access      ::= factor ("." | "->") ID_VAL;
 
-type        ::= prim_type | struct_type | enum_type | const | pointer;
+type        ::= prim_type | struct_type | enum_type | const | pointer
+              | user_type;
 prim_type   ::= "void" | ["unsigned"] "int" | "char";
 struct_type ::= "struct" ID_VAL;
 enum_type   ::= "enum" ID_VAL;
 const       ::= "const" type;
 pointer     ::= type "*" {"*"};
+user_type   ::= ID_VAL;
 ```
 
 相比扩展前, 扩展后的 SysY 语言新增了以下内容:
