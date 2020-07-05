@@ -1,16 +1,35 @@
 #ifndef MIMIC_MID_ANALYZER_H_
 #define MIMIC_MID_ANALYZER_H_
 
+#include <string>
+#include <string_view>
+#include <cstddef>
+
 #include "mid/eval.h"
 #include "define/ast.h"
 #include "define/type.h"
+
+#include "xstl/nested.h"
+#include "xstl/guard.h"
 
 namespace mimic::mid {
 
 // perform semantic analysis
 class Analyzer {
  public:
-  Analyzer(Evaluator &eval) : eval_(eval) {}
+  Analyzer(Evaluator &eval) : eval_(eval) { Reset(); }
+
+  void Reset() {
+    auto new_env = [] {
+      return xstl::MakeNestedMap<std::string, define::TypePtr>();
+    };
+    symbols_ = new_env();
+    aliases_ = new_env();
+    structs_ = new_env();
+    enums_ = new_env();
+    add_param_to_env_ = false;
+    in_loop_ = 0;
+  }
 
   define::TypePtr AnalyzeOn(define::VarDeclAST &ast);
   define::TypePtr AnalyzeOn(define::VarDefAST &ast);
@@ -22,6 +41,7 @@ class Analyzer {
   define::TypePtr AnalyzeOn(define::EnumDefAST &ast);
   define::TypePtr AnalyzeOn(define::TypeAliasAST &ast);
   define::TypePtr AnalyzeOn(define::StructElemAST &ast);
+  define::TypePtr AnalyzeOn(define::StructElemDefAST &ast);
   define::TypePtr AnalyzeOn(define::EnumElemAST &ast);
   define::TypePtr AnalyzeOn(define::BlockAST &ast);
   define::TypePtr AnalyzeOn(define::IfElseAST &ast);
@@ -42,11 +62,30 @@ class Analyzer {
   define::TypePtr AnalyzeOn(define::EnumTypeAST &ast);
   define::TypePtr AnalyzeOn(define::ConstTypeAST &ast);
   define::TypePtr AnalyzeOn(define::PointerTypeAST &ast);
+  define::TypePtr AnalyzeOn(define::UserTypeAST &ast);
 
  private:
+  // pointer of symbol table (environment)
+  using EnvPtr = xstl::NestedMapPtr<std::string, define::TypePtr>;
+
+  // switch to new environment
+  xstl::Guard NewEnv();
+
+  // base type of all enumerators
+  static define::TypePtr enum_base_;
+
   // evaluator
   Evaluator &eval_;
-  //
+  // symbol table, aliases, structs, enums
+  EnvPtr symbols_, aliases_, structs_, enums_;
+  // used when analyzing var/const declarations
+  define::TypePtr var_type_;
+  // used when analyzing function related stuffs
+  bool add_param_to_env_;
+  // used when analyzing structs & enums
+  std::string_view last_elem_name_;
+  // used when analyzing while loops
+  std::size_t in_loop_;
 };
 
 }  // namespace mimic::mid

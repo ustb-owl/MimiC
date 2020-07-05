@@ -34,6 +34,7 @@ class Evaluator {
   std::optional<std::uint32_t> EvalOn(define::EnumDefAST &ast);
   std::optional<std::uint32_t> EvalOn(define::TypeAliasAST &ast);
   std::optional<std::uint32_t> EvalOn(define::StructElemAST &ast);
+  std::optional<std::uint32_t> EvalOn(define::StructElemDefAST &ast);
   std::optional<std::uint32_t> EvalOn(define::EnumElemAST &ast);
   std::optional<std::uint32_t> EvalOn(define::BlockAST &ast);
   std::optional<std::uint32_t> EvalOn(define::IfElseAST &ast);

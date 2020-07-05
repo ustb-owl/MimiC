@@ -88,6 +88,10 @@ std::optional<std::uint32_t> Evaluator::EvalOn(StructElemAST &ast) {
   return {};
 }
 
+std::optional<std::uint32_t> Evaluator::EvalOn(StructElemDefAST &ast) {
+  return {};
+}
+
 std::optional<std::uint32_t> Evaluator::EvalOn(EnumElemAST &ast) {
   // check if has initial expression
   if (ast.expr()) {
