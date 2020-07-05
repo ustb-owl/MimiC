@@ -218,6 +218,22 @@ class StructElemAST : public BaseAST {
   ASTPtrList defs_;
 };
 
+// element definition of structure
+class StructElemDefAST : public BaseAST {
+ public:
+  StructElemDefAST(const std::string &id, ASTPtrList arr_lens)
+      : id_(id), arr_lens_(std::move(arr_lens)) {}
+
+  void Dump(std::ostream &os) const override;
+  TypePtr SemaAnalyze(mid::Analyzer &ana) override;
+  std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
+  mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+ private:
+  std::string id_;
+  ASTPtrList arr_lens_;
+};
+
 // element of enumeration
 class EnumElemAST : public BaseAST {
  public:

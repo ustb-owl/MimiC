@@ -197,6 +197,11 @@ void StructElemAST::Dump(std::ostream &os) const {
   LIST_ATTR(defs);
 }
 
+void StructElemDefAST::Dump(std::ostream &os) const {
+  AST(StructElemDef, AST_ATTR(id));
+  LIST_ATTR(arr_lens);
+}
+
 void EnumElemAST::Dump(std::ostream &os) const {
   AST(EnumElem, AST_ATTR(id));
   ATTR(expr);
