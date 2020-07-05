@@ -47,6 +47,10 @@ TypePtr StructElemAST::SemaAnalyze(Analyzer &ana) {
   return ana.AnalyzeOn(*this);
 }
 
+TypePtr StructElemDefAST::SemaAnalyze(Analyzer &ana) {
+  return ana.AnalyzeOn(*this);
+}
+
 TypePtr EnumElemAST::SemaAnalyze(Analyzer &ana) {
   return ana.AnalyzeOn(*this);
 }
@@ -165,6 +169,10 @@ std::optional<std::uint32_t> TypeAliasAST::Eval(Evaluator &eval) {
 }
 
 std::optional<std::uint32_t> StructElemAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
+}
+
+std::optional<std::uint32_t> StructElemDefAST::Eval(Evaluator &eval) {
   return eval.EvalOn(*this);
 }
 
