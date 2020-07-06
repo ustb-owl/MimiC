@@ -274,6 +274,10 @@ class StructElemDefAST : public BaseAST {
   std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
+  // getters
+  const std::string &id() const { return id_; }
+  const ASTPtrList &arr_lens() const { return arr_lens_; }
+
  private:
   std::string id_;
   ASTPtrList arr_lens_;
@@ -696,6 +700,9 @@ class UserTypeAST : public BaseAST {
   TypePtr SemaAnalyze(mid::Analyzer &ana) override;
   std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+  // getters
+  const std::string &id() const { return id_; }
 
  private:
   std::string id_;
