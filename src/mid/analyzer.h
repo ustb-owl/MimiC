@@ -3,6 +3,7 @@
 
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <cstddef>
 
 #include "mid/eval.h"
@@ -27,7 +28,7 @@ class Analyzer {
     aliases_ = new_env();
     structs_ = new_env();
     enums_ = new_env();
-    add_param_to_env_ = false;
+    in_func_ = false;
     in_loop_ = 0;
   }
 
@@ -70,6 +71,9 @@ class Analyzer {
 
   // switch to new environment
   xstl::Guard NewEnv();
+  // handle array type
+  TypePtr HandleArray(TypePtr base, const ASTPtrList &arr_lens,
+                      std::string_view id, bool is_param);
 
   // base type of all enumerators
   static define::TypePtr enum_base_;
@@ -81,9 +85,13 @@ class Analyzer {
   // used when analyzing var/const declarations
   define::TypePtr var_type_;
   // used when analyzing function related stuffs
-  bool add_param_to_env_;
-  // used when analyzing structs & enums
-  std::string_view last_elem_name_;
+  bool in_func_;
+  define::TypePtr cur_ret_;
+  // used when analyzing structs
+  std::string_view last_struct_name_;
+  define::TypePairList struct_elems_;
+  std::unordered_set<std::string_view> struct_elem_names_;
+  define::TypePtr struct_elem_base_;
   // used when analyzing while loops
   std::size_t in_loop_;
 };
