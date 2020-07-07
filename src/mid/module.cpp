@@ -105,17 +105,6 @@ SSAPtr Module::CreateStore(const SSAPtr &value, const SSAPtr &pointer) {
   return store;
 }
 
-SSAPtr Module::CreateInit(const SSAPtr &value, const SSAPtr &pointer,
-                          bool is_ref) {
-  auto val = value;
-  // handle references
-  if (is_ref) {
-    val = val->GetAddr();
-    assert(val);
-  }
-  return CreateStore(val, pointer);
-}
-
 SSAPtr Module::CreateAlloca(const TypePtr &type) {
   // assertion for type checking
   assert(!type->IsVoid());
@@ -185,14 +174,14 @@ SSAPtr Module::CreateBranch(const SSAPtr &cond, const BlockPtr &true_block,
   return branch;
 }
 
-SSAPtr Module::CreateLoad(const SSAPtr &ptr, bool is_ref) {
+SSAPtr Module::CreateLoad(const SSAPtr &ptr) {
   // assertion for type checking
   assert(ptr->type()->IsPointer());
   // create load
   auto load = AddInst<LoadSSA>(ptr);
   load->set_type(ptr->type()->GetDerefedType());
   load->set_org_type(ptr->org_type()->GetDerefedType());
-  return is_ref ? CreateLoad(load, false) : load;
+  return load;
 }
 
 SSAPtr Module::CreateCall(const SSAPtr &callee, const SSAPtrList &args) {
@@ -394,7 +383,8 @@ SSAPtr Module::CreateNot(const SSAPtr &opr) {
 
 SSAPtr Module::GetZero(const TypePtr &type) {
   // assertion for type checking
-  assert(type->IsBasic() || type->IsStruct() || type->IsArray());
+  assert(type->IsInteger() || type->IsFunction() || type->IsPointer() ||
+         type->IsStruct() || type->IsArray());
   // create constant zero
   auto zero = MakeSSA<ConstZeroSSA>();
   zero->set_types(type);
@@ -403,7 +393,7 @@ SSAPtr Module::GetZero(const TypePtr &type) {
 
 SSAPtr Module::GetInt(std::uint32_t value, const TypePtr &type) {
   // assertion for type checking
-  assert(type->IsInteger() || type->IsEnum());
+  assert(type->IsInteger());
   // create constant integer
   auto const_int = MakeSSA<ConstIntSSA>(value);
   const_int->set_types(type);
