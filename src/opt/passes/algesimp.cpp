@@ -3,17 +3,28 @@
    TODO: a and a => a && a or a => a
    TODO: a - a => 0
 */
+#include <cmath>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <vector>
 
+#include "mid/module.h"
 #include "mid/pass.h"
 #include "mid/passman.h"
 #include "mid/ssa.h"
 
 using namespace yulang::mid;
+using namespace yulang::define;
 
 namespace {
+
+#ifndef __FILENAME__
+#define __FILENAME__ __FILE__
+#endif
+
+#define LOG() \
+  std::cout << '[' << __FILENAME__ << ":" << std::dec << __LINE__ << "] "
 
 class AlgebraicSimplification : public BlockPass {
  public:
@@ -21,11 +32,12 @@ class AlgebraicSimplification : public BlockPass {
 
   bool RunOnBlock(const BlockPtr &block) override {
     changed_ = needFold_ = false;
-    for (auto it : block->insts()) {
+    for (auto &&it : block->insts()) {
       it->RunPass(*this);
       if (needFold_) {
         std::cout << "Changed!" << std::endl;
         it->ReplaceBy(finalSSA_);
+        it = finalSSA_;
         finalSSA_ = nullptr;
         needFold_ = false;
       }
@@ -34,13 +46,6 @@ class AlgebraicSimplification : public BlockPass {
   }
 
   void RunOn(BinarySSA &ssa) override {
-    std::cout << "Line_pos\t"
-              << "Operator\t"
-              << "left\t"
-              << "right\n";
-    std::cout << ssa.logger()->line_pos() << "\t";
-    std::cout << (int)ssa.op() << "\t";
-
     SSAPtr left, right;
     left = ssa[0].value();
     right = ssa[1].value();
@@ -48,7 +53,7 @@ class AlgebraicSimplification : public BlockPass {
     left->RunPass(*this);
     right->RunPass(*this);
 
-    std::cout << "Length of operand: " << operand_.size() << std::endl;
+    // std::cout << "Length of operand: " << operand_.size() << std::endl;
     // Identity simplification
     if (operand_.size() == 1) {
       if (left->IsConst() && (operand_[0] == 1)) {
@@ -133,14 +138,27 @@ class AlgebraicSimplification : public BlockPass {
             return;
         }
       }
-
-      changed_ = needFold_ = true;
+      else if (right->IsConst()) {
+        if (ssa.op() == BinarySSA::Operator::SDiv) {
+          if (Is2Power(operand_[0])) {  // 处理2的幂
+            auto mod = MakeModule();
+            LOG() << "rhs start!, num is " << Log2(operand_[0])
+                  << std::endl;
+            auto type = MakePrimType(Keyword::Int32, false);
+            SSAPtr rhs = mod.GetInt(Log2(operand_[0]), type);
+            LOG() << "rhs done!" << std::endl;
+            auto newBinarySSA = mod.CreateShr(left, rhs);
+            // SSAPtr newBinarySSA = std::make_shared<BinarySSA>(
+            // BinarySSA::Operator::AShr, ssa[0].value(), rhs);
+            finalSSA_ = newBinarySSA;
+            changed_ = needFold_ = true;
+          }
+          else {
+            return;
+          }
+        }
+      }
     }
-
-    for (auto i : operand_) {
-      std::cout << i << "\t";
-    }
-    std::cout << std::endl;
 
     // Clear operand list after every round
     operand_.clear();
@@ -156,6 +174,9 @@ class AlgebraicSimplification : public BlockPass {
   std::vector<int> operand_;
   std::uint32_t result_;
   SSAPtr finalSSA_ = nullptr;
+
+  inline bool Is2Power(int32_t num) { return (((num) & (num - 1)) == 0); }
+  inline int Log2(int32_t num) { return (int)log2(num); }
 };
 }  // namespace
 
