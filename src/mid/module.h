@@ -42,9 +42,6 @@ class Module {
   SSAPtr CreateArgRef(const SSAPtr &func, std::size_t index);
   // create a store instruction
   SSAPtr CreateStore(const SSAPtr &value, const SSAPtr &pointer);
-  // create a initialization
-  SSAPtr CreateInit(const SSAPtr &value, const SSAPtr &pointer,
-                    bool is_ref);
   // create a allocation instruction
   SSAPtr CreateAlloca(const define::TypePtr &type);
   // create a jump instruction
@@ -64,7 +61,7 @@ class Module {
   SSAPtr CreateBranch(const SSAPtr &cond, const BlockPtr &true_block,
                       const BlockPtr &false_block);
   // create a load instruction
-  SSAPtr CreateLoad(const SSAPtr &ptr, bool is_ref);
+  SSAPtr CreateLoad(const SSAPtr &ptr);
   // create a call instruction
   SSAPtr CreateCall(const SSAPtr &callee, const SSAPtrList &args);
   // create a pointer access instruction
