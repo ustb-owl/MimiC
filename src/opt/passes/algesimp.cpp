@@ -35,7 +35,6 @@ class AlgebraicSimplification : public BlockPass {
     for (auto &&it : block->insts()) {
       it->RunPass(*this);
       if (needFold_) {
-        std::cout << "Changed!" << std::endl;
         it->ReplaceBy(finalSSA_);
         it = finalSSA_;
         finalSSA_ = nullptr;
@@ -53,7 +52,6 @@ class AlgebraicSimplification : public BlockPass {
     left->RunPass(*this);
     right->RunPass(*this);
 
-    // std::cout << "Length of operand: " << operand_.size() << std::endl;
     // Identity simplification
     if (operand_.size() == 1) {
       if (left->IsConst() && (operand_[0] == 1)) {
@@ -142,14 +140,9 @@ class AlgebraicSimplification : public BlockPass {
         if (ssa.op() == BinarySSA::Operator::SDiv) {
           if (Is2Power(operand_[0])) {  // 处理2的幂
             auto mod = MakeModule();
-            LOG() << "rhs start!, num is " << Log2(operand_[0])
-                  << std::endl;
             auto type = MakePrimType(Keyword::Int32, false);
             SSAPtr rhs = mod.GetInt(Log2(operand_[0]), type);
-            LOG() << "rhs done!" << std::endl;
             auto newBinarySSA = mod.CreateShr(left, rhs);
-            // SSAPtr newBinarySSA = std::make_shared<BinarySSA>(
-            // BinarySSA::Operator::AShr, ssa[0].value(), rhs);
             finalSSA_ = newBinarySSA;
             changed_ = needFold_ = true;
           }
@@ -164,10 +157,7 @@ class AlgebraicSimplification : public BlockPass {
     operand_.clear();
   }
 
-  void RunOn(ConstIntSSA &ssa) override {
-    std::cout << "Const: " << ssa.value() << std::endl;
-    operand_.push_back(ssa.value());
-  }
+  void RunOn(ConstIntSSA &ssa) override { operand_.push_back(ssa.value()); }
 
  private:
   bool needFold_, changed_;
