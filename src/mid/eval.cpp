@@ -53,6 +53,7 @@ std::optional<std::uint32_t> Evaluator::EvalOn(VarDefAST &ast) {
 }
 
 std::optional<std::uint32_t> Evaluator::EvalOn(InitListAST &ast) {
+  for (const auto &i : ast.exprs()) i->Eval(*this);
   return {};
 }
 
