@@ -54,7 +54,7 @@ TypePtr Analyzer::HandleArray(TypePtr base, const ASTPtrList &arr_lens,
     else {
       // try to evaluate current dimension
       auto len = expr->Eval(eval_);
-      if (!len) {
+      if (!len || !*len) {
         return LogError(expr->logger(), "invalid array length", id);
       }
       // make array type
