@@ -7,6 +7,7 @@
 #include <vector>
 #include <string>
 #include <cstdint>
+#include <cassert>
 #include <cstddef>
 
 #include "define/type.h"
@@ -440,6 +441,27 @@ class BinaryAST : public BaseAST {
 
   BinaryAST(Operator op, ASTPtr lhs, ASTPtr rhs)
       : op_(op), lhs_(std::move(lhs)), rhs_(std::move(rhs)) {}
+
+  // check if is an assignment operator
+  static bool IsOperatorAssign(Operator op) {
+    return static_cast<int>(op) >= static_cast<int>(Operator::Assign);
+  }
+  // get de-assigned operator ('+=' -> '+', '-=' -> '-', ...)
+  static Operator GetDeAssignedOp(Operator op) {
+    switch (op) {
+      case Operator::AssAdd: return Operator::Add;
+      case Operator::AssSub: return Operator::Sub;
+      case Operator::AssMul: return Operator::Mul;
+      case Operator::AssDiv: return Operator::Div;
+      case Operator::AssMod: return Operator::Mod;
+      case Operator::AssAnd: return Operator::And;
+      case Operator::AssOr: return Operator::Or;
+      case Operator::AssXor: return Operator::Xor;
+      case Operator::AssShl: return Operator::Shl;
+      case Operator::AssShr: return Operator::Shr;
+      default: assert(false); return Operator::Assign;
+    }
+  }
 
   bool IsLiteral() const override { return false; }
 
