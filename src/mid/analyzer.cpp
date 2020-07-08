@@ -21,18 +21,6 @@ inline TypePtr LogError(const Logger &log, std::string_view message,
   return nullptr;
 }
 
-// get common type of two specific types
-// perform implicit casting of integer types
-inline const TypePtr &GetCommonType(const TypePtr &t1, const TypePtr &t2) {
-  assert(t1->IsInteger() && t2->IsInteger());
-  if (t1->GetSize() != t2->GetSize()) {
-    return t1->GetSize() > t2->GetSize() ? t1 : t2;
-  }
-  else {
-    return t1->IsUnsigned() ? t1 : t2;
-  }
-}
-
 }  // namespace
 
 // definition of static properties
