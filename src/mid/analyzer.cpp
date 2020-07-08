@@ -132,7 +132,7 @@ TypePtr Analyzer::AnalyzeOn(InitListAST &ast) {
     if (!type) {
       type = expr;
     }
-    else if (expr->IsInteger()) {
+    else if (type->IsInteger() && expr->IsInteger()) {
       type = GetCommonType(type, expr);
     }
     else if (!type->IsIdentical(expr)) {
@@ -454,9 +454,7 @@ TypePtr Analyzer::AnalyzeOn(BinaryAST &ast) {
   }
   // check return type
   if (!type) return LogError(ast.logger(), "invalid binary operation");
-  // TODO: a little tricky, not reliable, fixme?
-  if (static_cast<int>(ast.op()) < static_cast<int>(Op::Assign) &&
-      !type->IsRightValue()) {
+  if (!BinaryAST::IsOperatorAssign(ast.op()) && !type->IsRightValue()) {
     type = type->GetValueType(true);
   }
   return ast.set_ast_type(std::move(type));

@@ -131,10 +131,7 @@ std::optional<std::uint32_t> Evaluator::EvalOn(ControlAST &ast) {
 std::optional<std::uint32_t> Evaluator::EvalOn(BinaryAST &ast) {
   using Op = BinaryAST::Operator;
   // do not evaluate binary expressions with assign operators
-  // TODO: a little tricky, not reliable, fixme?
-  if (static_cast<int>(ast.op()) >= static_cast<int>(Op::Assign)) {
-    return {};
-  }
+  if (BinaryAST::IsOperatorAssign(ast.op())) return {};
   // evaluate lhs & rhs
   auto lhs = ast.lhs()->Eval(*this), rhs = ast.rhs()->Eval(*this);
   if (lhs) ast.set_lhs(MakeAST(*lhs, ast.lhs()));
