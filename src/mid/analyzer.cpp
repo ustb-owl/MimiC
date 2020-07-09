@@ -74,6 +74,7 @@ void Analyzer::Reset() {
   enums_ = new_env();
   assert(final_types_.empty());
   in_func_ = false;
+  funcs_.clear();
   in_loop_ = 0;
 }
 
@@ -189,15 +190,27 @@ TypePtr Analyzer::AnalyzeOn(FuncDeclAST &ast) {
   // make function type
   auto type = std::make_shared<FuncType>(std::move(params),
                                          std::move(ret), true);
-  // get target environment
+  // add to environment
   const auto &sym = in_func_ ? symbols_->outer() : symbols_;
-  // check if is conflicted
   if (sym->GetItem(ast.id(), false)) {
-    return LogError(ast.logger(), "function has already been defined",
+    return LogError(ast.logger(), "symbol has already been defined",
                     ast.id());
   }
-  // add to environment
   sym->AddItem(ast.id(), type);
+  // add to func info map
+  auto it = funcs_.find(ast.id());
+  if (it == funcs_.end()) {
+    funcs_.insert({ast.id(), {type, !in_func_}});
+  }
+  else if (!it->second.type->IsIdentical(type)) {
+    return LogError(ast.logger(), "conflicted function type", ast.id());
+  }
+  else if (!it->second.is_decl && in_func_) {
+    return LogError(ast.logger(), "redefinition of function", ast.id());
+  }
+  else if (it->second.is_decl && in_func_) {
+    it->second.is_decl = false;
+  }
   return ast.set_ast_type(std::move(type));
 }
 

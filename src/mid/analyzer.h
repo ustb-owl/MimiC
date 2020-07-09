@@ -5,6 +5,7 @@
 #include <string_view>
 #include <unordered_set>
 #include <stack>
+#include <unordered_map>
 #include <cstddef>
 
 #include "mid/eval.h"
@@ -60,6 +61,12 @@ class Analyzer {
   // pointer of symbol table (environment)
   using EnvPtr = xstl::NestedMapPtr<std::string, define::TypePtr>;
 
+  // function information
+  struct FuncInfo {
+    define::TypePtr type;
+    bool is_decl;
+  };
+
   // switch to new environment
   xstl::Guard NewEnv();
   // handle array type
@@ -80,6 +87,7 @@ class Analyzer {
   // used when analyzing function related stuffs
   bool in_func_;
   define::TypePtr cur_ret_;
+  std::unordered_map<std::string_view, FuncInfo> funcs_;
   // used when analyzing structs
   std::string_view last_struct_name_;
   define::TypePairList struct_elems_;
