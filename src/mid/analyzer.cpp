@@ -228,7 +228,6 @@ TypePtr Analyzer::AnalyzeOn(FuncDefAST &ast) {
   // register function & parameters
   auto func = ast.header()->SemaAnalyze(*this);
   if (!func) return nullptr;
-  cur_ret_ = func->GetReturnType(*func->GetArgsType());
   // analyze body
   if (!ast.body()->SemaAnalyze(*this)) return nullptr;
   return ast.set_ast_type(MakeVoid());
