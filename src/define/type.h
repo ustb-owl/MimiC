@@ -29,17 +29,12 @@ class BaseType {
   virtual bool IsRightValue() const = 0;
   // return true if is void type
   virtual bool IsVoid() const = 0;
-  // return true if is basic type
-  // i.e. is primitive type, function, pointer
-  virtual bool IsBasic() const = 0;
   // return true if is integer
   virtual bool IsInteger() const = 0;
   // return true if is unsigned
   virtual bool IsUnsigned() const = 0;
   // return true if is structure type
   virtual bool IsStruct() const = 0;
-  // return true if is enumeration type
-  virtual bool IsEnum() const = 0;
   // return true if is constant type
   virtual bool IsConst() const = 0;
   // return true if is function type
@@ -110,7 +105,6 @@ class PrimType : public BaseType {
 
   bool IsRightValue() const override { return is_right_; }
   bool IsVoid() const override { return type_ == Type::Void; }
-  bool IsBasic() const override { return type_ != Type::Void; }
   bool IsInteger() const override {
     auto t = static_cast<int>(type_);
     return t >= static_cast<int>(Type::Int8) &&
@@ -122,7 +116,6 @@ class PrimType : public BaseType {
            t <= static_cast<int>(Type::UInt32);
   }
   bool IsStruct() const override { return false; }
-  bool IsEnum() const override { return false; }
   bool IsConst() const override { return false; }
   bool IsFunction() const override { return false; }
   bool IsArray() const override { return false; }
@@ -166,11 +159,9 @@ class StructType : public BaseType {
 
   bool IsRightValue() const override { return is_right_; }
   bool IsVoid() const override { return false; }
-  bool IsBasic() const override { return false; }
   bool IsInteger() const override { return false; }
   bool IsUnsigned() const override { return false; }
   bool IsStruct() const override { return true; }
-  bool IsEnum() const override { return false; }
   bool IsConst() const override { return false; }
   bool IsFunction() const override { return false; }
   bool IsArray() const override { return false; }
@@ -215,73 +206,15 @@ class StructType : public BaseType {
   std::size_t size_, base_size_;
 };
 
-class EnumType : public BaseType {
- public:
-  using ElemSet = std::unordered_set<std::string>;
-
-  EnumType(TypePtr type, ElemSet elems, const std::string &id,
-           bool is_right)
-      : type_(std::move(type)), elems_(std::move(elems)),
-        id_(id), is_right_(is_right) {}
-
-  bool IsRightValue() const override { return is_right_; }
-  bool IsVoid() const override { return false; }
-  bool IsBasic() const override { return false; }
-  bool IsInteger() const override { return false; }
-  bool IsUnsigned() const override { return type_->IsUnsigned(); }
-  bool IsStruct() const override { return false; }
-  bool IsEnum() const override { return true; }
-  bool IsConst() const override { return false; }
-  bool IsFunction() const override { return false; }
-  bool IsArray() const override { return false; }
-  bool IsPointer() const override { return false; }
-  bool CanCastTo(const TypePtr &type) const override {
-    return type_->CanCastTo(type);
-  }
-  std::size_t GetSize() const override { return type_->GetSize(); }
-  std::size_t GetAlignSize() const override {
-    return type_->GetAlignSize();
-  }
-  std::optional<TypePtrList> GetArgsType() const override { return {}; }
-  TypePtr GetReturnType(const TypePtrList &args) const override {
-    return nullptr;
-  }
-  std::size_t GetLength() const override { return 0; }
-  TypePtr GetElem(std::size_t index) const override { return nullptr; }
-  std::optional<std::size_t> GetElemIndex(
-      const std::string &name) const override {
-    return {};
-  }
-  TypePtr GetDerefedType() const override { return nullptr; }
-  TypePtr GetDeconstedType() const override { return nullptr; }
-  std::string GetTypeId() const override { return id_; }
-  TypePtr GetTrivialType() const override {
-    return type_->GetTrivialType();
-  }
-
-  bool CanAccept(const TypePtr &type) const override;
-  bool IsIdentical(const TypePtr &type) const override;
-  TypePtr GetElem(const std::string &name) const override;
-  TypePtr GetValueType(bool is_right) const override;
-
- private:
-  TypePtr type_;
-  ElemSet elems_;
-  std::string id_;
-  bool is_right_;
-};
-
 class ConstType : public BaseType {
  public:
   ConstType(TypePtr type) : type_(type) {}
 
   bool IsRightValue() const override { return type_->IsRightValue(); }
   bool IsVoid() const override { return type_->IsVoid(); }
-  bool IsBasic() const override { return type_->IsBasic(); }
   bool IsInteger() const override { return type_->IsInteger(); }
   bool IsUnsigned() const override { return type_->IsUnsigned(); }
   bool IsStruct() const override { return type_->IsStruct(); }
-  bool IsEnum() const override { return type_->IsEnum(); }
   bool IsConst() const override { return true; }
   bool IsFunction() const override { return type_->IsFunction(); }
   bool IsArray() const override { return type_->IsArray(); }
@@ -337,11 +270,9 @@ class FuncType : public BaseType {
 
   bool IsRightValue() const override { return is_right_; }
   bool IsVoid() const override { return false; }
-  bool IsBasic() const override { return true; }
   bool IsInteger() const override { return false; }
   bool IsUnsigned() const override { return false; }
   bool IsStruct() const override { return false; }
-  bool IsEnum() const override { return false; }
   bool IsConst() const override { return false; }
   bool IsFunction() const override { return true; }
   bool IsArray() const override { return false; }
@@ -382,11 +313,9 @@ class ArrayType : public BaseType {
 
   bool IsRightValue() const override { return is_right_; }
   bool IsVoid() const override { return false; }
-  bool IsBasic() const override { return false; }
   bool IsInteger() const override { return false; }
   bool IsUnsigned() const override { return false; }
   bool IsStruct() const override { return false; }
-  bool IsEnum() const override { return false; }
   bool IsConst() const override { return false; }
   bool IsFunction() const override { return false; }
   bool IsArray() const override { return true; }
@@ -433,11 +362,9 @@ class PointerType : public BaseType {
 
   bool IsRightValue() const override { return is_right_; }
   bool IsVoid() const override { return false; }
-  bool IsBasic() const override { return true; }
   bool IsInteger() const override { return false; }
   bool IsUnsigned() const override { return false; }
   bool IsStruct() const override { return false; }
-  bool IsEnum() const override { return false; }
   bool IsConst() const override { return false; }
   bool IsFunction() const override { return false; }
   bool IsArray() const override { return false; }
@@ -490,6 +417,18 @@ inline TypePtr MakePointer(const TypePtr &type, bool is_right) {
 // create a new pointer type (right value)
 inline TypePtr MakePointer(const TypePtr &type) {
   return std::make_shared<PointerType>(type, true);
+}
+
+// get common type of two specific types
+// perform implicit casting of integer types
+inline const TypePtr &GetCommonType(const TypePtr &t1, const TypePtr &t2) {
+  assert(t1->IsInteger() && t2->IsInteger());
+  if (t1->GetSize() != t2->GetSize()) {
+    return t1->GetSize() > t2->GetSize() ? t1 : t2;
+  }
+  else {
+    return t1->IsUnsigned() ? t1 : t2;
+  }
 }
 
 }  // namespace mimic::define
