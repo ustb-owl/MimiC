@@ -1,14 +1,25 @@
 #ifndef MIMIC_MID_IRBUILDER_H_
 #define MIMIC_MID_IRBUILDER_H_
 
+#include <utility>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <stack>
+
 #include "define/ast.h"
 #include "mid/usedef.h"
+#include "mid/module.h"
+#include "xstl/guard.h"
+#include "xstl/nested.h"
 
 namespace mimic::mid {
 
 class IRBuilder {
  public:
-  IRBuilder() {}
+  IRBuilder() { Reset(); }
+
+  void Reset();
 
   SSAPtr GenerateOn(define::VarDeclAST &ast);
   SSAPtr GenerateOn(define::VarDefAST &ast);
@@ -43,8 +54,30 @@ class IRBuilder {
   SSAPtr GenerateOn(define::PointerTypeAST &ast);
   SSAPtr GenerateOn(define::UserTypeAST &ast);
 
+  // getters
+  Module &module() { return module_; }
+
  private:
-  //
+  // pair for storing target block of break & continue
+  using BreakCont = std::pair<BlockPtr, BlockPtr>;
+
+  // switch to a new environment
+  xstl::Guard NewEnv();
+  // create binary operation
+  SSAPtr CreateBinOp(define::BinaryAST::Operator op, const SSAPtr &lhs,
+                     const SSAPtr &rhs);
+
+  // module for storing IRs
+  Module module_;
+  // table of values
+  xstl::NestedMapPtr<std::string, SSAPtr> vals_;
+  // used when generating functions
+  bool in_func_;
+  std::unordered_map<std::string_view, UserPtr> funcs_;
+  SSAPtr ret_val_;
+  BlockPtr func_exit_;
+  // used when generating loops
+  std::stack<BreakCont> break_cont_;
 };
 
 }  // namespace mimic::mid
