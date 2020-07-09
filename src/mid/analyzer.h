@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_set>
+#include <stack>
 #include <cstddef>
 
 #include "mid/eval.h"
@@ -20,17 +21,7 @@ class Analyzer {
  public:
   Analyzer(Evaluator &eval) : eval_(eval) { Reset(); }
 
-  void Reset() {
-    auto new_env = [] {
-      return xstl::MakeNestedMap<std::string, define::TypePtr>();
-    };
-    symbols_ = new_env();
-    aliases_ = new_env();
-    structs_ = new_env();
-    enums_ = new_env();
-    in_func_ = false;
-    in_loop_ = 0;
-  }
+  void Reset();
 
   define::TypePtr AnalyzeOn(define::VarDeclAST &ast);
   define::TypePtr AnalyzeOn(define::VarDefAST &ast);
@@ -84,6 +75,8 @@ class Analyzer {
   EnvPtr symbols_, aliases_, structs_, enums_;
   // used when analyzing var/const declarations
   define::TypePtr var_type_;
+  // used when analyzing initializer list
+  std::stack<define::TypePtr> final_types_;
   // used when analyzing function related stuffs
   bool in_func_;
   define::TypePtr cur_ret_;
