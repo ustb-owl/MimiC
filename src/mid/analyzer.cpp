@@ -24,7 +24,7 @@ inline TypePtr LogError(const Logger &log, std::string_view message,
 }  // namespace
 
 // definition of static properties
-TypePtr Analyzer::enum_base_ = MakePrimType(PrimType::Type::Int32, true);
+TypePtr Analyzer::enum_base_ = MakePrimType(PrimType::Type::Int32, false);
 
 xstl::Guard Analyzer::NewEnv() {
   symbols_ = xstl::MakeNestedMap(symbols_);
@@ -64,6 +64,19 @@ TypePtr Analyzer::HandleArray(TypePtr base, const ASTPtrList &arr_lens,
   return base;
 }
 
+void Analyzer::Reset() {
+  auto new_env = [] {
+    return xstl::MakeNestedMap<std::string, TypePtr>();
+  };
+  symbols_ = new_env();
+  aliases_ = new_env();
+  structs_ = new_env();
+  enums_ = new_env();
+  assert(final_types_.empty());
+  in_func_ = false;
+  in_loop_ = 0;
+}
+
 TypePtr Analyzer::AnalyzeOn(VarDeclAST &ast) {
   // get type & check
   var_type_ = ast.type()->SemaAnalyze(*this);
@@ -82,6 +95,9 @@ TypePtr Analyzer::AnalyzeOn(VarDefAST &ast) {
   // handle array type
   auto type = HandleArray(var_type_, ast.arr_lens(), ast.id(), false);
   if (!type) return nullptr;
+  // push to stack in order to handle initializer list
+  final_types_.push(type);
+  auto guard = xstl::Guard([this] { final_types_.pop(); });
   // check type of initializer
   if (ast.init()) {
     const auto &log = ast.init()->logger();
@@ -109,28 +125,53 @@ TypePtr Analyzer::AnalyzeOn(VarDefAST &ast) {
 }
 
 TypePtr Analyzer::AnalyzeOn(InitListAST &ast) {
-  // NOTE: initializer list can only be used to initialize arrays
-  //       and will return a zero-length, 1 dimension array type
-  TypePtr type;
-  for (const auto &i : ast.exprs()) {
-    // get expression type
-    auto expr = i->SemaAnalyze(*this);
-    if (!expr) return nullptr;
-    // update final type
-    if (!type) {
-      type = expr;
+  // NOTE: this process will rebuild initializer list. what this process
+  //       does is NOT quite same as what normal C/C++ compilers do.
+  const auto &type = final_types_.top();
+  assert(type->IsArray());
+  // traverse array elements
+  ASTPtrList new_exprs;
+  const auto &exprs = ast.exprs();
+  auto it = exprs.begin();
+  for (std::size_t i = 0; i < type->GetLength() && it != exprs.end(); ++i) {
+    // get current element type
+    TypePtr elem = type->GetElem(i), expr;
+    final_types_.push(elem);
+    auto guard = xstl::Guard([this] { final_types_.pop(); });
+    // check if need to rebuild
+    if (!(*it)->IsInitList() && elem->IsArray()) {
+      // create a new initializer list
+      ASTPtrList sub_exprs;
+      for (std::size_t j = 0; j < elem->GetLength() &&
+                              !(*it)->IsInitList() && it != exprs.end();
+           ++j, ++it) {
+        sub_exprs.push_back(std::move(*it));
+      }
+      auto sub_list = std::make_unique<InitListAST>(std::move(sub_exprs));
+      sub_list->set_logger(ast.logger());
+      // analyze sub list
+      expr = sub_list->SemaAnalyze(*this);
+      new_exprs.push_back(std::move(sub_list));
     }
-    else if (type->IsInteger() && expr->IsInteger()) {
-      type = GetCommonType(type, expr);
+    else {
+      // get expression type
+      expr = (*it)->SemaAnalyze(*this);
+      new_exprs.push_back(std::move(*it));
+      ++it;
     }
-    else if (!type->IsIdentical(expr)) {
-      return LogError(i->logger(),
-                      "element type mismatch in initializer list");
+    // check expression type
+    if (!expr || (elem->IsArray() && !elem->IsIdentical(expr)) ||
+        (!elem->IsArray() && !elem->CanAccept(expr))) {
+      return LogError(ast.logger(), "invalid initializer list");
     }
   }
-  // make array type
-  type = std::make_shared<ArrayType>(std::move(type), 0, true);
-  return ast.set_ast_type(std::move(type));
+  // log warning
+  if (it != exprs.end()) {
+    ast.logger().LogWarning("excess elements in initializer list");
+  }
+  // reset expressions
+  ast.set_exprs(std::move(new_exprs));
+  return ast.set_ast_type(type->GetValueType(true));
 }
 
 TypePtr Analyzer::AnalyzeOn(FuncDeclAST &ast) {
@@ -234,7 +275,7 @@ TypePtr Analyzer::AnalyzeOn(EnumDefAST &ast) {
                     ast.id());
   }
   // add to environment
-  enums_->AddItem(ast.id(), enum_base_->GetValueType(false));
+  enums_->AddItem(ast.id(), enum_base_);
   return ast.set_ast_type(MakeVoid());
 }
 
@@ -298,7 +339,7 @@ TypePtr Analyzer::AnalyzeOn(EnumElemAST &ast) {
                     ast.id());
   }
   // add to environment
-  symbols_->AddItem(ast.id(), enum_base_);
+  symbols_->AddItem(ast.id(), enum_base_->GetValueType(true));
   return ast.set_ast_type(MakeVoid());
 }
 
