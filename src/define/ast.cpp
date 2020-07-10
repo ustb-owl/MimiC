@@ -119,7 +119,7 @@ void DumpSimpleAST(std::ostream &os, std::string_view name,
 
 xstl::Guard DumpAttr(std::ostream &os, std::string_view name) {
   // dump starting tag and name
-  os << indent << "<attr name=\"" << name << "\">"<< std::endl;
+  os << indent << "<attr name=\"" << name << "\">" << std::endl;
   // increase indent num
   ++indent_count;
   return xstl::Guard([&os]() {
