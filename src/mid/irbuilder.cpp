@@ -334,6 +334,7 @@ SSAPtr IRBuilder::GenerateOn(ControlAST &ast) {
       // generate return value
       if (ast.expr()) {
         auto val = ast.expr()->GenerateIR(*this);
+        val = module_.CreateCast(val, ret_val_->type());
         module_.CreateStore(val, ret_val_);
       }
       // generate jump
