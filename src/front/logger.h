@@ -35,11 +35,6 @@ class Logger {
   static std::size_t error_num() { return error_num_; }
   static std::size_t warning_num() { return warning_num_; }
 
-  // set
-  void set(size_t line,size_t col){
-    line_pos_=line;col_pos_=col;
-  }
-
  private:
   void LogFileInfo() const;
 
