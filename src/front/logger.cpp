@@ -7,6 +7,7 @@
 using namespace mimic::front;
 
 // definition of static member variables in logger
+std::string_view Logger::file_;
 std::size_t Logger::error_num_, Logger::warning_num_;
 bool Logger::warn_as_err_;
 
