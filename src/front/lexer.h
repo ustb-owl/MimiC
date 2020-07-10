@@ -2,12 +2,9 @@
 #define MIMIC_FRONT_LEXER_H_
 
 #include <fstream>
-#include <utility>
 #include <string_view>
 #include <string>
-#include <memory>
 #include <cstdint>
-#include <cassert>
 
 #include "front/token.h"
 #include "front/logger.h"
@@ -77,9 +74,6 @@ class Lexer {
   Operator op_val_;
   char other_val_;
 };
-
-// pointer to lexer
-using LexerPtr = std::shared_ptr<Lexer>;
 
 }  // namespace mimic::front
 
