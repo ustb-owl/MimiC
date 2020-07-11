@@ -2,6 +2,7 @@
 #define MIMIC_FRONT_PARSER_H_
 
 #include <string_view>
+#include <string>
 
 #include "front/lexer.h"
 #include "define/ast.h"
@@ -79,25 +80,22 @@ class Parser {
   define::ASTPtr LogError(std::string_view message);
 
   define::ASTPtr ParseCompUnit();
-  define::ASTPtr ParseDecl();
-  define::ASTPtr ParseTypeDef();
-  define::ASTPtr ParseFuncDef();
+  define::ASTPtr ParseDeclDef(bool parse_func_def);
+  define::ASTPtr ParseVarFunc(define::ASTPtr type, bool parse_func_def);
 
-  define::ASTPtr ParseVarDecl();
-  define::ASTPtr ParseVarDef();
+  define::ASTPtr ParseVarDecl(define::ASTPtr type, const std::string &id);
+  define::ASTPtr ParseVarDef(const std::string &id);
   define::ASTPtr ParseInitVal();
 
-  define::ASTPtr ParseFuncDecl();
-  define::ASTPtr ParseFuncHeader();
-  define::ASTPtr ParseFuncParams();
+  define::ASTPtr ParseFuncHeader(define::ASTPtr type,
+                                 const std::string &id);
   define::ASTPtr ParseFuncParam();
 
-  define::ASTPtr ParseStructDef();
-  define::ASTPtr ParseEnumDef();
-  define::ASTPtr ParseTypeAlias();
+  define::ASTPtr ParseStructDef(const std::string &id);
+  define::ASTPtr ParseEnumDef(const std::string &id);
   define::ASTPtr ParseStructElem();
   define::ASTPtr ParseStructElemDef();
-  define::ASTPtr ParseEnumElems();
+  define::ASTPtr ParseEnumElem();
 
   define::ASTPtr ParseBlock();
   define::ASTPtr ParseBlockItem();
@@ -111,21 +109,21 @@ class Parser {
   define::ASTPtr ParseExpr();
   define::ASTPtr ParseCast();
   define::ASTPtr ParseUnary();
-  define::ASTPtr ParseFactor();
+  define::ASTPtr ParseFactor(bool in_bracket);
 
   define::ASTPtr ParseValue();
-  define::ASTPtr ParseIndex();
-  define::ASTPtr ParseFuncCall();
-  define::ASTPtr ParseAccess();
+  define::ASTPtr ParseIndex(define::ASTPtr expr);
+  define::ASTPtr ParseFuncCall(define::ASTPtr expr);
+  define::ASTPtr ParseAccess(define::ASTPtr expr);
 
   define::ASTPtr ParseType();
   define::ASTPtr ParsePrimType();
   define::ASTPtr ParseStructType();
   define::ASTPtr ParseEnumType();
-  define::ASTPtr ParseUserType();
   define::ASTPtr ParseConst();
-  define::ASTPtr ParsePointer();
 
+  // parse list of array length
+  bool GetArrLens(define::ASTPtrList &arr_lens);
   // make sure current token is specific character and goto next token
   bool ExpectChar(char c);
   // make sure current token is identifier
