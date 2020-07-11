@@ -132,6 +132,9 @@ class InitListAST : public BaseAST {
 
   // setters
   void set_exprs(ASTPtrList exprs) { exprs_ = std::move(exprs); }
+  void set_expr(std::size_t i, ASTPtr expr) {
+    exprs_[i] = std::move(expr);
+  }
 
   // getters
   // NOTE: non-const getter
