@@ -132,7 +132,7 @@ TypePtr Analyzer::AnalyzeOn(InitListAST &ast) {
   assert(type->IsArray());
   // traverse array elements
   ASTPtrList new_exprs;
-  const auto &exprs = ast.exprs();
+  auto &exprs = ast.exprs();
   auto it = exprs.begin();
   for (std::size_t i = 0; i < type->GetLength() && it != exprs.end(); ++i) {
     // get current element type
