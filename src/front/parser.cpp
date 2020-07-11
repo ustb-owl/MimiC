@@ -140,7 +140,7 @@ ASTPtr Parser::ParseVarFunc(ASTPtr type, bool parse_func_def) {
   // check if is function header
   if (IsTokenChar('(')) {
     auto header = ParseFuncHeader(std::move(type), id);
-    if (parse_func_def) {
+    if (parse_func_def && IsTokenChar('{')) {
       // function definition
       auto body = ParseBlock();
       if (!body) return nullptr;
