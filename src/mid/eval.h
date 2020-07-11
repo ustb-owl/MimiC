@@ -69,6 +69,8 @@ class Evaluator {
 
   // evaluated values
   EvalEnvPtr values_;
+  // used when evaluating var/const declarations
+  bool is_const_int_;
   // enumeration related stuffs
   std::int32_t last_enum_val_;
 };
