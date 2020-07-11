@@ -25,6 +25,18 @@ bool Compiler::CompileToIR() {
     if (!ast->SemaAnalyze(ana_)) break;
     ast->Eval(eval_);
     if (dump_ast_) ast->Dump(*os_);
+    // generate IR
+    ast->GenerateIR(irb_);
   }
   return !Logger::error_num();
+}
+
+bool Compiler::RunPasses() {
+  // run passes on IR
+  if (dump_pass_info_) pass_man_.ShowInfo(std::cerr);
+  irb_.module().RunPasses(pass_man_);
+  // check if need to dump IR
+  auto err_num = Logger::error_num();
+  if (!err_num && dump_yuir_) irb_.module().Dump(*os_);
+  return !err_num;
 }

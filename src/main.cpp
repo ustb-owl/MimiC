@@ -51,5 +51,7 @@ int main(int argc, const char *argv[]) {
   // compile input file
   comp.Open(&ifs);
   comp.CompileToIR();
+  comp.set_dump_yuir(true);
+  comp.RunPasses();
   return Logger::error_num();
 }
