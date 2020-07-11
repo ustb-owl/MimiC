@@ -131,6 +131,10 @@ TypePtr PointerTypeAST::SemaAnalyze(Analyzer &ana) {
   return ana.AnalyzeOn(*this);
 }
 
+TypePtr UserTypeAST::SemaAnalyze(Analyzer &ana) {
+  return ana.AnalyzeOn(*this);
+}
+
 
 std::optional<std::uint32_t> VarDeclAST::Eval(Evaluator &eval) {
   return eval.EvalOn(*this);
@@ -253,5 +257,9 @@ std::optional<std::uint32_t> ConstTypeAST::Eval(Evaluator &eval) {
 }
 
 std::optional<std::uint32_t> PointerTypeAST::Eval(Evaluator &eval) {
+  return eval.EvalOn(*this);
+}
+
+std::optional<std::uint32_t> UserTypeAST::Eval(Evaluator &eval) {
   return eval.EvalOn(*this);
 }

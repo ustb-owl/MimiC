@@ -710,7 +710,7 @@ ASTPtr Parser::ParseType() {
   // handle pointer type
   std::size_t depth = 0;
   for (; IsTokenOperator(Operator::Mul); ++depth) NextToken();
-  return depth ? MakeAST<PointerType>(log, std::move(base), depth)
+  return depth ? MakeAST<PointerTypeAST>(log, std::move(base), depth)
                : std::move(base);
 }
 
