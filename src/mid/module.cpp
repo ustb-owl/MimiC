@@ -89,8 +89,12 @@ SSAPtr Module::CreateArgRef(const SSAPtr &func, std::size_t index) {
 SSAPtr Module::CreateStore(const SSAPtr &value, const SSAPtr &pointer) {
   // get proper pointer
   auto ptr = pointer, val = value;
-  while (!ptr->type()->GetDerefedType() ||
-         !ptr->type()->GetDerefedType()->CanAccept(val->type())) {
+  for (;;) {
+    auto ty = ptr->type()->GetDerefedType();
+    if (ty && (ty->CanAccept(val->type()) ||
+               (ty->IsArray() && ty->IsIdentical(val->type())))) {
+      break;
+    }
     ptr = ptr->GetAddr();
     assert(ptr);
   }
@@ -340,7 +344,7 @@ SSAPtr Module::CreateCast(const SSAPtr &opr, const TypePtr &type) {
   // assertion for type checking
   const auto &opr_ty = opr->type();
   auto target = type->GetTrivialType();
-  assert(opr_ty->CanCastTo(target));
+  assert(opr_ty->IsIdentical(target) || opr_ty->CanCastTo(target));
   // check if is redundant type casting
   if (opr_ty->IsIdentical(target)) return opr;
   // get address of array
