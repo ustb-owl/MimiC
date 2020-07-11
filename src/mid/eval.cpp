@@ -58,15 +58,13 @@ xstl::Guard Evaluator::NewEnv() {
 std::optional<std::uint32_t> Evaluator::EvalOn(VarDeclAST &ast) {
   // evaluate constant integers only
   const auto &type = ast.type()->ast_type();
-  if (!type->IsConst() || !type->IsInteger()) return {};
+  is_const_int_ = type->IsConst() && type->IsInteger();
   // evaluate definitions
   for (const auto &i : ast.defs()) i->Eval(*this);
   return {};
 }
 
 std::optional<std::uint32_t> Evaluator::EvalOn(VarDefAST &ast) {
-  // do not evaluate array
-  if (!ast.arr_lens().empty()) return {};
   // evaluate initial value
   if (!ast.init()) return {};
   auto val = ast.init()->Eval(*this);
@@ -74,14 +72,19 @@ std::optional<std::uint32_t> Evaluator::EvalOn(VarDefAST &ast) {
   // perform implicit type casting
   val = CastToType(*val, ast.ast_type());
   // add to environment
-  values_->AddItem(ast.id(), val);
+  if (is_const_int_) values_->AddItem(ast.id(), val);
   // update AST
   ast.set_init(MakeAST(*val, ast.init()));
   return {};
 }
 
 std::optional<std::uint32_t> Evaluator::EvalOn(InitListAST &ast) {
-  for (const auto &i : ast.exprs()) i->Eval(*this);
+  for (std::size_t i = 0; i < ast.exprs().size(); ++i) {
+    if (auto expr = ast.exprs()[i]->Eval(*this)) {
+      // update AST
+      ast.set_expr(i, MakeAST(*expr, ast.exprs()[i]));
+    }
+  }
   return {};
 }
 
