@@ -173,8 +173,10 @@ std::size_t FuncType::GetSize() const {
 TypePtr FuncType::GetReturnType(const TypePtrList &args) const {
   if (args_.size() != args.size()) return nullptr;
   for (std::size_t i = 0; i < args_.size(); ++i) {
-    if (!args_[i]->IsIdentical(args[i])) return nullptr;
-    if (args_[i]->IsPointer()) {
+    if (!args_[i]->IsIdentical(args[i]) && !args_[i]->CanAccept(args[i])) {
+      return nullptr;
+    }
+    if (args_[i]->IsPointer() && args[i]->IsPointer()) {
       // check pointer's const cast
       // NOTE: stricter than C
       if (args[i]->GetDerefedType()->IsConst() &&
@@ -236,7 +238,7 @@ TypePtr ArrayType::GetTrivialType() const {
 }
 
 bool PointerType::CanAccept(const TypePtr &type) const {
-  if (!type->IsPointer()) return false;
+  if (!type->IsPointer() && !type->IsArray()) return false;
   auto deref = type->GetDerefedType();
   // check if is const pointer
   // NOTE: stricter than C
