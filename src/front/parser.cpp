@@ -187,7 +187,7 @@ ASTPtr Parser::ParseVarDef(const std::string &id) {
   if (!GetArrLens(arr_lens)) return nullptr;
   // parse initializer
   ASTPtr init;
-  if (IsTokenChar('=')) {
+  if (IsTokenOperator(Operator::Assign)) {
     NextToken();
     // get initializer
     init = ParseInitVal();
@@ -353,7 +353,7 @@ ASTPtr Parser::ParseEnumElem() {
   NextToken();
   // get initializer
   ASTPtr expr;
-  if (IsTokenChar('=')) {
+  if (IsTokenOperator(Operator::Assign)) {
     NextToken();
     expr = ParseExpr();
     if (!expr) return nullptr;
@@ -473,9 +473,10 @@ ASTPtr Parser::ParseControl() {
     case Keyword::Return: type = Type::Return; break;
     default: assert(false);
   }
+  NextToken();
   // get expression (return value)
   ASTPtr expr;
-  if (lexer_.key_val() == Keyword::Return && !IsTokenChar(';')) {
+  if (type == Type::Return && !IsTokenChar(';')) {
     expr = ParseExpr();
     if (!expr) return nullptr;
   }
