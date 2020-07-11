@@ -1,7 +1,7 @@
 #ifndef MIMIC_FRONT_LEXER_H_
 #define MIMIC_FRONT_LEXER_H_
 
-#include <fstream>
+#include <istream>
 #include <string_view>
 #include <string>
 #include <cstdint>
@@ -13,10 +13,13 @@ namespace mimic::front {
 
 class Lexer {
  public:
-  Lexer(const std::string &file) : in_(file), logger_() { Reset(); }
+  Lexer() : logger_() { Reset(nullptr); }
+  Lexer(std::istream *in) : logger_() { Reset(in); }
 
   // reset lexer status
   void Reset();
+  // reset lexer status (including input stream)
+  void Reset(std::istream *in);
   // get next token from input stream
   Token NextToken();
 
@@ -38,12 +41,14 @@ class Lexer {
   char other_val() const { return other_val_; }
 
  private:
-  void NextChar() {
-    in_ >> last_char_;
-    logger_.IncreaseColPos();
-  }
+  bool IsEOF() { return !in_ || in_->eof(); }
   bool IsEOL() {
-    return in_.eof() || last_char_ == '\n' || last_char_ == '\r';
+    return IsEOF() || last_char_ == '\n' || last_char_ == '\r';
+  }
+  void NextChar() {
+    if (IsEOF()) return;
+    *in_ >> last_char_;
+    logger_.IncreaseColPos();
   }
 
   // print error message and return Token::Error
@@ -63,7 +68,7 @@ class Lexer {
   Token HandleBlockComment();
   Token HandleEOL();
 
-  std::ifstream in_;
+  std::istream *in_;
   Logger logger_;
   char last_char_;
   // value of token
