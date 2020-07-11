@@ -134,7 +134,8 @@ class InitListAST : public BaseAST {
   void set_exprs(ASTPtrList exprs) { exprs_ = std::move(exprs); }
 
   // getters
-  const ASTPtrList &exprs() const { return exprs_; }
+  // NOTE: non-const getter
+  ASTPtrList &exprs() { return exprs_; }
 
  private:
   ASTPtrList exprs_;

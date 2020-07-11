@@ -104,7 +104,7 @@ struct_elem_def ::= ID_VAL {"[" expr "]"};
 enum_elems      ::= ID_VAL ["=" expr] ["," enum_elems] [","];
 
 block           ::= "{" {block_item} "}";
-block_item      ::= decl | stmt;
+block_item      ::= decl | type_def | stmt;
 
 stmt            ::= bare | block | if_else | while | control;
 bare            ::= expr ";";

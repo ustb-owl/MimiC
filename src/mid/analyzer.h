@@ -70,8 +70,9 @@ class Analyzer {
   // switch to new environment
   xstl::Guard NewEnv();
   // handle array type
-  TypePtr HandleArray(TypePtr base, const ASTPtrList &arr_lens,
-                      std::string_view id, bool is_param);
+  define::TypePtr HandleArray(define::TypePtr base,
+                              const define::ASTPtrList &arr_lens,
+                              std::string_view id, bool is_param);
 
   // base type of all enumerators
   static define::TypePtr enum_base_;
