@@ -21,6 +21,23 @@ inline TypePtr LogError(const Logger &log, std::string_view message,
   return nullptr;
 }
 
+// check value initializing (variable definition, function returning)
+inline bool CheckInit(const Logger &log, const TypePtr &type,
+                      const TypePtr &init, std::string_view id) {
+  assert(!type->IsRightValue());
+  bool ret = type->IsConst() || type->IsArray() ? type->IsIdentical(init)
+                                                : type->CanAccept(init);
+  if (!ret) {
+    if (id.empty()) {
+      log.LogError("type mismatch when initializing");
+    }
+    else {
+      log.LogError("type mismatch when initializing", id);
+    }
+  }
+  return ret;
+}
+
 }  // namespace
 
 // definition of static properties
@@ -41,8 +58,16 @@ xstl::Guard Analyzer::NewEnv() {
 
 TypePtr Analyzer::HandleArray(TypePtr base, const ASTPtrList &arr_lens,
                               std::string_view id, bool is_param) {
-  for (auto i = arr_lens.size() - 1; i >= 0; --i) {
+  for (int i = arr_lens.size() - 1; i >= 0; --i) {
     const auto &expr = arr_lens[i];
+    // analyze expression
+    if (expr) {
+      auto expr_ty = expr->SemaAnalyze(*this);
+      if (!expr_ty || !expr_ty->IsInteger()) {
+        return LogError(expr->logger(), "integer required");
+      }
+    }
+    // create array type
     if (is_param && (!expr || !i)) {
       // check error
       if (!expr && i) {
@@ -89,6 +114,8 @@ TypePtr Analyzer::AnalyzeOn(VarDeclAST &ast) {
   for (const auto &i : ast.defs()) {
     if (!i->SemaAnalyze(*this)) return nullptr;
   }
+  // evaluate current AST
+  ast.Eval(eval_);
   return ast.set_ast_type(MakeVoid());
 }
 
@@ -104,16 +131,7 @@ TypePtr Analyzer::AnalyzeOn(VarDefAST &ast) {
     const auto &log = ast.init()->logger();
     auto init = ast.init()->SemaAnalyze(*this);
     if (!init) return nullptr;
-    if (init->IsArray() && !init->GetLength()) {
-      // initializer list
-      if (!type->IsArray() ||
-          !var_type_->CanAccept(init->GetDerefedType())) {
-        return LogError(log, "invalid initializer list", ast.id());
-      }
-    }
-    else if (!type->CanAccept(init)) {
-      LogError(log, "type mismatch when initializing", ast.id());
-    }
+    if (!CheckInit(log, type, init, ast.id())) return nullptr;
   }
   // check if is conflicted
   if (symbols_->GetItem(ast.id(), false)) {
@@ -161,10 +179,7 @@ TypePtr Analyzer::AnalyzeOn(InitListAST &ast) {
       ++it;
     }
     // check expression type
-    if (!expr || (elem->IsArray() && !elem->IsIdentical(expr)) ||
-        (!elem->IsArray() && !elem->CanAccept(expr))) {
-      return LogError(ast.logger(), "invalid initializer list");
-    }
+    if (!expr || !CheckInit(ast.logger(), elem, expr, "")) return nullptr;
   }
   // log warning
   if (it != exprs.end()) {
@@ -223,7 +238,7 @@ TypePtr Analyzer::AnalyzeOn(FuncDefAST &ast) {
           +- args/block   <- current env
   */
   auto env = NewEnv();
-  auto in_func = xstl::Guard([this] { in_func_ = false; });
+  // set flag, this flag will be cleared when entering body
   in_func_ = true;
   // register function & parameters
   auto func = ast.header()->SemaAnalyze(*this);
@@ -288,6 +303,8 @@ TypePtr Analyzer::AnalyzeOn(EnumDefAST &ast) {
   }
   // add to environment
   enums_->AddItem(ast.id(), enum_base_);
+  // evaluate current AST
+  ast.Eval(eval_);
   return ast.set_ast_type(MakeVoid());
 }
 
@@ -358,6 +375,7 @@ TypePtr Analyzer::AnalyzeOn(EnumElemAST &ast) {
 TypePtr Analyzer::AnalyzeOn(BlockAST &ast) {
   // make new environment when not in function
   auto guard = !in_func_ ? NewEnv() : xstl::Guard(nullptr);
+  if (in_func_) in_func_ = false;
   // ananlyze statements
   for (const auto &i : ast.stmts()) {
     if (!i->SemaAnalyze(*this)) return nullptr;
@@ -408,9 +426,11 @@ TypePtr Analyzer::AnalyzeOn(ControlAST &ast) {
     case Type::Return: {
       assert(cur_ret_->IsVoid() || !cur_ret_->IsRightValue());
       // check if is compatible
-      auto type = ast.expr() ? ast.expr()->SemaAnalyze(*this) : MakeVoid();
-      if (!type || !cur_ret_->CanAccept(type)) {
-        return LogError(ast.expr()->logger(), "invalid return statement");
+      if (ast.expr()) {
+        auto ret = ast.expr()->SemaAnalyze(*this);
+        if (!ret || !CheckInit(ast.expr()->logger(), cur_ret_, ret, "")) {
+          return nullptr;
+        }
       }
       break;
     }
