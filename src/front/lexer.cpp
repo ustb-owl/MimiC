@@ -1,5 +1,7 @@
 #include "front/lexer.h"
 
+#include <cassert>
+
 using namespace mimic::front;
 
 namespace {
@@ -223,13 +225,13 @@ Token Lexer::HandleBlockComment() {
   NextChar();
   // read until there is '*/' in stream
   bool star = false;
-  while (!in_.eof() && !(star && last_char_ == '/')) {
+  while (!IsEOF() && !(star && last_char_ == '/')) {
     star = last_char_ == '*';
-    if (IsEOL() && !in_.eof()) logger_.IncreaseLinePos();
+    if (IsEOL() && !IsEOF()) logger_.IncreaseLinePos();
     NextChar();
   }
   // check unclosed block comment
-  if (in_.eof()) return LogError("comment unclosed at EOF");
+  if (IsEOF()) return LogError("comment unclosed at EOF");
   // eat '/'
   NextChar();
   return NextToken();
@@ -239,28 +241,28 @@ Token Lexer::HandleEOL() {
   do {
     logger_.IncreaseLinePos();
     NextChar();
-  } while (IsEOL() && !in_.eof());
+  } while (IsEOL() && !IsEOF());
   return NextToken();
 }
 
 void Lexer::Reset() {
   logger_.Reset();
   last_char_ = ' ';
-  // check if file was opened
-  if (!in_.is_open()) {
-    LogError("failed to open file");
-  }
-  else {
-    // reset status of file stream
-    in_.clear();
-    in_.seekg(0, std::ios::beg);
-    in_ >> std::noskipws;
-  }
+  if (!in_) return;
+  // reset status of file stream
+  in_->clear();
+  in_->seekg(0, std::ios::beg);
+  *in_ >> std::noskipws;
+}
+
+void Lexer::Reset(std::istream *in) {
+  in_ = in;
+  Reset();
 }
 
 Token Lexer::NextToken() {
   // end of file
-  if (in_.eof()) return Token::End;
+  if (IsEOF()) return Token::End;
   // skip spaces
   SkipSpaces();
   // id or keyword
