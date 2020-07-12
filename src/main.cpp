@@ -23,8 +23,6 @@ std::istringstream GetPreDeclFuncs() {
     "void putarray(int n, int a[]);\n"
     "void starttime();\n"
     "void stoptime();\n"
-    "void _sysy_starttime(int lineno);\n"
-    "void _sysy_stoptime(int lineno);\n"
   );
   return iss;
 }
@@ -42,8 +40,11 @@ int main(int argc, const char *argv[]) {
   else {
     Logger::set_file(argv[1]);
   }
-  // handle pre-declared functions
+  // initialize compiler
   Compiler comp;
+  comp.set_dump_yuir(true);
+  comp.set_opt_level(3);
+  // handle pre-declared functions
   auto iss = GetPreDeclFuncs();
   comp.Open(&iss);
   auto ret = comp.CompileToIR();
@@ -51,7 +52,6 @@ int main(int argc, const char *argv[]) {
   // compile input file
   comp.Open(&ifs);
   comp.CompileToIR();
-  comp.set_dump_yuir(true);
   comp.RunPasses();
   return Logger::error_num();
 }
