@@ -22,6 +22,32 @@ inline ASTPtr MakeAST(std::uint32_t val, const ASTPtr &ast) {
   return ret;
 }
 
+// cast the specific integer to type
+inline std::optional<std::uint32_t> CastToType(std::uint32_t val,
+                                               const TypePtr &type) {
+  assert(type->IsInteger() || type->IsPointer());
+  if (type->IsInteger() || type->IsPointer()) {
+    if (type->GetSize() == 1) {
+      // i8/u8
+      return type->IsUnsigned() ? static_cast<std::uint8_t>(val)
+                                : static_cast<std::int8_t>(val);
+    }
+    else if (type->GetSize() == 4) {
+      // i32/u32/ptrs
+      return type->IsUnsigned() || type->IsPointer()
+                  ? static_cast<std::uint32_t>(val)
+                  : static_cast<std::int32_t>(val);
+    }
+    else {
+      assert(false);
+      return 0;
+    }
+  }
+  else {
+    return {};
+  }
+}
+
 }  // namespace
 
 xstl::Guard Evaluator::NewEnv() {
@@ -32,28 +58,33 @@ xstl::Guard Evaluator::NewEnv() {
 std::optional<std::uint32_t> Evaluator::EvalOn(VarDeclAST &ast) {
   // evaluate constant integers only
   const auto &type = ast.type()->ast_type();
-  if (!type->IsConst() || !type->IsInteger()) return {};
+  is_const_int_ = type->IsConst() && type->IsInteger();
   // evaluate definitions
   for (const auto &i : ast.defs()) i->Eval(*this);
   return {};
 }
 
 std::optional<std::uint32_t> Evaluator::EvalOn(VarDefAST &ast) {
-  // do not evaluate array
-  if (!ast.arr_lens().empty()) return {};
   // evaluate initial value
   if (!ast.init()) return {};
   auto val = ast.init()->Eval(*this);
   if (!val) return {};
+  // perform implicit type casting
+  val = CastToType(*val, ast.ast_type());
   // add to environment
-  values_->AddItem(ast.id(), val);
+  if (is_const_int_) values_->AddItem(ast.id(), val);
   // update AST
   ast.set_init(MakeAST(*val, ast.init()));
   return {};
 }
 
 std::optional<std::uint32_t> Evaluator::EvalOn(InitListAST &ast) {
-  for (const auto &i : ast.exprs()) i->Eval(*this);
+  for (std::size_t i = 0; i < ast.exprs().size(); ++i) {
+    if (auto expr = ast.exprs()[i]->Eval(*this)) {
+      // update AST
+      ast.set_expr(i, MakeAST(*expr, ast.exprs()[i]));
+    }
+  }
   return {};
 }
 
@@ -138,10 +169,10 @@ std::optional<std::uint32_t> Evaluator::EvalOn(BinaryAST &ast) {
   if (rhs) ast.set_rhs(MakeAST(*rhs, ast.rhs()));
   if (!lhs || !rhs) return {};
   // calculate result
-  auto lv = *lhs, rv = *rhs;
+  const auto &type = ast.ast_type();
+  auto lv = *CastToType(*lhs, type), rv = *CastToType(*rhs, type);
   auto slv = static_cast<std::int32_t>(lv);
   auto srv = static_cast<std::int32_t>(rv);
-  const auto &type = ast.ast_type();
   switch (ast.op()) {
     case Op::Add: return lv + rv;
     case Op::Sub: return lv - rv;
@@ -171,22 +202,7 @@ std::optional<std::uint32_t> Evaluator::EvalOn(CastAST &ast) {
   if (!expr) return {};
   ast.set_expr(MakeAST(*expr, ast.expr()));
   // perform type casting
-  auto val = *expr;
-  const auto &type = ast.type()->ast_type();
-  if (type->IsInteger() || type->IsPointer()) {
-    if (type->GetSize() == 1) {
-      // i8/u8
-      return type->IsUnsigned() ? static_cast<std::uint8_t>(val)
-                                : static_cast<std::int8_t>(val);
-    }
-    else if (type->GetSize() == 4) {
-      // i32/u32/ptrs
-      return type->IsUnsigned() || type->IsPointer()
-                 ? static_cast<std::uint32_t>(val)
-                 : static_cast<std::int32_t>(val);
-    }
-  }
-  return {};
+  return CastToType(*expr, ast.type()->ast_type());
 }
 
 std::optional<std::uint32_t> Evaluator::EvalOn(UnaryAST &ast) {

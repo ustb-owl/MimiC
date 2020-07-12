@@ -23,7 +23,7 @@ SSAPtr IRBuilder::CreateBinOp(BinaryAST::Operator op, const SSAPtr &lhs,
     if (op != Op::Assign) {
       val = CreateBinOp(BinaryAST::GetDeAssignedOp(op), lhs, rhs);
     }
-    module_.CreateStore(module_.CreateCast(val, lhs->type()), lhs);
+    module_.CreateStore(val, lhs);
     return lhs;
   }
   else {
@@ -97,8 +97,8 @@ SSAPtr IRBuilder::GenerateOn(VarDefAST &ast) {
     if (init) {
       if (init->IsLiteral()) {
         // generate initializer
-        auto var_init = init->GenerateIR(*this);
-        var->set_init(var_init);
+        auto expr = module_.CreateCast(init->GenerateIR(*this), type);
+        var->set_init(expr);
       }
       else {
         // generate initialization instructions
@@ -126,9 +126,16 @@ SSAPtr IRBuilder::GenerateOn(InitListAST &ast) {
     // generate all elements
     SSAPtrList exprs;
     for (std::size_t i = 0; i < type->GetLength(); ++i) {
-      auto e = i < ast.exprs().size() ? ast.exprs()[i]->GenerateIR(*this)
-                                      : module_.GetZero(type->GetElem(i));
-      exprs.push_back(std::move(e));
+      auto elem_ty = type->GetElem(i);
+      SSAPtr expr;
+      if (i < ast.exprs().size()) {
+        expr = ast.exprs()[i]->GenerateIR(*this);
+        expr = module_.CreateCast(expr, elem_ty);
+      }
+      else {
+        expr = module_.GetZero(elem_ty);
+      }
+      exprs.push_back(std::move(expr));
     }
     // generate constant array
     assert(type->IsArray());
@@ -142,8 +149,8 @@ SSAPtr IRBuilder::GenerateOn(InitListAST &ast) {
     module_.CreateStore(zero, val);
     // generate elements
     for (std::size_t i = 0; i < ast.exprs().size(); ++i) {
+      auto ty = type->GetElem(i);
       auto elem = ast.exprs()[i]->GenerateIR(*this);
-      const auto &ty = elem->type();
       auto ptr = module_.CreateElemAccess(val, module_.GetInt32(i), ty);
       module_.CreateStore(elem, ptr);
     }
@@ -193,7 +200,6 @@ SSAPtr IRBuilder::GenerateOn(FuncDefAST &ast) {
   auto context = module_.SetContext(ast.logger());
   // make new environment
   auto env = NewEnv();
-  auto in_func = xstl::Guard([this] { in_func_ = false; });
   in_func_ = true;
   // generate function definition
   ast.header()->GenerateIR(*this);
@@ -256,6 +262,7 @@ SSAPtr IRBuilder::GenerateOn(BlockAST &ast) {
   auto context = module_.SetContext(ast.logger());
   // make new environment when not in function
   auto guard = !in_func_ ? NewEnv() : xstl::Guard(nullptr);
+  if (in_func_) in_func_ = false;
   // create new block
   const auto &cur_func = module_.GetInsertPoint()->parent();
   auto block = module_.CreateBlock(cur_func);
@@ -362,21 +369,19 @@ SSAPtr IRBuilder::GenerateOn(BinaryAST &ast) {
     const auto &type = ast.ast_type();
     assert(type->IsInteger());
     auto result = module_.CreateAlloca(type);
-    // get casted lhs
-    auto lv = module_.CreateCast(lhs, type);
     // handle by operator
     if (ast.op() == Op::LAnd) {
       module_.CreateStore(module_.GetInt(0, type), result);
-      module_.CreateBranch(lv, rhs_block, end_block);
+      module_.CreateBranch(lhs, rhs_block, end_block);
     }
     else {  // LogicOr
       module_.CreateStore(module_.GetInt(1, type), result);
-      module_.CreateBranch(lv, end_block, rhs_block);
+      module_.CreateBranch(lhs, end_block, rhs_block);
     }
     // emit 'rhs' block
     module_.SetInsertPoint(rhs_block);
     auto rhs = ast.rhs()->GenerateIR(*this);
-    module_.CreateStore(module_.CreateCast(rhs, type), result);
+    module_.CreateStore(rhs, result);
     module_.CreateJump(end_block);
     // emit 'end' block
     module_.SetInsertPoint(end_block);
