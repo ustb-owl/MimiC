@@ -44,12 +44,13 @@ class DirtyConversionPass : public ModulePass {
     auto &decl = name_ == "starttime" ? start_time_ : stop_time_;
     if (!decl) {
       using namespace std::string_literals;
-      auto id = "_sysy_"s + std::string(name_);
+      auto name = "_sysy_"s + std::string(name_);
       TypePtrList args = {MakePrimType(PrimType::Type::Int32, false)};
       auto ret = MakePrimType(PrimType::Type::Void, false);
       auto type = std::make_shared<FuncType>(std::move(args),
                                              std::move(ret), false);
-      decl = mod.CreateFunction(LinkageTypes::External, id, std::move(type));
+      decl = mod.CreateFunction(LinkageTypes::External, name,
+                                std::move(type));
     }
     // modify current call instruction
     ssa[0].set_value(decl);
