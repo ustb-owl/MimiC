@@ -78,8 +78,7 @@ class BaseType {
   // return a new type with specific value type (left/right)
   virtual TypePtr GetValueType(bool is_right) const = 0;
   // return a new trivial type
-  // i.e. all left values, no constants,
-  //      replace enumerations with integers,
+  // i.e. all left values, no constants
   virtual TypePtr GetTrivialType() const = 0;
 
   // setters
