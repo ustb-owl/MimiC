@@ -3,7 +3,7 @@
 
 #include <istream>
 #include <string_view>
-#include <string>
+#include <cstring>
 #include <cstdint>
 
 #include "front/token.h"
