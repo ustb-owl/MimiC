@@ -38,6 +38,8 @@ class CodeGenInterface {
   virtual void Dump(std::ostream &os) const = 0;
 };
 
+using CodeGen = CodeGenInterface;
+
 }  // namespace mimic::back
 
 #endif  // MIMIC_BACK_CODEGEN_H_
