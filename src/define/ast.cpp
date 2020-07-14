@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <tuple>
 #include <utility>
+#include <sstream>
 #include <cctype>
 
 #include "xstl/guard.h"
@@ -110,15 +111,15 @@ template <typename... Attrs>
 void DumpSimpleAST(std::ostream &os, std::string_view name,
                    Attrs &&... attrs) {
   // dump starting tag and name
-  os << indent << "<ast name=\"" << name << "\" ";
+  os << indent << "<ast name=\"" << name << "\"";
   // dump inline attributes
   UnfoldAttrs(os, std::forward<Attrs>(attrs)...);
-  os << "/>" << std::endl;
+  os << " />" << std::endl;
 }
 
 xstl::Guard DumpAttr(std::ostream &os, std::string_view name) {
   // dump starting tag and name
-  os << indent << "<attr name=\"" << name << "\">";
+  os << indent << "<attr name=\"" << name << "\">" << std::endl;
   // increase indent num
   ++indent_count;
   return xstl::Guard([&os]() {
@@ -196,9 +197,14 @@ void StructElemAST::Dump(std::ostream &os) const {
   LIST_ATTR(defs);
 }
 
+void StructElemDefAST::Dump(std::ostream &os) const {
+  AST(StructElemDef, AST_ATTR(id));
+  LIST_ATTR(arr_lens);
+}
+
 void EnumElemAST::Dump(std::ostream &os) const {
   AST(EnumElem, AST_ATTR(id));
-  ATTR(expr);
+  ATTR_NULL(expr);
 }
 
 void BlockAST::Dump(std::ostream &os) const {
@@ -274,11 +280,15 @@ void IntAST::Dump(std::ostream &os) const {
 }
 
 void CharAST::Dump(std::ostream &os) const {
-  ATOM(Char, std::make_tuple("c", static_cast<int>(c_)));
+  std::ostringstream oss;
+  ConvertChar(oss, c_, true);
+  ATOM(Char, std::make_tuple("c", oss.str()));
 }
 
 void StringAST::Dump(std::ostream &os) const {
-  ATOM(String, AST_ATTR(str));
+  std::ostringstream oss;
+  for (const auto &c : str_) ConvertChar(oss, c, false);
+  ATOM(String, std::make_tuple("str", oss.str()));
 }
 
 void IdAST::Dump(std::ostream &os) const {
@@ -306,4 +316,8 @@ void ConstTypeAST::Dump(std::ostream &os) const {
 void PointerTypeAST::Dump(std::ostream &os) const {
   AST(PointerType, AST_ATTR(depth));
   ATTR(base);
+}
+
+void UserTypeAST::Dump(std::ostream &os) const {
+  ATOM(UserType, AST_ATTR(id));
 }

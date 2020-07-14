@@ -21,15 +21,7 @@ class Module {
   Module() { Reset(); }
 
   // reset module status & content
-  void Reset() {
-    vars_.clear();
-    funcs_.clear();
-    global_ctor_ = nullptr;
-    ctor_entry_ = nullptr;
-    ctor_exit_ = nullptr;
-    is_ctor_sealed_ = false;
-    insert_point_ = nullptr;
-  }
+  void Reset();
 
   // create a function declaration
   UserPtr CreateFunction(LinkageTypes link, const std::string &name,
@@ -42,9 +34,6 @@ class Module {
   SSAPtr CreateArgRef(const SSAPtr &func, std::size_t index);
   // create a store instruction
   SSAPtr CreateStore(const SSAPtr &value, const SSAPtr &pointer);
-  // create a initialization
-  SSAPtr CreateInit(const SSAPtr &value, const SSAPtr &pointer,
-                    bool is_ref);
   // create a allocation instruction
   SSAPtr CreateAlloca(const define::TypePtr &type);
   // create a jump instruction
@@ -64,7 +53,7 @@ class Module {
   SSAPtr CreateBranch(const SSAPtr &cond, const BlockPtr &true_block,
                       const BlockPtr &false_block);
   // create a load instruction
-  SSAPtr CreateLoad(const SSAPtr &ptr, bool is_ref);
+  SSAPtr CreateLoad(const SSAPtr &ptr);
   // create a call instruction
   SSAPtr CreateCall(const SSAPtr &callee, const SSAPtrList &args);
   // create a pointer access instruction
@@ -123,7 +112,7 @@ class Module {
   // create a constant zero
   SSAPtr GetZero(const define::TypePtr &type);
   // get a constant integer
-  SSAPtr GetInt(std::uint64_t value, const define::TypePtr &type);
+  SSAPtr GetInt(std::uint32_t value, const define::TypePtr &type);
   // get a 32-bit signed constant integer
   SSAPtr GetInt32(std::uint32_t value);
   // get a constant boolean
@@ -135,10 +124,19 @@ class Module {
   // get a constant array
   SSAPtr GetArray(const SSAPtrList &elems, const define::TypePtr &type);
 
-  // set insert point to a specific basic block
-  void SetInsertPoint(const BlockPtr &block) { insert_point_ = block; }
-  // get current insert point
-  const BlockPtr &GetInsertPoint() const { return insert_point_; }
+  // set insert point to end of specific basic block
+  void SetInsertPoint(const BlockPtr &block) {
+    insert_block_ = block;
+    insert_pos_ = block->insts().end();
+  }
+  // set insert point to a specific location of the basic block
+  // IR should be inserted before the specific location
+  void SetInsertPoint(const BlockPtr &block, SSAPtrList::iterator pos) {
+    insert_block_ = block;
+    insert_pos_ = pos;
+  }
+  // get current insert point (basic block)
+  const BlockPtr &GetInsertPoint() const { return insert_block_; }
   // set current context (logger)
   xstl::Guard SetContext(const front::Logger &logger);
   // set insert point to global constructor
@@ -165,7 +163,8 @@ class Module {
   template <typename T, typename... Args>
   SSAPtr AddInst(Args &&... args) {
     auto inst = MakeSSA<T>(std::forward<Args>(args)...);
-    insert_point_->AddInst(inst);
+    insert_pos_ = insert_block_->insts().insert(insert_pos_, inst);
+    ++insert_pos_;
     return inst;
   }
 
@@ -181,8 +180,31 @@ class Module {
   BlockPtr ctor_entry_, ctor_exit_;
   bool is_ctor_sealed_;
   // current insert point
-  BlockPtr insert_point_;
+  BlockPtr insert_block_;
+  SSAPtrList::iterator insert_pos_;
 };
+
+// make a temporary module to perform IR insertion
+// IR should be inserted before the end of the specific block
+inline Module MakeModule(const BlockPtr &block) {
+  Module mod;
+  mod.SetInsertPoint(block);
+  return mod;
+}
+
+// make a temporary module to perform IR insertion
+// IR should be inserted before the specific position
+inline Module MakeModule(const BlockPtr &block, SSAPtrList::iterator pos) {
+  Module mod;
+  mod.SetInsertPoint(block, pos);
+  return mod;
+}
+
+// make a temporary module to create specific IR, for one-time use only
+inline Module MakeModule() {
+  auto block = std::make_shared<BlockSSA>(nullptr, "");
+  return MakeModule(block);
+}
 
 }  // namespace mimic::mid
 

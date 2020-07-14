@@ -9,7 +9,7 @@ namespace mimic::front {
 
 class Logger {
  public:
-  Logger() : line_pos_(0), col_pos_(0) {}
+  Logger() : line_pos_(1), col_pos_(1) {}
   Logger(std::size_t line_pos, std::size_t col_pos)
       : line_pos_(line_pos), col_pos_(col_pos) {}
 
@@ -29,6 +29,22 @@ class Logger {
   // print warning message to stderr
   void LogWarning(std::string_view message) const;
 
+  // reset line & column position
+  void Reset() {
+    line_pos_ = 1;
+    col_pos_ = 1;
+  }
+  // increase line position
+  void IncreaseLinePos() {
+    ++line_pos_;
+    col_pos_ = 1;
+  }
+  // increase column position
+  void IncreaseColPos() { ++col_pos_; }
+
+  // setters
+  static void set_file(std::string_view file) { file_ = file; }
+
   // getters
   std::size_t line_pos() const { return line_pos_; }
   std::size_t col_pos() const { return col_pos_; }
@@ -38,6 +54,7 @@ class Logger {
  private:
   void LogFileInfo() const;
 
+  static std::string_view file_;
   static std::size_t error_num_, warning_num_;
   static bool warn_as_err_;
   std::size_t line_pos_, col_pos_;

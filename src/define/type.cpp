@@ -24,12 +24,12 @@ std::size_t BaseType::ptr_size_ = 4;
 
 bool PrimType::CanAccept(const TypePtr &type) const {
   if (is_right_ || IsVoid()) return false;
-  return IsIdentical(type);
+  return type->IsInteger();
 }
 
 bool PrimType::CanCastTo(const TypePtr &type) const {
   if (IsVoid()) return false;
-  return type->IsBasic() || type->IsEnum();
+  return type->IsInteger() || type->IsPointer();
 }
 
 bool PrimType::IsIdentical(const TypePtr &type) const {
@@ -136,22 +136,6 @@ TypePtr StructType::GetTrivialType() const {
   return type;
 }
 
-bool EnumType::CanAccept(const TypePtr &type) const {
-  return !is_right_ && IsIdentical(type);
-}
-
-bool EnumType::IsIdentical(const TypePtr &type) const {
-  return type->IsEnum() && id_ == type->GetTypeId();
-}
-
-TypePtr EnumType::GetElem(const std::string &name) const {
-  return elems_.find(name) != elems_.end() ? type_ : nullptr;
-}
-
-TypePtr EnumType::GetValueType(bool is_right) const {
-  return std::make_shared<EnumType>(type_, elems_, id_, is_right);
-}
-
 TypePtr ConstType::GetElem(std::size_t index) const {
   auto type = type_->GetElem(index);
   return std::make_shared<ConstType>(std::move(type));
@@ -189,9 +173,12 @@ std::size_t FuncType::GetSize() const {
 TypePtr FuncType::GetReturnType(const TypePtrList &args) const {
   if (args_.size() != args.size()) return nullptr;
   for (std::size_t i = 0; i < args_.size(); ++i) {
-    if (!args_[i]->IsIdentical(args[i])) return nullptr;
-    if (args_[i]->IsPointer()) {
+    if (!args_[i]->IsIdentical(args[i]) && !args_[i]->CanAccept(args[i])) {
+      return nullptr;
+    }
+    if (args_[i]->IsPointer() && args[i]->IsPointer()) {
       // check pointer's const cast
+      // NOTE: stricter than C
       if (args[i]->GetDerefedType()->IsConst() &&
           !args_[i]->GetDerefedType()->IsConst()) {
         return nullptr;
@@ -222,7 +209,8 @@ TypePtr FuncType::GetTrivialType() const {
 }
 
 bool ArrayType::CanAccept(const TypePtr &type) const {
-  return !is_right_ && IsIdentical(type);
+  // array can not be assigned in C/C++
+  return false;
 }
 
 bool ArrayType::CanCastTo(const TypePtr &type) const {
@@ -250,18 +238,18 @@ TypePtr ArrayType::GetTrivialType() const {
 }
 
 bool PointerType::CanAccept(const TypePtr &type) const {
-  if (!type->IsPointer()) return false;
-  if (!base_->IsConst() && type->GetDerefedType()->IsConst()) return false;
-  return !is_right_ && base_->IsIdentical(type->GetDerefedType());
+  if (!type->IsPointer() && !type->IsArray()) return false;
+  auto deref = type->GetDerefedType();
+  // check if is const pointer
+  // NOTE: stricter than C
+  if (!base_->IsConst() && deref->IsConst()) return false;
+  // pointers can accept other void pointers in C/C++
+  return !is_right_ && (deref->IsVoid() || base_->IsIdentical(deref));
 }
 
 bool PointerType::CanCastTo(const TypePtr &type) const {
-  // const cast is invalid
-  if (type->IsPointer() && base_->IsConst() &&
-      !type->GetDerefedType()->IsConst()) {
-    return false;
-  }
-  return type->IsBasic();
+  // pointer can be casted to any const/non-const pointers in C/C++
+  return type->IsInteger() || type->IsPointer();
 }
 
 bool PointerType::IsIdentical(const TypePtr &type) const {

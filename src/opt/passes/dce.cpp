@@ -54,10 +54,7 @@ class DeadCodeEliminationPass : public FunctionPass {
   }
 
   void RunOn(LoadSSA &ssa) override {
-    // NOTE: must remove all redundant loads, including volatile loads
-    if (/* !ssa.type()->IsVola() && */ ssa.uses().empty()) {
-      remove_flag_ = true;
-    }
+    if (ssa.uses().empty()) remove_flag_ = true;
   }
 
   void RunOn(AccessSSA &ssa) override {

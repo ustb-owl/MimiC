@@ -42,10 +42,26 @@ using UnaryOp = UnarySSA::Operator;
 
 void Module::SealGlobalCtor() {
   if (global_ctor_ && !is_ctor_sealed_) {    
-    insert_point_ = ctor_entry_;
+    SetInsertPoint(ctor_entry_);
     CreateJump(ctor_exit_);
     is_ctor_sealed_ = true;
   }
+}
+
+void Module::Reset()  {
+  vars_.clear();
+  funcs_.clear();
+  global_ctor_ = nullptr;
+  ctor_entry_ = nullptr;
+  ctor_exit_ = nullptr;
+  is_ctor_sealed_ = false;
+  insert_block_ = nullptr;
+  insert_pos_ = SSAPtrList::iterator();
+  // reset logger stack
+  while (!loggers_.empty()) loggers_.pop();
+  // add a default logger
+  // TODO: not very elegant, fixme?
+  loggers_.push(std::make_shared<Logger>());
 }
 
 UserPtr Module::CreateFunction(LinkageTypes link, const std::string &name,
@@ -89,8 +105,12 @@ SSAPtr Module::CreateArgRef(const SSAPtr &func, std::size_t index) {
 SSAPtr Module::CreateStore(const SSAPtr &value, const SSAPtr &pointer) {
   // get proper pointer
   auto ptr = pointer, val = value;
-  while (!ptr->type()->GetDerefedType() ||
-         !ptr->type()->GetDerefedType()->CanAccept(val->type())) {
+  for (;;) {
+    auto ty = ptr->type()->GetDerefedType();
+    if (ty && (ty->CanAccept(val->type()) ||
+               (ty->IsArray() && ty->IsIdentical(val->type())))) {
+      break;
+    }
     ptr = ptr->GetAddr();
     assert(ptr);
   }
@@ -103,17 +123,6 @@ SSAPtr Module::CreateStore(const SSAPtr &value, const SSAPtr &pointer) {
   auto store = AddInst<StoreSSA>(val, ptr);
   store->set_types(nullptr);
   return store;
-}
-
-SSAPtr Module::CreateInit(const SSAPtr &value, const SSAPtr &pointer,
-                          bool is_ref) {
-  auto val = value;
-  // handle references
-  if (is_ref) {
-    val = val->GetAddr();
-    assert(val);
-  }
-  return CreateStore(val, pointer);
 }
 
 SSAPtr Module::CreateAlloca(const TypePtr &type) {
@@ -130,13 +139,13 @@ SSAPtr Module::CreateJump(const BlockPtr &target) {
   auto jump = AddInst<JumpSSA>(target);
   jump->set_types(nullptr);
   // update predecessor info
-  target->AddValue(insert_point_);
+  target->AddValue(insert_block_);
   return jump;
 }
 
 SSAPtr Module::CreateReturn(const SSAPtr &value) {
   // get proper return value
-  const auto &func_type = insert_point_->parent()->org_type();
+  const auto &func_type = insert_block_->parent()->org_type();
   auto ret_type = func_type->GetReturnType(*func_type->GetArgsType());
   auto val = value;
   // assertion for type checking
@@ -180,19 +189,19 @@ SSAPtr Module::CreateBranch(const SSAPtr &cond, const BlockPtr &true_block,
   auto branch = AddInst<BranchSSA>(cond, true_block, false_block);
   branch->set_types(nullptr);
   // update predecessor info
-  true_block->AddValue(insert_point_);
-  false_block->AddValue(insert_point_);
+  true_block->AddValue(insert_block_);
+  false_block->AddValue(insert_block_);
   return branch;
 }
 
-SSAPtr Module::CreateLoad(const SSAPtr &ptr, bool is_ref) {
+SSAPtr Module::CreateLoad(const SSAPtr &ptr) {
   // assertion for type checking
   assert(ptr->type()->IsPointer());
   // create load
   auto load = AddInst<LoadSSA>(ptr);
   load->set_type(ptr->type()->GetDerefedType());
   load->set_org_type(ptr->org_type()->GetDerefedType());
-  return is_ref ? CreateLoad(load, false) : load;
+  return load;
 }
 
 SSAPtr Module::CreateCall(const SSAPtr &callee, const SSAPtrList &args) {
@@ -351,7 +360,7 @@ SSAPtr Module::CreateCast(const SSAPtr &opr, const TypePtr &type) {
   // assertion for type checking
   const auto &opr_ty = opr->type();
   auto target = type->GetTrivialType();
-  assert(opr_ty->CanCastTo(target));
+  assert(opr_ty->IsIdentical(target) || opr_ty->CanCastTo(target));
   // check if is redundant type casting
   if (opr_ty->IsIdentical(target)) return opr;
   // get address of array
@@ -368,7 +377,6 @@ SSAPtr Module::CreateCast(const SSAPtr &opr, const TypePtr &type) {
   }
   else {
     // create a non-constant type casting
-    assert(insert_point_);
     cast = AddInst<CastSSA>(operand);
   }
   cast->set_type(target);
@@ -394,16 +402,17 @@ SSAPtr Module::CreateNot(const SSAPtr &opr) {
 
 SSAPtr Module::GetZero(const TypePtr &type) {
   // assertion for type checking
-  assert(type->IsBasic() || type->IsStruct() || type->IsArray());
+  assert(type->IsInteger() || type->IsFunction() || type->IsPointer() ||
+         type->IsStruct() || type->IsArray());
   // create constant zero
   auto zero = MakeSSA<ConstZeroSSA>();
   zero->set_types(type);
   return zero;
 }
 
-SSAPtr Module::GetInt(std::uint64_t value, const TypePtr &type) {
+SSAPtr Module::GetInt(std::uint32_t value, const TypePtr &type) {
   // assertion for type checking
-  assert(type->IsInteger() || type->IsEnum());
+  assert(type->IsInteger());
   // create constant integer
   auto const_int = MakeSSA<ConstIntSSA>(value);
   const_int->set_types(type);
@@ -472,7 +481,7 @@ xstl::Guard Module::SetContext(const Logger &logger) {
 
 xstl::Guard Module::EnterGlobalCtor() {
   // get current insert point
-  auto cur_block = insert_point_;
+  auto cur_block = insert_block_;
   // initialize global function if it does not exist
   if (!global_ctor_) {
     // create function
@@ -482,14 +491,14 @@ xstl::Guard Module::EnterGlobalCtor() {
     // create basic blocks
     ctor_entry_ = CreateBlock(global_ctor_, "entry");
     ctor_exit_ = CreateBlock(global_ctor_, "exit");
-    insert_point_ = ctor_exit_;
+    SetInsertPoint(ctor_exit_);
     CreateReturn(nullptr);
     // mark as not sealed
     is_ctor_sealed_ = false;
   }
   // switch to global function's body block
-  insert_point_ = ctor_entry_;
-  return xstl::Guard([this, cur_block] { insert_point_ = cur_block; });
+  SetInsertPoint(ctor_entry_);
+  return xstl::Guard([this, cur_block] { SetInsertPoint(cur_block); });
 }
 
 void Module::Dump(std::ostream &os) {
