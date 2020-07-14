@@ -54,6 +54,8 @@ class CCodeGen : public CodeGenInterface {
   std::string GetNewVar(const char *prefix);
   // declare new temporary variable and print to output stream
   std::string DeclVar(mid::Value &ssa);
+  // generate end of statement
+  void GenEnd(mid::Value &ssa);
 
   // get C-style type name
   std::string GetTypeName(const define::TypePtr &type);
@@ -70,6 +72,8 @@ class CCodeGen : public CodeGenInterface {
   std::ostringstream type_, code_;
   // set if is in global variable definition
   bool in_global_var_;
+  // depth of 'ConstArraySSA'
+  std::size_t arr_depth_;
 };
 
 }  // namespace mimic::back::c
