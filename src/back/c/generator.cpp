@@ -307,7 +307,7 @@ void CCodeGen::GenerateOn(CallSSA &ssa) {
   }
   code_ << GetVal(ssa[0].value()) << '(';
   // generate arguments
-  for (int i = 1; i < ssa.size(); ++i) {
+  for (std::size_t i = 1; i < ssa.size(); ++i) {
     if (i > 1) code_ << ", ";
     code_ << GetVal(ssa[i].value());
   }
