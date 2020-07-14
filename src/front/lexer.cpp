@@ -1,6 +1,9 @@
 #include "front/lexer.h"
 
-#include <cassert>
+#include <cstddef>
+#include <cstring>
+#include <cstdlib>
+#include <cctype>
 
 using namespace mimic::front;
 
