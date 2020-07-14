@@ -4,10 +4,12 @@
 
 #include "front/logger.h"
 #include "driver/compiler.h"
+#include "back/c/generator.h"
 
 using namespace std;
 using namespace mimic::front;
 using namespace mimic::driver;
+using namespace mimic::back::c;
 
 namespace {
 
@@ -42,7 +44,7 @@ int main(int argc, const char *argv[]) {
   }
   // initialize compiler
   Compiler comp;
-  comp.set_dump_yuir(true);
+  comp.set_dump_code(true);
   comp.set_opt_level(3);
   // handle pre-declared functions
   auto iss = GetPreDeclFuncs();
@@ -53,5 +55,8 @@ int main(int argc, const char *argv[]) {
   comp.Open(&ifs);
   comp.CompileToIR();
   comp.RunPasses();
+  // generate C code
+  CCodeGen gen;
+  comp.GenerateCode(gen);
   return Logger::error_num();
 }
