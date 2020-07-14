@@ -123,23 +123,29 @@ SSAPtr IRBuilder::GenerateOn(InitListAST &ast) {
   auto context = module_.SetContext(ast.logger());
   const auto &type = ast.ast_type();
   if (ast.IsLiteral()) {
-    // generate all elements
-    SSAPtrList exprs;
-    for (std::size_t i = 0; i < type->GetLength(); ++i) {
-      auto elem_ty = type->GetElem(i);
-      SSAPtr expr;
-      if (i < ast.exprs().size()) {
-        expr = ast.exprs()[i]->GenerateIR(*this);
-        expr = module_.CreateCast(expr, elem_ty);
-      }
-      else {
-        expr = module_.GetZero(elem_ty);
-      }
-      exprs.push_back(std::move(expr));
+    if (ast.exprs().empty()) {
+      // generate constant zero
+      return module_.GetZero(type);
     }
-    // generate constant array
-    assert(type->IsArray());
-    return module_.GetArray(exprs, type);
+    else {
+      // generate all elements
+      SSAPtrList exprs;
+      for (std::size_t i = 0; i < type->GetLength(); ++i) {
+        auto elem_ty = type->GetElem(i);
+        SSAPtr expr;
+        if (i < ast.exprs().size()) {
+          expr = ast.exprs()[i]->GenerateIR(*this);
+          expr = module_.CreateCast(expr, elem_ty);
+        }
+        else {
+          expr = module_.GetZero(elem_ty);
+        }
+        exprs.push_back(std::move(expr));
+      }
+      // generate constant array
+      assert(type->IsArray());
+      return module_.GetArray(exprs, type);
+    }
   }
   else {
     // create a temporary alloca
