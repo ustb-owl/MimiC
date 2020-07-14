@@ -196,6 +196,7 @@ void CCodeGen::Reset() {
   type_.clear();
   code_.str("");
   code_.clear();
+  in_global_var_ = false;
   arr_depth_ = 0;
 }
 
