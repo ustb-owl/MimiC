@@ -4,6 +4,7 @@
 
 using namespace mimic::driver;
 using namespace mimic::front;
+using namespace mimic::back;
 
 void Compiler::Reset() {
   // reset lexer & parser
@@ -11,6 +12,7 @@ void Compiler::Reset() {
   // reset the rest part
   ana_.Reset();
   eval_.Reset();
+  irb_.Reset();
 }
 
 void Compiler::Open(std::istream *in) {
@@ -39,4 +41,9 @@ bool Compiler::RunPasses() {
   auto err_num = Logger::error_num();
   if (!err_num && dump_yuir_) irb_.module().Dump(*os_);
   return !err_num;
+}
+
+void Compiler::GenerateCode(CodeGen &gen) {
+  irb_.module().GenerateCode(gen);
+  if (dump_code_) gen.Dump(*os_);
 }

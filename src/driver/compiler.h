@@ -12,6 +12,7 @@
 #include "mid/eval.h"
 #include "mid/irbuilder.h"
 #include "opt/passman.h"
+#include "back/codegen.h"
 
 namespace mimic::driver {
 
@@ -20,7 +21,8 @@ class Compiler {
  public:
   Compiler()
       : parser_(lexer_), ana_(eval_),
-        dump_ast_(false), dump_yuir_(false), dump_pass_info_(false),
+        dump_ast_(false), dump_yuir_(false),
+        dump_pass_info_(false), dump_code_(false),
         os_(&std::cout) {
     Reset();
   }
@@ -33,6 +35,8 @@ class Compiler {
   bool CompileToIR();
   // run passes on IRs
   bool RunPasses();
+  // generate target code
+  void GenerateCode(back::CodeGen &gen);
 
   // setters
   void set_opt_level(int opt_level) { pass_man_.set_opt_level(opt_level); }
@@ -41,6 +45,7 @@ class Compiler {
   void set_dump_pass_info(bool dump_pass_info) {
     dump_pass_info_ = dump_pass_info;
   }
+  void set_dump_code(bool dump_code) { dump_code_ = dump_code; }
   void set_ostream(std::ostream *os) {
     assert(os);
     os_ = os;
@@ -54,7 +59,7 @@ class Compiler {
   mid::IRBuilder irb_;
   opt::PassManager pass_man_;
   // options
-  bool dump_ast_, dump_yuir_, dump_pass_info_;
+  bool dump_ast_, dump_yuir_, dump_pass_info_, dump_code_;
   std::ostream *os_;
 };
 
