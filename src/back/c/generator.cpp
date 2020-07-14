@@ -120,6 +120,12 @@ std::string CCodeGen::DeclVar(Value &ssa) {
   return var;
 }
 
+void CCodeGen::GenEnd(Value &ssa) {
+  code_ << "; // ";
+  code_ << ssa.logger()->line_pos() << ':' << ssa.logger()->col_pos();
+  code_ << std::endl;
+}
+
 std::string CCodeGen::GetTypeName(const TypePtr &type) {
   if (type->IsVoid()) {
     // just void
@@ -190,6 +196,7 @@ void CCodeGen::Reset() {
   type_.clear();
   code_.str("");
   code_.clear();
+  arr_depth_ = 0;
 }
 
 void CCodeGen::GenerateOn(LoadSSA &ssa) {
@@ -206,7 +213,7 @@ void CCodeGen::GenerateOn(LoadSSA &ssa) {
     // just assign
     code_ << " = *" << val;
   }
-  code_ << ';' << std::endl;
+  GenEnd(ssa);
   SetVal(ssa, var);
 }
 
@@ -223,7 +230,7 @@ void CCodeGen::GenerateOn(StoreSSA &ssa) {
     // just assign
     code_ << "  *" << ptr_val << " = " << val_val;
   }
-  code_ << ';' << std::endl;
+  GenEnd(ssa);
 }
 
 void CCodeGen::GenerateOn(AccessSSA &ssa) {
@@ -240,7 +247,7 @@ void CCodeGen::GenerateOn(AccessSSA &ssa) {
     auto base_ty = ssa[0].value()->type()->GetDerefedType();
     if (base_ty->IsArray()) {
       // array
-      code_ << ptr << '[' << index << ']';
+      code_ << "&(*" << ptr << ")[" << index << ']';
     }
     else {
       // structure
@@ -258,21 +265,22 @@ void CCodeGen::GenerateOn(AccessSSA &ssa) {
       code_ << offset << ')';
     }
   }
-  code_ << ';' << std::endl;
+  GenEnd(ssa);
   SetVal(ssa, var);
 }
 
 void CCodeGen::GenerateOn(BinarySSA &ssa) {
   auto var = DeclVar(ssa);
   code_ << GetVal(ssa[0].value()) << ' ' << GetBinOp(ssa.op());
-  code_ << ' ' << GetVal(ssa[1].value()) << ';' << std::endl;
+  code_ << ' ' << GetVal(ssa[1].value());
+  GenEnd(ssa);
   SetVal(ssa, var);
 }
 
 void CCodeGen::GenerateOn(UnarySSA &ssa) {
   auto var = DeclVar(ssa);
   code_ << GetUnaOp(ssa.op()) << GetVal(ssa[0].value());
-  code_ << ';' << std::endl;
+  GenEnd(ssa);
   SetVal(ssa, var);
 }
 
@@ -280,7 +288,8 @@ void CCodeGen::GenerateOn(CastSSA &ssa) {
   auto val = '(' + GetTypeName(ssa.type()) + ')' + GetVal(ssa[0].value());
   if (!ssa.IsConst()) {
     auto var = DeclVar(ssa);
-    code_ << val << ';' << std::endl;
+    code_ << val;
+    GenEnd(ssa);
     SetVal(ssa, var);
   }
   else {
@@ -302,21 +311,27 @@ void CCodeGen::GenerateOn(CallSSA &ssa) {
     if (i > 1) code_ << ", ";
     code_ << GetVal(ssa[i].value());
   }
-  code_ << ");" << std::endl;
+  code_ << ')';
+  GenEnd(ssa);
 }
 
 void CCodeGen::GenerateOn(BranchSSA &ssa) {
-  code_ << "  if (" << GetVal(ssa[0].value()) << ") goto ";
+  code_ << kIndent << "if (" << GetVal(ssa[0].value()) << ") goto ";
   code_ << GetLabel(ssa[1].value()) << "; else goto ";
-  code_ << GetLabel(ssa[2].value()) << ';' << std::endl;
+  code_ << GetLabel(ssa[2].value());
+  GenEnd(ssa);
 }
 
 void CCodeGen::GenerateOn(JumpSSA &ssa) {
-  code_ << "  goto " << GetLabel(ssa[0].value()) << ';' << std::endl;
+  code_ << kIndent << "goto ";
+  code_ << GetLabel(ssa[0].value());
+  GenEnd(ssa);
 }
 
 void CCodeGen::GenerateOn(ReturnSSA &ssa) {
-  code_ << "  return " << GetLabel(ssa[0].value()) << ';' << std::endl;
+  code_ << kIndent << "return";
+  if (ssa[0].value()) code_ << ' ' << GetLabel(ssa[0].value());
+  GenEnd(ssa);
 }
 
 void CCodeGen::GenerateOn(FunctionSSA &ssa) {
@@ -334,7 +349,7 @@ void CCodeGen::GenerateOn(FunctionSSA &ssa) {
   }
   code_ << ')';
   if (ssa.empty()) {
-    code_ << ';' << std::endl;
+    GenEnd(ssa);
     return;
   }
   // generate function body
@@ -357,14 +372,15 @@ void CCodeGen::GenerateOn(GlobalVarSSA &ssa) {
     code_ << " = " << GetVal(ssa[0].value());
     in_global_var_ = false;
   }
-  code_ << ';' << std::endl;
+  GenEnd(ssa);
   SetVal(ssa, '&' + ssa.name());
 }
 
 void CCodeGen::GenerateOn(AllocaSSA &ssa) {
   auto type = ssa.type()->GetDerefedType();
   auto var = GetNewVar(kVarPrefix);
-  code_ << kIndent << GetTypeName(type) << ' ' << var << ';' << std::endl;
+  code_ << kIndent << GetTypeName(type) << ' ' << var;
+  GenEnd(ssa);
   SetVal(ssa, '&' + var);
 }
 
@@ -408,6 +424,7 @@ void CCodeGen::GenerateOn(ConstStructSSA &ssa) {
 }
 
 void CCodeGen::GenerateOn(ConstArraySSA &ssa) {
+  ++arr_depth_;
   // generate elements
   std::ostringstream oss;
   oss << '{';
@@ -417,31 +434,43 @@ void CCodeGen::GenerateOn(ConstArraySSA &ssa) {
   }
   oss << '}';
   // generate value
-  if (in_global_var_) {
+  if (in_global_var_ || (ssa.IsConst() && arr_depth_ > 1)) {
     SetVal(ssa, oss.str());
   }
   else {
     auto var = DeclVar(ssa);
-    code_ << oss.str() << ';' << std::endl;
+    code_ << oss.str();
+    GenEnd(ssa);
     SetVal(ssa, var);
   }
+  --arr_depth_;
 }
 
 void CCodeGen::GenerateOn(ConstZeroSSA &ssa) {
-  // not fully implemented
-  assert(ssa.type()->IsArray());
-  // generate value
-  if (in_global_var_) {
-    SetVal(ssa, "{}");
+  const auto &type = ssa.type();
+  if (type->IsInteger()) {
+    SetVal(ssa, "0");
+  }
+  else if (type->IsArray()) {
+    // generate value
+    if (in_global_var_) {
+      SetVal(ssa, "{}");
+    }
+    else {
+      auto var = DeclVar(ssa);
+      code_ << "{}";
+      GenEnd(ssa);
+      SetVal(ssa, var);
+    }
   }
   else {
-    auto var = DeclVar(ssa);
-    code_ << "{};" << std::endl;
-    SetVal(ssa, var);
+    // not fully implemented
+    assert(false);
   }
 }
 
 void CCodeGen::Dump(std::ostream &os) const {
+  os << "#include <string.h>" << std::endl << std::endl;
   os << type_.str() << std::endl;
   os << code_.str() << std::endl;
 }
