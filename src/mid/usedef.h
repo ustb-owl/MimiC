@@ -90,6 +90,8 @@ class Value {
   void RemoveUse(Use *use) { uses_.remove(use); }
   // replace current value by another value
   void ReplaceBy(const SSAPtr &value);
+  // remove current value from all users
+  void RemoveFromUser();
 
   // getters
   const front::LogPtr &logger() const { return logger_; }
@@ -196,8 +198,10 @@ class User : public Value {
   void Reserve(std::size_t size) { uses_.reserve(size); }
   // resize use list
   void Resize(std::size_t size) { uses_.resize(size, Use(nullptr, this)); }
-  // remove null uses
-  void RemoveNull();
+  // remove uses with specific value
+  void RemoveValue(const SSAPtr &value);
+  // remove uses with specific value
+  void RemoveValue(Value *value);
   // clear all uses
   void Clear() { uses_.clear(); }
   // add new value to current user
