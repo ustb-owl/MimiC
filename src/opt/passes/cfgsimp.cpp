@@ -12,6 +12,7 @@ namespace {
 /*
   merge blocks with only one jump instruction,
   replace branch with two equal targets to jump
+  replace branch with constant condition to jump
 
   TODO: do not skip entry blocks
 
@@ -25,9 +26,9 @@ namespace {
       ...
 
 */
-class BlockMerge : public FunctionPass {
+class CFGSimplifyPass : public FunctionPass {
  public:
-  BlockMerge() {}
+  CFGSimplifyPass() {}
 
   bool RunOnFunction(const UserPtr &func) override {
     changed_ = false;
@@ -42,7 +43,7 @@ class BlockMerge : public FunctionPass {
         it->set_value(nullptr);
       }
     }
-    if (changed_) func->RemoveNull();
+    if (changed_) func->RemoveValue(nullptr);
     // release value in 'target'
     target_ = nullptr;
     return changed_;
@@ -51,6 +52,7 @@ class BlockMerge : public FunctionPass {
   void RunOn(BlockSSA &ssa) override {
     // check if is jump/branch instruction
     op_ = Op::Nop;
+    cur_block_ = &ssa;
     ssa.insts().back()->RunPass(*this);
     switch (op_) {
       case Op::IsJump: {
@@ -97,6 +99,19 @@ class BlockMerge : public FunctionPass {
       target_ = ssa[1].value();
       op_ = Op::ReplaceWithJump;
     }
+    else if (ssa[0].value()->IsConst()) {
+      ssa[0].value()->RunPass(*this);
+      target_ = val_ ? ssa[1].value() : ssa[2].value();
+      op_ = Op::ReplaceWithJump;
+      // remove current block from non-target block's predecessor list
+      const auto &block = !val_ ? ssa[1].value() : ssa[2].value();
+      auto ptr = static_cast<BlockSSA *>(block.get());
+      ptr->RemoveValue(cur_block_);
+    }
+  }
+
+  void RunOn(ConstIntSSA &ssa) override {
+    val_ = ssa.value();
   }
 
  private:
@@ -105,11 +120,13 @@ class BlockMerge : public FunctionPass {
   };
 
   bool changed_, is_entry_;
-  SSAPtr target_;
   Op op_;
+  BlockSSA *cur_block_;
+  SSAPtr target_;
+  std::uint32_t val_;
 };
 
 }  // namespace
 
 // register current passs
-REGISTER_PASS(BlockMerge, block_merge, 1, false);
+REGISTER_PASS(CFGSimplifyPass, cfg_simplify, 1, false);
