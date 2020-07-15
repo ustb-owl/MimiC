@@ -1,3 +1,5 @@
+#include <forward_list>
+
 #include "opt/pass.h"
 #include "opt/passman.h"
 
@@ -14,12 +16,15 @@ class DeadCodeEliminationPass : public FunctionPass {
   bool RunOnFunction(const UserPtr &func) override {
     changed_ = false;
     cur_func_ = func.get();
+    removed_blocks_.clear();
     // traverse all basic blocks
     for (const auto &i : *func) {
       i.value()->RunPass(*this);
     }
-    // rearrange uses
-    func->RemoveNull();
+    // remove all marked blocks
+    for (const auto &i : removed_blocks_) {
+      i->RemoveFromUser();
+    }
     return changed_;
   }
 
@@ -37,18 +42,13 @@ class DeadCodeEliminationPass : public FunctionPass {
         ++it;
       }
     }
-    // removed non-entry blocks with no predecessors
+    // remove non-entry blocks with no predecessors
     if (ssa.empty() && (*cur_func_)[0].value().get() != &ssa) {
       if (ssa.insts().size() > 1) {
         ssa.logger()->LogWarning("unreachable code");
       }
-      // remove current block
-      auto uses = ssa.uses();
-      ssa.ReplaceBy(nullptr);
-      // remove from all successors
-      for (const auto &i : uses) {
-        if (i->user() != cur_func_) i->user()->RemoveNull();
-      }
+      // mark as removed
+      removed_blocks_.push_front(&ssa);
       changed_ = true;
     }
   }
@@ -85,8 +85,10 @@ class DeadCodeEliminationPass : public FunctionPass {
   bool changed_;
   // current function
   User *cur_func_;
-  // set if need to be removed
+  // set if instruction need to be removed
   bool remove_flag_;
+  // list of blocks that need to be removed
+  std::forward_list<BlockSSA *> removed_blocks_;
 };
 
 }  // namespace
