@@ -18,8 +18,8 @@ class DeadCodeEliminationPass : public FunctionPass {
     for (const auto &i : *func) {
       i.value()->RunPass(*this);
     }
-    // rearrange uses
-    func->RemoveNull();
+    // remove all marked blocks
+    if (changed_) func->RemoveValue(nullptr);
     return changed_;
   }
 
@@ -37,7 +37,7 @@ class DeadCodeEliminationPass : public FunctionPass {
         ++it;
       }
     }
-    // removed non-entry blocks with no predecessors
+    // remove non-entry blocks with no predecessors
     if (ssa.empty() && (*cur_func_)[0].value().get() != &ssa) {
       if (ssa.insts().size() > 1) {
         ssa.logger()->LogWarning("unreachable code");
@@ -47,7 +47,7 @@ class DeadCodeEliminationPass : public FunctionPass {
       ssa.ReplaceBy(nullptr);
       // remove from all successors
       for (const auto &i : uses) {
-        if (i->user() != cur_func_) i->user()->RemoveNull();
+        if (i->user() != cur_func_) i->user()->RemoveValue(nullptr);
       }
       changed_ = true;
     }
@@ -85,7 +85,7 @@ class DeadCodeEliminationPass : public FunctionPass {
   bool changed_;
   // current function
   User *cur_func_;
-  // set if need to be removed
+  // set if instruction need to be removed
   bool remove_flag_;
 };
 

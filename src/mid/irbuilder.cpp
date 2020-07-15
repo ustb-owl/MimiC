@@ -12,6 +12,17 @@ xstl::Guard IRBuilder::NewEnv() {
   return xstl::Guard([this] { vals_ = vals_->outer(); });
 }
 
+SSAPtr IRBuilder::CreateAlloca(const TypePtr &type) {
+  // set insert point to entry block
+  auto last_block = module_.GetInsertPoint();
+  module_.SetInsertPoint(func_entry_, func_entry_->insts().begin());
+  // create alloca
+  auto alloca = module_.CreateAlloca(type);
+  // restore insert point
+  module_.SetInsertPoint(last_block);
+  return alloca;
+}
+
 SSAPtr IRBuilder::CreateBinOp(BinaryAST::Operator op, const SSAPtr &lhs,
                               const SSAPtr &rhs) {
   using Op = BinaryAST::Operator;
@@ -110,7 +121,7 @@ SSAPtr IRBuilder::GenerateOn(VarDefAST &ast) {
   }
   else {
     // local variables/constants
-    auto alloca = module_.CreateAlloca(type);
+    auto alloca = CreateAlloca(type);
     if (init) module_.CreateStore(init->GenerateIR(*this), alloca);
     val = alloca;
   }
@@ -149,7 +160,7 @@ SSAPtr IRBuilder::GenerateOn(InitListAST &ast) {
   }
   else {
     // create a temporary alloca
-    auto val = module_.CreateAlloca(type);
+    auto val = CreateAlloca(type);
     // generate zero initializer
     auto zero = module_.GetZero(type);
     module_.CreateStore(zero, val);
@@ -184,9 +195,9 @@ SSAPtr IRBuilder::GenerateOn(FuncDeclAST &ast) {
   }
   // return if is just a declaration
   if (!in_func_) return nullptr;
-  // generate arguments
-  auto args_block = module_.CreateBlock(func, "args");
-  module_.SetInsertPoint(args_block);
+  // create entry block & generate arguments
+  func_entry_ = module_.CreateBlock(func, "args");
+  module_.SetInsertPoint(func_entry_);
   std::size_t arg_index = 0;
   for (const auto &i : ast.params()) {
     auto arg = i->GenerateIR(*this);
@@ -196,7 +207,7 @@ SSAPtr IRBuilder::GenerateOn(FuncDeclAST &ast) {
   // generate return value
   const auto &type = ast.ast_type();
   auto ret_type = type->GetReturnType(*type->GetArgsType());
-  ret_val_ = ret_type->IsVoid() ? nullptr : module_.CreateAlloca(ret_type);
+  ret_val_ = ret_type->IsVoid() ? nullptr : CreateAlloca(ret_type);
   // generate exit block
   func_exit_ = module_.CreateBlock(func, "func_exit");
   return nullptr;
@@ -228,7 +239,7 @@ SSAPtr IRBuilder::GenerateOn(FuncParamAST &ast) {
   auto context = module_.SetContext(ast.logger());
   assert(in_func_);
   // create allocation for arguments
-  auto alloca = module_.CreateAlloca(ast.ast_type());
+  auto alloca = CreateAlloca(ast.ast_type());
   // add to envrionment
   vals_->AddItem(ast.id(), alloca);
   return alloca;
@@ -374,7 +385,7 @@ SSAPtr IRBuilder::GenerateOn(BinaryAST &ast) {
     // generate result value
     const auto &type = ast.ast_type();
     assert(type->IsInteger());
-    auto result = module_.CreateAlloca(type);
+    auto result = CreateAlloca(type);
     // handle by operator
     if (ast.op() == Op::LAnd) {
       module_.CreateStore(module_.GetInt(0, type), result);
