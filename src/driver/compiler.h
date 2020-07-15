@@ -32,9 +32,9 @@ class Compiler {
   // open stream
   void Open(std::istream *in);
   // compile stream to IR, return false if failed
-  bool CompileToIR();
+  void CompileToIR();
   // run passes on IRs
-  bool RunPasses();
+  void RunPasses();
   // generate target code
   void GenerateCode(back::CodeGen &gen);
 
