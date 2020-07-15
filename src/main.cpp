@@ -33,6 +33,8 @@ xstl::ArgParser GetArgp() {
   argp.AddOption<bool>("verbose", "V", "use verbose output", false);
   argp.AddOption<bool>("warn-error", "Werror", "treat warnings as errors",
                        false);
+  argp.AddOption<bool>("warn-all", "Wall", "enable all warnings",
+                       false);
   argp.AddOption<bool>("dump-ast", "da", "dump AST to output", false);
   argp.AddOption<bool>("dump-ir", "di", "dump IR to output", false);
   return argp;
@@ -109,7 +111,8 @@ int main(int argc, const char *argv[]) {
     return 1;
   }
   Logger::set_file(in_file);
-  Logger::ResetErrorNum(argp.GetValue<bool>("warn-error"));
+  Logger::ResetErrorNum(argp.GetValue<bool>("warn-all"),
+                        argp.GetValue<bool>("warn-error"));
 
   // initialize output stream
   auto out_file = argp.GetValue<string>("output");

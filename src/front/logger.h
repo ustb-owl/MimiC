@@ -13,9 +13,10 @@ class Logger {
   Logger(std::size_t line_pos, std::size_t col_pos)
       : line_pos_(line_pos), col_pos_(col_pos) {}
 
-  static void ResetErrorNum(bool warn_as_err) {
+  static void ResetErrorNum(bool enable_warn, bool warn_as_err) {
     error_num_ = 0;
     warning_num_ = 0;
+    enable_warn_ = enable_warn;
     warn_as_err_ = warn_as_err;
   }
 
@@ -56,7 +57,7 @@ class Logger {
 
   static std::string_view file_;
   static std::size_t error_num_, warning_num_;
-  static bool warn_as_err_;
+  static bool enable_warn_, warn_as_err_;
   std::size_t line_pos_, col_pos_;
 };
 
