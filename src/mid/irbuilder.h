@@ -63,6 +63,8 @@ class IRBuilder {
 
   // switch to a new environment
   xstl::Guard NewEnv();
+  // create allocation
+  SSAPtr CreateAlloca(const define::TypePtr &type);
   // create binary operation
   SSAPtr CreateBinOp(define::BinaryAST::Operator op, const SSAPtr &lhs,
                      const SSAPtr &rhs);
@@ -75,7 +77,7 @@ class IRBuilder {
   bool in_func_;
   std::unordered_map<std::string_view, UserPtr> funcs_;
   SSAPtr ret_val_;
-  BlockPtr func_exit_;
+  BlockPtr func_entry_, func_exit_;
   // used when generating loops
   std::stack<BreakCont> break_cont_;
 };
