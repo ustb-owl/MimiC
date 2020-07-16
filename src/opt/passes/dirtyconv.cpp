@@ -74,7 +74,7 @@ class DirtyConversionPass : public ModulePass {
       // log function name
       name_ = ssa.name();
     }
-    else {
+    else if (!ssa.empty()) {
       // try to set as internal
       if (ssa.link() == LinkageTypes::External && ssa.name() != "main") {
         ssa.set_link(LinkageTypes::Internal);
