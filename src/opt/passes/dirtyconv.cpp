@@ -12,14 +12,20 @@ using namespace mimic::define;
 
 namespace {
 
-// some dirty conversion for SysY programming language
-// this pass will perform conversion on some function calls
-// e.g. starttime() -> _sysy_starttime(line_num)
+/*
+  some dirty conversion for SysY programming language
+  this pass will:
+    1.  perform conversion on some function calls
+        e.g. starttime() -> _sysy_starttime(line_num)
+    2.  mark all function definitions and global variables
+        as internal, except 'main' function
+*/
 class DirtyConversionPass : public ModulePass {
  public:
   DirtyConversionPass() {}
 
   bool RunOnModule(UserPtrList &global_vals) override {
+    changed_ = false;
     in_func_ = false;
     start_time_ = nullptr;
     stop_time_ = nullptr;
@@ -30,7 +36,7 @@ class DirtyConversionPass : public ModulePass {
     // insert function declarations if necessary
     if (start_time_) global_vals.push_front(start_time_);
     if (stop_time_) global_vals.push_front(stop_time_);
-    return start_time_ || stop_time_;
+    return changed_;
   }
 
   void RunOn(CallSSA &ssa) override {
@@ -55,6 +61,12 @@ class DirtyConversionPass : public ModulePass {
     // modify current call instruction
     ssa[0].set_value(decl);
     ssa.AddValue(mod.GetInt32(ssa.logger()->line_pos()));
+    if (!changed_) changed_ = true;
+  }
+
+  void RunOn(BlockSSA &ssa) override {
+    // scan all instructions
+    for (const auto &i : ssa.insts()) i->RunPass(*this);
   }
 
   void RunOn(FunctionSSA &ssa) override {
@@ -63,6 +75,10 @@ class DirtyConversionPass : public ModulePass {
       name_ = ssa.name();
     }
     else {
+      // try to set as internal
+      if (ssa.link() == LinkageTypes::External && ssa.name() != "main") {
+        ssa.set_link(LinkageTypes::Internal);
+      }
       // scan all basic blocks
       in_func_ = true;
       for (const auto &i : ssa) i.value()->RunPass(*this);
@@ -70,12 +86,14 @@ class DirtyConversionPass : public ModulePass {
     }
   }
 
-  void RunOn(BlockSSA &ssa) override {
-    // scan all instructions
-    for (const auto &i : ssa.insts()) i->RunPass(*this);
+  void RunOn(GlobalVarSSA &ssa) override {
+    if (!in_func_ && ssa.link() == LinkageTypes::External) {
+      ssa.set_link(LinkageTypes::Internal);
+    }
   }
 
  private:
+  bool changed_;
   // set if is in function
   bool in_func_;
   // name of last function
