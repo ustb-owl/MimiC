@@ -10,11 +10,12 @@ using namespace mimic::opt;
 namespace {
 
 /*
-  merge blocks with only one jump instruction,
-  replace branch with two equal targets to jump
-  replace branch with constant condition to jump
+  this pass will:
+  1.  eliminate blocks with only one jump instruction
+  2.  replace branch with two equal targets to jump
+  3.  replace branch with constant condition to jump
 
-  TODO: do not skip entry blocks
+  TODO: eliminate redundant phi node
 
   e.g.
     %0:
@@ -77,6 +78,7 @@ class CFGSimplifyPass : public FunctionPass {
         break;
       }
       case Op::ReplaceWithJump: {
+        // TODO: check phi nodes in target block
         // create jump instruction
         auto jump = std::make_shared<JumpSSA>(target_);
         jump->set_logger(ssa.insts().back()->logger());
