@@ -408,7 +408,12 @@ void CCodeGen::GenerateOn(ArgRefSSA &ssa) {
 }
 
 void CCodeGen::GenerateOn(ConstIntSSA &ssa) {
-  SetVal(ssa, std::to_string(ssa.value()));
+  if (ssa.type()->IsUnsigned() || ssa.type()->IsPointer()) {
+    SetVal(ssa, std::to_string(ssa.value()));
+  }
+  else {
+    SetVal(ssa, std::to_string(static_cast<std::int32_t>(ssa.value())));
+  }
 }
 
 void CCodeGen::GenerateOn(ConstStrSSA &ssa) {
