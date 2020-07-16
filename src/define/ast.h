@@ -395,6 +395,9 @@ class IfElseAST : public BaseAST {
   std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
+  // setter
+  void set_cond(ASTPtr cond) { cond_ = std::move(cond); }
+
   // getters
   const ASTPtr &cond() const { return cond_; }
   const ASTPtr &then() const { return then_; }
@@ -417,6 +420,9 @@ class WhileAST : public BaseAST {
   TypePtr SemaAnalyze(mid::Analyzer &ana) override;
   std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+  // setter
+  void set_cond(ASTPtr cond) { cond_ = std::move(cond); }
 
   // getters
   const ASTPtr &cond() const { return cond_; }
@@ -441,6 +447,9 @@ class ControlAST : public BaseAST {
   TypePtr SemaAnalyze(mid::Analyzer &ana) override;
   std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+  // setter
+  void set_expr(ASTPtr expr) { expr_ = std::move(expr); }
 
   // getters
   Type type() const { return type_; }
@@ -579,6 +588,9 @@ class IndexAST : public BaseAST {
   std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
 
+  // setter
+  void set_index(ASTPtr index) { index_ = std::move(index); }
+
   // getters
   const ASTPtr &expr() const { return expr_; }
   const ASTPtr &index() const { return index_; }
@@ -600,6 +612,11 @@ class FuncCallAST : public BaseAST {
   TypePtr SemaAnalyze(mid::Analyzer &ana) override;
   std::optional<std::uint32_t> Eval(mid::Evaluator &eval) override;
   mid::SSAPtr GenerateIR(mid::IRBuilder &irb) override;
+
+  // setters
+  void set_arg(std::size_t i, ASTPtr arg) {
+    args_[i] = std::move(arg);
+  }
 
   // getters
   const ASTPtr &expr() const { return expr_; }
