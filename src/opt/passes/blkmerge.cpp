@@ -1,6 +1,3 @@
-#include <unordered_set>
-#include <memory>
-
 #include "opt/pass.h"
 #include "opt/passman.h"
 
@@ -10,106 +7,86 @@ using namespace mimic::opt;
 namespace {
 
 /*
-  merge blocks with only one jump instruction,
-  replace branch with two equal targets to jump
-
-  TODO: do not skip entry blocks
+  merge blocks that connected with jump instructions
 
   e.g.
     %0:
-      ...                       %0:
-      jump %1                     ...
-    %1: ; preds: %0     ==>>      jump %2
-      jump %2                   %2: ; preds: %0
-    %2: ; preds: %1               ...
-      ...
+      ...                         %0:
+      jump %1                       ...
+    %1: ; preds: %0                 ...
+      ...                 ==>>      jump %2
+      jump %2                     %2: ; preds: %0, %3
+    %2: ; preds: %1, %3             ...
+      ...                           jump %4
+      jump %4
 
 */
-class BlockMerge : public FunctionPass {
+class BlockMergePass : public FunctionPass {
  public:
-  BlockMerge() {}
+  BlockMergePass() {}
 
   bool RunOnFunction(const UserPtr &func) override {
+    SSAPtr entry;
     changed_ = false;
     // traverse all basic blocks
-    for (auto it = func->begin(); it != func->end(); ++it) {
-      is_entry_ = it == func->begin();
-      it->value()->RunPass(*this);
-      if (op_ == Op::ReplaceBlock) {
-        // replace current block with target
-        it->value()->ReplaceBy(target_);
-        // remove block from current function
-        it->set_value(nullptr);
+    for (auto &&i : *func) {
+      // record entry block
+      if (!entry) entry = i.value();
+      // run on current block
+      i.value()->RunPass(*this);
+      if (merge_flag_) {
+        // update 'changed' flag
+        if (!changed_) changed_ = true;
+        // replace target block by current block
+        target_->ReplaceBy(i.value());
+        // set current value to nullptr
+        i.set_value(nullptr);
       }
     }
-    if (changed_) func->RemoveNull();
-    // release value in 'target'
-    target_ = nullptr;
+    // rearrange blocks
+    if (changed_) {
+      func->RemoveValue(nullptr);
+      for (std::size_t i = 0; i < func->size(); ++i) {
+        if ((*func)[i].value() == entry) {
+          // place entry block at the beginning of use list
+          if (i) {
+            (*func)[i].set_value((*func)[0].value());
+            (*func)[0].set_value(entry);
+          }
+          break;
+        }
+      }
+    }
     return changed_;
   }
 
   void RunOn(BlockSSA &ssa) override {
-    // check if is jump/branch instruction
-    op_ = Op::Nop;
+    // check the last instruction
+    merge_flag_ = false;
     ssa.insts().back()->RunPass(*this);
-    switch (op_) {
-      case Op::IsJump: {
-        if (!is_entry_ && ssa.insts().size() == 1) {
-          op_ = Op::ReplaceBlock;
-          auto target_block = static_cast<BlockSSA *>(target_.get());
-          // get new predecessor set
-          std::unordered_set<SSAPtr> preds;
-          for (const auto &i : *target_block) {
-            if (i.value().get() != &ssa) preds.insert(i.value());
-          }
-          for (const auto &i : ssa) {
-            preds.insert(i.value());
-          }
-          // apply new predecessors to target block
-          target_block->Clear();
-          for (const auto &i : preds) {
-            target_block->AddValue(i);
-          }
-          changed_ = true;
-        }
-        break;
-      }
-      case Op::ReplaceWithJump: {
-        // create jump instruction
-        auto jump = std::make_shared<JumpSSA>(target_);
-        jump->set_logger(ssa.insts().back()->logger());
-        // replace last instruction with jump
-        ssa.insts().back() = jump;
-        changed_ = true;
-        break;
-      }
-      default:;
+    // check if need to merge
+    if (merge_flag_) {
+      // remove the last jump
+      ssa.insts().pop_back();
+      // insert instructions from target block
+      ssa.insts().insert(ssa.insts().end(), target_->insts().begin(),
+                         target_->insts().end());
     }
   }
 
   void RunOn(JumpSSA &ssa) override {
-    target_ = ssa[0].value();
-    op_ = Op::IsJump;
-  }
-
-  void RunOn(BranchSSA &ssa) override {
-    if (ssa[1].value() == ssa[2].value()) {
-      target_ = ssa[1].value();
-      op_ = Op::ReplaceWithJump;
-    }
+    // get target
+    target_ = static_cast<BlockSSA *>(ssa[0].value().get());
+    // check if can be merged
+    merge_flag_ = target_->size() == 1;
   }
 
  private:
-  enum class Op {
-    Nop, IsJump, ReplaceBlock, ReplaceWithJump,
-  };
-
-  bool changed_, is_entry_;
-  SSAPtr target_;
-  Op op_;
+  bool changed_, merge_flag_;
+  BlockSSA *target_;
 };
 
 }  // namespace
 
 // register current passs
-REGISTER_PASS(BlockMerge, block_merge, 1, false);
+REGISTER_PASS(BlockMergePass, blk_merge, 1, false);
