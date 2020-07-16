@@ -42,8 +42,8 @@ xstl::ArgParser GetArgp() {
 
 void PrintVersion() {
   cout << APP_NAME << " version " << APP_VERSION << endl;
-  cout << "Compiler of the Yu programming language." << endl;
-  cout << endl;
+  cout << "Compiler of the MimiC (extended SysY) programming language.";
+  cout << endl << endl;
   cout << "Copyright (C) 2010-2020 MaxXing. License GPLv3.";
   cout << endl;
 }
@@ -128,7 +128,9 @@ int main(int argc, const char *argv[]) {
   // compile input file
   comp.Open(&ifs);
   comp.CompileToIR();
+  if (comp.dump_ast()) exit(0);
   comp.RunPasses();
+  if (comp.dump_yuir()) exit(0);
 
   // generate code
   CCodeGen gen;
