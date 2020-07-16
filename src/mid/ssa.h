@@ -238,6 +238,9 @@ class FunctionSSA : public User {
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
 
+  // setters
+  void set_link(LinkageTypes link) { link_ = link; }
+
   // getters
   LinkageTypes link() const { return link_; }
   const std::string &name() const { return name_; }
@@ -265,6 +268,7 @@ class GlobalVarSSA : public User {
   void GenerateCode(back::CodeGen &gen) override;
 
   // setters
+  void set_link(LinkageTypes link) { link_ = link; }
   void set_init(const SSAPtr &init) { (*this)[0].set_value(init); }
 
   // getters
