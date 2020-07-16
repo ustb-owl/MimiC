@@ -322,7 +322,13 @@ void ConstIntSSA::Dump(std::ostream &os, IdManager &idm) const {
   assert(in_expr);
   os << "constant ";
   PrintType(os, type());
-  os << ' ' << value_;
+  os << ' ';
+  if (type()->IsUnsigned() || type()->IsPointer()) {
+    os << value_;
+  }
+  else {
+    os << static_cast<std::int32_t>(value_);
+  }
 }
 
 void ConstStrSSA::Dump(std::ostream &os, IdManager &idm) const {
