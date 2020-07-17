@@ -6,7 +6,12 @@ using namespace mimic::opt;
 
 namespace {
 
-// dead code elimination
+/*
+  dead code elimination
+  this pass will:
+  1.  remove unused blocks
+  2.  remove unused instructions
+*/
 class DeadCodeEliminationPass : public FunctionPass {
  public:
   DeadCodeEliminationPass() {}
@@ -78,6 +83,14 @@ class DeadCodeEliminationPass : public FunctionPass {
       remove_flag_ = true;
       ssa.logger()->LogWarning("unused variable definition");
     }
+  }
+
+  void RunOn(PhiSSA &ssa) {
+    if (ssa.uses().empty()) remove_flag_ = true;
+  }
+
+  void RunOn(SelectSSA &ssa) {
+    if (ssa.uses().empty()) remove_flag_ = true;
   }
 
  private:
