@@ -101,6 +101,24 @@ class BlockPass : public PassBase {
   }
 };
 
+// helper pass, for one-time use only, unregisterable
+class HelperPass : public PassBase {
+ public:
+  bool IsModulePass() const override final { return false; }
+  bool IsFunctionPass() const override final { return false; }
+  bool IsBlockPass() const override final { return false; }
+
+  bool RunOnModule(mid::UserPtrList &global_vals) override final {
+    return false;
+  }
+  bool RunOnFunction(const mid::UserPtr &func) override final {
+    return false;
+  }
+  bool RunOnBlock(const mid::BlockPtr &block) override final {
+    return false;
+  }
+};
+
 }  // namespace mimic::opt
 
 #endif  // MIMIC_MID_PASS_H_
