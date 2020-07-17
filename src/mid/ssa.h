@@ -426,6 +426,58 @@ class ConstZeroSSA : public Value {
   void GenerateCode(back::CodeGen &gen) override;
 };
 
+// operand of phi node
+// operands: value, block (which value comes from)
+class PhiOperandSSA : public User {
+ public:
+  PhiOperandSSA(const SSAPtr &val, const SSAPtr &block) {
+    Reserve(2);
+    AddValue(val);
+    AddValue(block);
+  }
+
+  void Dump(std::ostream &os, IdManager &idm) const override;
+  bool IsConst() const override { return false; }
+
+  void RunPass(opt::PassBase &pass) override;
+  void GenerateCode(back::CodeGen &gen) override;
+};
+
+// phi node
+// operands: phiopr1, phiopr2, ...
+class PhiSSA : public User {
+ public:
+  PhiSSA(const SSAPtrList &oprs) {
+    Reserve(oprs.size());
+    for (const auto &i : oprs) { AddValue(i); }
+  }
+
+  void Dump(std::ostream &os, IdManager &idm) const override;
+  bool IsConst() const override { return false; }
+
+  void RunPass(opt::PassBase &pass) override;
+  void GenerateCode(back::CodeGen &gen) override;
+};
+
+// select instruction
+// operands: cond, true, false
+class SelectSSA : public User {
+ public:
+  SelectSSA(const SSAPtr &cond, const SSAPtr &true_val,
+            const SSAPtr &false_val) {
+    Reserve(3);
+    AddValue(cond);
+    AddValue(true_val);
+    AddValue(false_val);
+  }
+
+  void Dump(std::ostream &os, IdManager &idm) const override;
+  bool IsConst() const override { return false; }
+
+  void RunPass(opt::PassBase &pass) override;
+  void GenerateCode(back::CodeGen &gen) override;
+};
+
 }  // namespace mimic::mid
 
 #endif  // MIMIC_MID_SSA_H_
