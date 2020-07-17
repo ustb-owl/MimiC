@@ -475,6 +475,14 @@ void CCodeGen::GenerateOn(ConstZeroSSA &ssa) {
   }
 }
 
+void CCodeGen::GenerateOn(SelectSSA &ssa) {
+  auto var = DeclVar(ssa);
+  code_ << GetVal(ssa[0].value()) << " ? " << GetVal(ssa[1].value());
+  code_ << " : " << GetVal(ssa[2].value());
+  GenEnd(ssa);
+  SetVal(ssa, var);
+}
+
 void CCodeGen::Dump(std::ostream &os) const {
   os << "#include <string.h>" << std::endl << std::endl;
   os << type_.str() << std::endl;
