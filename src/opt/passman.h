@@ -5,6 +5,7 @@
 #include <ostream>
 #include <list>
 #include <memory>
+#include <type_traits>
 #include <cstddef>
 
 #include "opt/pass.h"
@@ -76,6 +77,8 @@ class RegisterPass : public PassInfo {
 
 // register a pass
 #define REGISTER_PASS(cls, name, min_opt_level, is_analysis) \
+  static_assert(!std::is_base_of_v<HelperPass, cls>,         \
+                "helper pass is unregisterable");            \
   static RegisterPass<cls> pass_##name(#name, min_opt_level, is_analysis)
 
 }  // namespace mimic::opt
