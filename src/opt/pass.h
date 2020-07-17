@@ -48,6 +48,9 @@ class PassBase {
   virtual void RunOn(mid::ConstStructSSA &ssa) {}
   virtual void RunOn(mid::ConstArraySSA &ssa) {}
   virtual void RunOn(mid::ConstZeroSSA &ssa) {}
+  virtual void RunOn(mid::PhiOperandSSA &ssa) {}
+  virtual void RunOn(mid::PhiSSA &ssa) {}
+  virtual void RunOn(mid::SelectSSA &ssa) {}
 };
 
 // pointer of pass
