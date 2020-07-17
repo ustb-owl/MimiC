@@ -1,5 +1,4 @@
 #include <unordered_set>
-#include <memory>
 
 #include "opt/pass.h"
 #include "opt/passman.h"
@@ -9,13 +8,72 @@ using namespace mimic::opt;
 
 namespace {
 
-/*
-  this pass will:
-  1.  eliminate blocks with only one jump instruction
-  2.  replace branch with two equal targets to jump
-  3.  replace branch with constant condition to jump
+// helper pass for block merging
+// check if blocks can be merged, if so, merge predecessors of two block
+// merge can not be done if target block contains any phi nodes
+class BlockMergeHelperPass : public HelperPass {
+ public:
+  bool CheckAndMerge(BlockSSA *cur, BlockSSA *target) {
+    // check if target contains phi node
+    is_phi_ = false;
+    for (const auto &i : target->insts()) {
+      i->RunPass(*this);
+      if (is_phi_) return false;
+    }
+    // get new predecessor set
+    std::unordered_set<SSAPtr> preds;
+    for (const auto &i : *target) {
+      if (i.value().get() != cur) preds.insert(i.value());
+    }
+    for (const auto &i : *cur) {
+      preds.insert(i.value());
+    }
+    // apply new predecessors to target block
+    target->Clear();
+    for (const auto &i : preds) target->AddValue(i);
+    return true;
+  }
 
-  TODO: eliminate redundant phi node
+  void RunOn(PhiSSA &ssa) override { is_phi_ = true; }
+
+ private:
+  bool is_phi_;
+};
+
+// helper pass for dead block elimination
+// remove specific block from other blocks' preds & phi nodes
+class BlockElimHelperPass : public HelperPass {
+ public:
+  BlockElimHelperPass(BlockSSA *block) : block_(block) {}
+
+  void RunOn(BlockSSA &ssa) override {
+    // remove from predecessors
+    ssa.RemoveValue(block_);
+  }
+
+  void RunOn(PhiOperandSSA &ssa) override {
+    // check if parent block is target block
+    if (ssa[1].value().get() == block_) {
+      ssa.RemoveFromUser();
+      // simplify parent phi node if necessary
+      auto phi = ssa.uses().front()->user();
+      if (phi->size() == 1) phi->ReplaceBy(ssa[0].value());
+    }
+  }
+
+ private:
+  BlockSSA *block_;
+};
+
+/*
+  simplify CFG
+  this pass will:
+  1.  eliminate dead blocks
+  2.  eliminate blocks with only one jump instruction (partly)
+
+  TODO:
+  1.  eliminate blocks with only one jump instruction (fully)
+  2.  simplify redundant phi nodes by inserting select instructions
 
   e.g.
     %0:
@@ -33,17 +91,19 @@ class CFGSimplifyPass : public FunctionPass {
 
   bool RunOnFunction(const UserPtr &func) override {
     changed_ = false;
-    // traverse all basic blocks
-    for (auto it = func->begin(); it != func->end(); ++it) {
-      is_entry_ = it == func->begin();
-      it->value()->RunPass(*this);
+    // traverse all basic blocks except entry
+    for (std::size_t i = 1; i < func->size(); ++i) {
+      auto &it = (*func)[i];
+      it.value()->RunPass(*this);
+      // check if need to merge (replace) block
       if (op_ == Op::ReplaceBlock) {
         // replace current block with target
-        it->value()->ReplaceBy(target_);
-        // remove block from current function
-        it->set_value(nullptr);
+        it.value()->ReplaceBy(target_);
+        // mark current block as removed
+        it.set_value(nullptr);
       }
     }
+    // remove all marked blocks
     if (changed_) func->RemoveValue(nullptr);
     // release value in 'target'
     target_ = nullptr;
@@ -51,43 +111,33 @@ class CFGSimplifyPass : public FunctionPass {
   }
 
   void RunOn(BlockSSA &ssa) override {
-    // check if is jump/branch instruction
     op_ = Op::Nop;
-    cur_block_ = &ssa;
-    ssa.insts().back()->RunPass(*this);
-    switch (op_) {
-      case Op::IsJump: {
-        if (!is_entry_ && ssa.insts().size() == 1) {
+    if (ssa.insts().size() == 1) {
+      // block contains only one instruction
+      ssa.insts().back()->RunPass(*this);
+      // check if is jump instruction
+      if (op_ == Op::IsJump) {
+        // check if can be merged
+        BlockMergeHelperPass helper;
+        auto target = static_cast<BlockSSA *>(target_.get());
+        if (helper.CheckAndMerge(&ssa, target)) {
           op_ = Op::ReplaceBlock;
-          auto target_block = static_cast<BlockSSA *>(target_.get());
-          // get new predecessor set
-          std::unordered_set<SSAPtr> preds;
-          for (const auto &i : *target_block) {
-            if (i.value().get() != &ssa) preds.insert(i.value());
-          }
-          for (const auto &i : ssa) {
-            preds.insert(i.value());
-          }
-          // apply new predecessors to target block
-          target_block->Clear();
-          for (const auto &i : preds) {
-            target_block->AddValue(i);
-          }
           changed_ = true;
         }
-        break;
       }
-      case Op::ReplaceWithJump: {
-        // TODO: check phi nodes in target block
-        // create jump instruction
-        auto jump = std::make_shared<JumpSSA>(target_);
-        jump->set_logger(ssa.insts().back()->logger());
-        // replace last instruction with jump
-        ssa.insts().back() = jump;
-        changed_ = true;
-        break;
+    }
+    else if (ssa.empty()) {
+      // block has no predecessor
+      if (ssa.insts().size() > 1) {
+        ssa.logger()->LogWarning("unreachable code");
       }
-      default:;
+      // remove current block from all users except parent function
+      BlockElimHelperPass helper(&ssa);
+      auto uses = ssa.uses();
+      for (const auto &i : uses) i->user()->RunPass(helper);
+      // mark current block as removed
+      ssa.ReplaceBy(nullptr);
+      changed_ = true;
     }
   }
 
@@ -96,36 +146,14 @@ class CFGSimplifyPass : public FunctionPass {
     op_ = Op::IsJump;
   }
 
-  void RunOn(BranchSSA &ssa) override {
-    if (ssa[1].value() == ssa[2].value()) {
-      target_ = ssa[1].value();
-      op_ = Op::ReplaceWithJump;
-    }
-    else if (ssa[0].value()->IsConst()) {
-      ssa[0].value()->RunPass(*this);
-      target_ = val_ ? ssa[1].value() : ssa[2].value();
-      op_ = Op::ReplaceWithJump;
-      // remove current block from non-target block's predecessor list
-      const auto &block = !val_ ? ssa[1].value() : ssa[2].value();
-      auto ptr = static_cast<BlockSSA *>(block.get());
-      ptr->RemoveValue(cur_block_);
-    }
-  }
-
-  void RunOn(ConstIntSSA &ssa) override {
-    val_ = ssa.value();
-  }
-
  private:
   enum class Op {
-    Nop, IsJump, ReplaceBlock, ReplaceWithJump,
+    Nop, IsJump, ReplaceBlock,
   };
 
-  bool changed_, is_entry_;
+  bool changed_;
   Op op_;
-  BlockSSA *cur_block_;
   SSAPtr target_;
-  std::uint32_t val_;
 };
 
 }  // namespace
