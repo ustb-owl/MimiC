@@ -33,6 +33,7 @@ class CodeGenInterface {
   virtual void GenerateOn(mid::ConstStructSSA &ssa) = 0;
   virtual void GenerateOn(mid::ConstArraySSA &ssa) = 0;
   virtual void GenerateOn(mid::ConstZeroSSA &ssa) = 0;
+  virtual void GenerateOn(mid::SelectSSA &ssa) = 0;
 
   // dump code in current generator
   virtual void Dump(std::ostream &os) const = 0;
