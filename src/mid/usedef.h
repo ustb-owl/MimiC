@@ -121,7 +121,9 @@ class Value {
 class Use {
  public:
   explicit Use(const SSAPtr &value, User *user)
-      : value_(value), user_(user) {}
+      : value_(value), user_(user) {
+    if (value_) value_->AddUse(this);
+  }
   // copy constructor
   Use(const Use &use) : value_(use.value_), user_(use.user_) {
     if (value_) value_->AddUse(this);
@@ -142,10 +144,9 @@ class Use {
   // copy assignment operator
   Use &operator=(const Use &use) {
     if (this != &use) {
-      value_ = use.value_;
-      user_ = use.user_;
       // update reference
-      if (value_) value_->AddUse(this);
+      set_value(use.value_);
+      user_ = use.user_;
     }
     return *this;
   }
@@ -153,13 +154,10 @@ class Use {
   // move assignment operator
   Use &operator=(Use &&use) noexcept {
     if (this != &use) {
-      value_ = std::move(use.value_);
-      user_ = use.user_;
       // update reference
-      if (value_) {
-        value_->RemoveUse(&use);
-        value_->AddUse(this);
-      }
+      if (use.value_) use.value_->RemoveUse(&use);
+      set_value(std::move(use.value_));
+      user_ = use.user_;
     }
     return *this;
   }
