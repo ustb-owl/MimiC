@@ -396,6 +396,44 @@ SSAPtr Module::CreateNot(const SSAPtr &opr) {
   return CreateUnary(UnaryOp::Not, opr, type);
 }
 
+SSAPtr Module::CreatePhiOperand(const SSAPtr &val, const BlockPtr &block) {
+  assert(!val->type()->IsVoid());
+  // create phi operand
+  auto phi_opr = MakeSSA<PhiOperandSSA>(val, block);
+  phi_opr->set_type(val->type());
+  return phi_opr;
+}
+
+SSAPtr Module::CreatePhi(const SSAPtrList &oprs) {
+  // assertion for type checking
+  TypePtr type;
+  for (const auto &i : oprs) {
+    if (!type) {
+      type = i->type();
+      assert(!type->IsVoid());
+    }
+    else {
+      assert(i->type()->IsIdentical(type));
+    }
+  }
+  assert(type);
+  // create phi node
+  auto phi = AddInst<PhiSSA>(oprs);
+  phi->set_type(std::move(type));
+  return phi;
+}
+
+SSAPtr Module::CreateSelect(const SSAPtr &cond, const SSAPtr &true_val,
+                            const SSAPtr &false_val) {
+  // assertion for type checking
+  assert(cond->type()->IsInteger() &&
+         true_val->type()->IsIdentical(false_val->type()));
+  // create select
+  auto select = AddInst<SelectSSA>(cond, true_val, false_val);
+  select->set_type(true_val->type());
+  return select;
+}
+
 SSAPtr Module::GetZero(const TypePtr &type) {
   // assertion for type checking
   assert(type->IsInteger() || type->IsFunction() || type->IsPointer() ||

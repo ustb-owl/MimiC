@@ -108,6 +108,13 @@ class Module {
   SSAPtr CreateLogicNot(const SSAPtr &opr);
   // create bitwise not
   SSAPtr CreateNot(const SSAPtr &opr);
+  // create a phi node operand
+  SSAPtr CreatePhiOperand(const SSAPtr &val, const BlockPtr &block);
+  // create a phi node
+  SSAPtr CreatePhi(const SSAPtrList &oprs);
+  // create a select instruction
+  SSAPtr CreateSelect(const SSAPtr &cond, const SSAPtr &true_val,
+                      const SSAPtr &false_val);
 
   // create a constant zero
   SSAPtr GetZero(const define::TypePtr &type);
