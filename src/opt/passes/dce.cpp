@@ -8,9 +8,7 @@ namespace {
 
 /*
   dead code elimination
-  this pass will:
-  1.  remove unused blocks
-  2.  remove unused instructions
+  this pass will remove unused instructions
 */
 class DeadCodeEliminationPass : public FunctionPass {
  public:
@@ -18,13 +16,10 @@ class DeadCodeEliminationPass : public FunctionPass {
 
   bool RunOnFunction(const UserPtr &func) override {
     changed_ = false;
-    cur_func_ = func.get();
     // traverse all basic blocks
     for (const auto &i : *func) {
       i.value()->RunPass(*this);
     }
-    // remove all marked blocks
-    if (changed_) func->RemoveValue(nullptr);
     return changed_;
   }
 
@@ -41,20 +36,6 @@ class DeadCodeEliminationPass : public FunctionPass {
       else {
         ++it;
       }
-    }
-    // remove non-entry blocks with no predecessors
-    if (ssa.empty() && (*cur_func_)[0].value().get() != &ssa) {
-      if (ssa.insts().size() > 1) {
-        ssa.logger()->LogWarning("unreachable code");
-      }
-      // remove current block
-      auto uses = ssa.uses();
-      ssa.ReplaceBy(nullptr);
-      // remove from all successors
-      for (const auto &i : uses) {
-        if (i->user() != cur_func_) i->user()->RemoveValue(nullptr);
-      }
-      changed_ = true;
     }
   }
 
@@ -94,12 +75,7 @@ class DeadCodeEliminationPass : public FunctionPass {
   }
 
  private:
-  // set if IR changed
-  bool changed_;
-  // current function
-  User *cur_func_;
-  // set if instruction need to be removed
-  bool remove_flag_;
+  bool changed_, remove_flag_;
 };
 
 }  // namespace
