@@ -66,11 +66,11 @@ class DeadCodeEliminationPass : public FunctionPass {
     }
   }
 
-  void RunOn(PhiSSA &ssa) {
+  void RunOn(PhiSSA &ssa) override {
     if (ssa.uses().empty()) remove_flag_ = true;
   }
 
-  void RunOn(SelectSSA &ssa) {
+  void RunOn(SelectSSA &ssa) override {
     if (ssa.uses().empty()) remove_flag_ = true;
   }
 
