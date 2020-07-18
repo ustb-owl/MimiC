@@ -478,6 +478,18 @@ class SelectSSA : public User {
   void GenerateCode(back::CodeGen &gen) override;
 };
 
+// undefined value
+class UndefSSA : public Value {
+ public:
+  UndefSSA() {}
+
+  void Dump(std::ostream &os, IdManager &idm) const override;
+  bool IsConst() const override { return false; }
+
+  void RunPass(opt::PassBase &pass) override;
+  void GenerateCode(back::CodeGen &gen) override;
+};
+
 }  // namespace mimic::mid
 
 #endif  // MIMIC_MID_SSA_H_
