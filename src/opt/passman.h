@@ -13,23 +13,53 @@
 
 namespace mimic::opt {
 
+// stage of pass running
+// represented as bit flags
+enum class PassStage : unsigned {
+  None    = 0,
+  PreOpt  = 1 << 0,
+  Promote = 1 << 1,
+  Opt     = 1 << 2,
+  Demote  = 1 << 3,
+  PostOpt = 1 << 4,
+};
+
+// count of stages
+constexpr std::size_t kPassStageCount = 5;
+// set specific stage
+PassStage operator|(PassStage lhs, PassStage rhs) {
+  using T = std::underlying_type_t<PassStage>;
+  return static_cast<PassStage>(static_cast<T>(lhs) | static_cast<T>(rhs));
+}
+PassStage &operator|=(PassStage &lhs, PassStage rhs) {
+  return lhs = lhs | rhs;
+}
+// check if specific stage is set
+PassStage operator&(PassStage lhs, PassStage rhs) {
+  using T = std::underlying_type_t<PassStage>;
+  return static_cast<PassStage>(static_cast<T>(lhs) & static_cast<T>(rhs));
+}
+
 // pass information
 class PassInfo {
  public:
-  PassInfo(std::string_view name, PassPtr pass, std::size_t min_opt_level)
+  PassInfo(std::string_view name, PassPtr pass, std::size_t min_opt_level,
+           PassStage stage)
       : name_(name), pass_(std::move(pass)),
-        min_opt_level_(min_opt_level) {}
+        min_opt_level_(min_opt_level), stage_(stage) {}
   virtual ~PassInfo() = default;
 
   // getters
   std::string_view name() const { return name_; }
   const PassPtr &pass() const { return pass_; }
   std::size_t min_opt_level() const { return min_opt_level_; }
+  PassStage stage() const { return stage_; }
 
  private:
   std::string_view name_;
   PassPtr pass_;
   std::size_t min_opt_level_;
+  PassStage stage_;
 };
 
 // pass manager for all SSA IR passes
@@ -56,6 +86,10 @@ class PassManager {
  private:
   // get pass info list
   static std::list<PassInfo *> &GetPasses();
+  // get passes in specific stage
+  std::list<PassInfo *> GetPasses(PassStage stage) const;
+  // run all passes in specific list
+  void RunPasses(const std::list<PassInfo *> &passes) const;
 
   std::size_t opt_level_;
   mid::UserPtrList *vars_, *funcs_;
@@ -65,17 +99,18 @@ class PassManager {
 template <typename T>
 class RegisterPass : public PassInfo {
  public:
-  RegisterPass(std::string_view name, std::size_t min_opt_level)
-      : PassInfo(name, std::make_unique<T>(), min_opt_level) {
+  RegisterPass(std::string_view name, std::size_t min_opt_level,
+               PassStage stage)
+      : PassInfo(name, std::make_unique<T>(), min_opt_level, stage) {
     PassManager::RegisterPass(this);
   }
 };
 
 // register a pass
-#define REGISTER_PASS(cls, name, min_opt_level) \
-  static_assert(!std::is_base_of_v<HelperPass, cls>,         \
-                "helper pass is unregisterable");            \
-  static RegisterPass<cls> pass_##name(#name, min_opt_level)
+#define REGISTER_PASS(cls, name, min_opt_level, stage) \
+  static_assert(!std::is_base_of_v<HelperPass, cls>,   \
+                "helper pass is unregisterable");      \
+  static RegisterPass<cls> pass_##name(#name, min_opt_level, stage)
 
 }  // namespace mimic::opt
 
