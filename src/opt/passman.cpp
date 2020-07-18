@@ -40,9 +40,10 @@ std::list<PassInfo *> &PassManager::GetPasses() {
 
 std::list<PassInfo *> PassManager::GetPasses(PassStage stage) const {
   std::list<PassInfo *> passes;
-  for (const auto &pass : GetPasses()) {
-    if ((pass->stage() & stage) != PassStage::None) {
-      passes.push_front(pass);
+  for (const auto &info : GetPasses()) {
+    if ((info->stage() & stage) != PassStage::None &&
+        opt_level_ >= info->min_opt_level()) {
+      passes.push_front(info);
     }
   }
   return passes;
@@ -55,7 +56,6 @@ void PassManager::RunPasses(const std::list<PassInfo *> &passes) const {
     changed = false;
     // traverse all passes
     for (const auto &info : passes) {
-      if (info->min_opt_level() > opt_level_) continue;
       const auto &pass = info->pass();
       // handle by pass type
       if (pass->IsModulePass()) {
