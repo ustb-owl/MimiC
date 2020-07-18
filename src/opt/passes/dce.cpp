@@ -81,4 +81,4 @@ class DeadCodeEliminationPass : public FunctionPass {
 }  // namespace
 
 // register current pass
-REGISTER_PASS(DeadCodeEliminationPass, dead_code_elim, 0, false);
+REGISTER_PASS(DeadCodeEliminationPass, dead_code_elim, 0);

@@ -106,4 +106,4 @@ class BranchSimplifyPass : public BlockPass {
 }  // namespace
 
 // register current pass
-REGISTER_PASS(BranchSimplifyPass, branch_simp, 1, false);
+REGISTER_PASS(BranchSimplifyPass, branch_simp, 1);

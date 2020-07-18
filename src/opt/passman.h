@@ -16,23 +16,20 @@ namespace mimic::opt {
 // pass information
 class PassInfo {
  public:
-  PassInfo(std::string_view name, PassPtr pass, std::size_t min_opt_level,
-           bool is_analysis)
+  PassInfo(std::string_view name, PassPtr pass, std::size_t min_opt_level)
       : name_(name), pass_(std::move(pass)),
-        min_opt_level_(min_opt_level), is_analysis_(is_analysis) {}
+        min_opt_level_(min_opt_level) {}
   virtual ~PassInfo() = default;
 
   // getters
   std::string_view name() const { return name_; }
   const PassPtr &pass() const { return pass_; }
   std::size_t min_opt_level() const { return min_opt_level_; }
-  bool is_analysis() const { return is_analysis_; }
 
  private:
   std::string_view name_;
   PassPtr pass_;
   std::size_t min_opt_level_;
-  bool is_analysis_;
 };
 
 // pass manager for all SSA IR passes
@@ -68,18 +65,17 @@ class PassManager {
 template <typename T>
 class RegisterPass : public PassInfo {
  public:
-  RegisterPass(std::string_view name, std::size_t min_opt_level,
-               bool is_analysis)
-      : PassInfo(name, std::make_unique<T>(), min_opt_level, is_analysis) {
+  RegisterPass(std::string_view name, std::size_t min_opt_level)
+      : PassInfo(name, std::make_unique<T>(), min_opt_level) {
     PassManager::RegisterPass(this);
   }
 };
 
 // register a pass
-#define REGISTER_PASS(cls, name, min_opt_level, is_analysis) \
+#define REGISTER_PASS(cls, name, min_opt_level) \
   static_assert(!std::is_base_of_v<HelperPass, cls>,         \
                 "helper pass is unregisterable");            \
-  static RegisterPass<cls> pass_##name(#name, min_opt_level, is_analysis)
+  static RegisterPass<cls> pass_##name(#name, min_opt_level)
 
 }  // namespace mimic::opt
 
