@@ -12,7 +12,7 @@ namespace {
   simplify branch instructions
   this pass will:
   1.  replace branch with two equal targets to jump
-  2.  replace branch with constant condition to jump
+  2.  replace branch with constant/undefined condition to jump
 */
 class BranchSimplifyPass : public BlockPass {
  public:
@@ -48,10 +48,17 @@ class BranchSimplifyPass : public BlockPass {
       replace_ = true;
       target_ = ssa[1].value();
     }
-    else if (cond_->IsConst()) {
+    else if (cond_->IsConst() || cond_->IsUndef()) {
       // mark as replaced
       replace_ = true;
-      cond_->RunPass(*this);
+      // get value of condition
+      if (cond_->IsConst()) {
+        cond_->RunPass(*this);
+      }
+      else {
+        val_ = 0;
+      }
+      // get target of branch
       target_ = val_ ? ssa[1].value() : ssa[2].value();
       // remove current block from non-target block's predecessor list
       const auto &block = !val_ ? ssa[1].value() : ssa[2].value();
