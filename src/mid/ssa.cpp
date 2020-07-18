@@ -395,3 +395,8 @@ void SelectSSA::Dump(std::ostream &os, IdManager &idm) const {
   DumpWithType(os, idm, (*this)[2]);
   os << std::endl;
 }
+
+void UndefSSA::Dump(std::ostream &os, IdManager &idm) const {
+  assert(in_expr);
+  os << "undef";
+}
