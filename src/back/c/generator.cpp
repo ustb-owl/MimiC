@@ -483,6 +483,11 @@ void CCodeGen::GenerateOn(SelectSSA &ssa) {
   SetVal(ssa, var);
 }
 
+void CCodeGen::GenerateOn(UndefSSA &ssa) {
+  // treat undefined value as zero
+  SetVal(ssa, '(' + GetTypeName(ssa.type()) + ")0");
+}
+
 void CCodeGen::Dump(std::ostream &os) const {
   os << "#include <string.h>" << std::endl << std::endl;
   os << type_.str() << std::endl;
