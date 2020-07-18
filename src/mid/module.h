@@ -130,6 +130,8 @@ class Module {
   SSAPtr GetStruct(const SSAPtrList &elems, const define::TypePtr &type);
   // get a constant array
   SSAPtr GetArray(const SSAPtrList &elems, const define::TypePtr &type);
+  // get an undefined value
+  SSAPtr GetUndef(const define::TypePtr &type);
 
   // set insert point to end of specific basic block
   void SetInsertPoint(const BlockPtr &block) {
