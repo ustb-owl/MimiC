@@ -70,7 +70,7 @@ UserPtr Module::CreateFunction(LinkageTypes link, const std::string &name,
   assert(type->IsFunction());
   // create function
   auto func = MakeSSA<FunctionSSA>(link, name);
-  func->set_types(type);
+  func->set_type(type);
   // add to global variables
   funcs_.push_back(func);
   return func;
@@ -86,7 +86,7 @@ BlockPtr Module::CreateBlock(const UserPtr &parent,
   assert(parent && parent->type()->IsFunction());
   // create block
   auto block = MakeSSA<BlockSSA>(parent, name);
-  block->set_types(nullptr);
+  block->set_type(nullptr);
   // update parent function
   parent->AddValue(block);
   return block;
@@ -98,7 +98,7 @@ SSAPtr Module::CreateArgRef(const SSAPtr &func, std::size_t index) {
   assert(index < args_type.size());
   // create argument reference
   auto arg_ref = MakeSSA<ArgRefSSA>(func, index);
-  arg_ref->set_types(args_type[index]);
+  arg_ref->set_type(args_type[index]);
   return arg_ref;
 }
 
@@ -121,7 +121,7 @@ SSAPtr Module::CreateStore(const SSAPtr &value, const SSAPtr &pointer) {
   }
   // create store
   auto store = AddInst<StoreSSA>(val, ptr);
-  store->set_types(nullptr);
+  store->set_type(nullptr);
   return store;
 }
 
@@ -130,14 +130,14 @@ SSAPtr Module::CreateAlloca(const TypePtr &type) {
   assert(!type->IsVoid());
   // create allocation
   auto alloca = AddInst<AllocaSSA>();
-  alloca->set_types(MakePointer(type));
+  alloca->set_type(MakePointer(type));
   return alloca;
 }
 
 SSAPtr Module::CreateJump(const BlockPtr &target) {
   // create jump
   auto jump = AddInst<JumpSSA>(target);
-  jump->set_types(nullptr);
+  jump->set_type(nullptr);
   // update predecessor info
   target->AddValue(insert_block_);
   return jump;
@@ -145,15 +145,15 @@ SSAPtr Module::CreateJump(const BlockPtr &target) {
 
 SSAPtr Module::CreateReturn(const SSAPtr &value) {
   // get proper return value
-  const auto &func_type = insert_block_->parent()->org_type();
+  const auto &func_type = insert_block_->parent()->type();
   auto ret_type = func_type->GetReturnType(*func_type->GetArgsType());
   auto val = value;
   // assertion for type checking
   assert((ret_type->IsVoid() && !val) ||
-         ret_type->GetTrivialType()->IsIdentical(val->type()));
+         ret_type->IsIdentical(val->type()));
   // create return
   auto ret = AddInst<ReturnSSA>(val);
-  ret->set_types(nullptr);
+  ret->set_type(nullptr);
   return ret;
 }
 
@@ -169,7 +169,6 @@ GlobalVarPtr Module::CreateGlobalVar(LinkageTypes link, bool is_var,
   // create global variable definition
   auto global = MakeSSA<GlobalVarSSA>(link, is_var, name, init);
   global->set_type(MakePointer(var_type, false));
-  global->set_org_type(MakePointer(type));
   // add to global variables
   vars_.push_back(global);
   return global;
@@ -187,7 +186,7 @@ SSAPtr Module::CreateBranch(const SSAPtr &cond, const BlockPtr &true_block,
   assert(cond->type()->IsInteger());
   // create branch
   auto branch = AddInst<BranchSSA>(cond, true_block, false_block);
-  branch->set_types(nullptr);
+  branch->set_type(nullptr);
   // update predecessor info
   true_block->AddValue(insert_block_);
   false_block->AddValue(insert_block_);
@@ -200,14 +199,13 @@ SSAPtr Module::CreateLoad(const SSAPtr &ptr) {
   // create load
   auto load = AddInst<LoadSSA>(ptr);
   load->set_type(ptr->type()->GetDerefedType());
-  load->set_org_type(ptr->org_type()->GetDerefedType());
   return load;
 }
 
 SSAPtr Module::CreateCall(const SSAPtr &callee, const SSAPtrList &args) {
   // assertion for type checking
   assert(callee->type()->IsFunction());
-  auto args_type = *callee->org_type()->GetArgsType();
+  auto args_type = *callee->type()->GetArgsType();
   assert(args_type.size() == args.size());
   // get argument list
   SSAPtrList casted_args;
@@ -223,8 +221,8 @@ SSAPtr Module::CreateCall(const SSAPtr &callee, const SSAPtrList &args) {
   }
   // create call
   auto call = AddInst<CallSSA>(callee, casted_args);
-  auto ret_type = callee->org_type()->GetReturnType(args_type);
-  call->set_types(ret_type);
+  auto ret_type = callee->type()->GetReturnType(args_type);
+  call->set_type(ret_type);
   return call;
 }
 
@@ -235,7 +233,6 @@ SSAPtr Module::CreatePtrAccess(const SSAPtr &ptr, const SSAPtr &index) {
   auto acc_type = AccessSSA::AccessType::Pointer;
   auto access = AddInst<AccessSSA>(acc_type, ptr, index);
   access->set_type(ptr->type());
-  access->set_org_type(ptr->org_type());
   return access;
 }
 
@@ -250,7 +247,7 @@ SSAPtr Module::CreateElemAccess(const SSAPtr &ptr, const SSAPtr &index,
   // create access
   auto acc_type = AccessSSA::AccessType::Element;
   auto access = AddInst<AccessSSA>(acc_type, pointer, index);
-  access->set_types(MakePointer(type));
+  access->set_type(MakePointer(type));
   return access;
 }
 
@@ -260,14 +257,14 @@ SSAPtr Module::CreateBinary(BinaryOp op, const SSAPtr &lhs,
   assert(lhs->type()->IsIdentical(rhs->type()));
   // create binary
   auto binary = AddInst<BinarySSA>(op, lhs, rhs);
-  binary->set_types(type);
+  binary->set_type(type);
   return binary;
 }
 
 SSAPtr Module::CreateUnary(UnaryOp op, const SSAPtr &opr,
                            const TypePtr &type) {
   auto unary = AddInst<UnarySSA>(op, opr);
-  unary->set_types(type);
+  unary->set_type(type);
   return unary;
 }
 
@@ -380,7 +377,6 @@ SSAPtr Module::CreateCast(const SSAPtr &opr, const TypePtr &type) {
     cast = AddInst<CastSSA>(operand);
   }
   cast->set_type(target);
-  cast->set_org_type(type);
   return cast;
 }
 
@@ -400,13 +396,51 @@ SSAPtr Module::CreateNot(const SSAPtr &opr) {
   return CreateUnary(UnaryOp::Not, opr, type);
 }
 
+SSAPtr Module::CreatePhiOperand(const SSAPtr &val, const BlockPtr &block) {
+  assert(!val->type()->IsVoid());
+  // create phi operand
+  auto phi_opr = MakeSSA<PhiOperandSSA>(val, block);
+  phi_opr->set_type(val->type());
+  return phi_opr;
+}
+
+SSAPtr Module::CreatePhi(const SSAPtrList &oprs) {
+  // assertion for type checking
+  TypePtr type;
+  for (const auto &i : oprs) {
+    if (!type) {
+      type = i->type();
+      assert(!type->IsVoid());
+    }
+    else {
+      assert(i->type()->IsIdentical(type));
+    }
+  }
+  assert(type);
+  // create phi node
+  auto phi = AddInst<PhiSSA>(oprs);
+  phi->set_type(std::move(type));
+  return phi;
+}
+
+SSAPtr Module::CreateSelect(const SSAPtr &cond, const SSAPtr &true_val,
+                            const SSAPtr &false_val) {
+  // assertion for type checking
+  assert(cond->type()->IsInteger() &&
+         true_val->type()->IsIdentical(false_val->type()));
+  // create select
+  auto select = AddInst<SelectSSA>(cond, true_val, false_val);
+  select->set_type(true_val->type());
+  return select;
+}
+
 SSAPtr Module::GetZero(const TypePtr &type) {
   // assertion for type checking
   assert(type->IsInteger() || type->IsFunction() || type->IsPointer() ||
          type->IsStruct() || type->IsArray());
   // create constant zero
   auto zero = MakeSSA<ConstZeroSSA>();
-  zero->set_types(type);
+  zero->set_type(type);
   return zero;
 }
 
@@ -415,7 +449,7 @@ SSAPtr Module::GetInt(std::uint32_t value, const TypePtr &type) {
   assert(type->IsInteger());
   // create constant integer
   auto const_int = MakeSSA<ConstIntSSA>(value);
-  const_int->set_types(type);
+  const_int->set_type(type);
   return const_int;
 }
 
@@ -435,7 +469,7 @@ SSAPtr Module::GetString(const std::string &str, const TypePtr &type) {
          type->GetDerefedType()->GetSize() == 1);
   // create constant string
   auto const_str = MakeSSA<ConstStrSSA>(str);
-  const_str->set_types(type);
+  const_str->set_type(type);
   return const_str;
 }
 
@@ -453,7 +487,6 @@ SSAPtr Module::GetStruct(const SSAPtrList &elems, const TypePtr &type) {
   // create constant struct
   auto const_struct = MakeSSA<ConstStructSSA>(elems);
   const_struct->set_type(struct_ty);
-  const_struct->set_org_type(type);
   return const_struct;
 }
 
@@ -469,7 +502,6 @@ SSAPtr Module::GetArray(const SSAPtrList &elems, const TypePtr &type) {
   // create constant array
   auto const_array = MakeSSA<ConstArraySSA>(elems);
   const_array->set_type(array_ty);
-  const_array->set_org_type(type);
   return const_array;
 }
 

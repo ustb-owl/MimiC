@@ -89,4 +89,5 @@ class BlockMergePass : public FunctionPass {
 }  // namespace
 
 // register current passs
-REGISTER_PASS(BlockMergePass, blk_merge, 1, false);
+REGISTER_PASS(BlockMergePass, blk_merge, 1,
+              PassStage::PreOpt | PassStage::Opt | PassStage::PostOpt);

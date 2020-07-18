@@ -93,33 +93,24 @@ class Value {
   // remove current value from all users
   void RemoveFromUser();
 
+  // setters
+  void set_logger(const front::LogPtr &logger) { logger_ = logger; }
+  void set_type(const define::TypePtr &type) {
+    type_ = type ? type->GetTrivialType() : nullptr;
+  }
+  void set_metadata(const std::any &metadata) { metadata_ = metadata; }
+
   // getters
   const front::LogPtr &logger() const { return logger_; }
   const define::TypePtr &type() const { return type_; }
-  const define::TypePtr &org_type() const { return org_type_; }
   const std::any &metadata() const { return metadata_; }
   const std::list<Use *> &uses() const { return uses_; }
-
-  // setters
-  void set_logger(const front::LogPtr &logger) { logger_ = logger; }
-  // set 'type' only
-  void set_type(const define::TypePtr &type) { type_ = type; }
-  // set 'org_type' only
-  void set_org_type(const define::TypePtr &org_type) {
-    org_type_ = org_type;
-  }
-  // set both 'type' and 'org_type'
-  void set_types(const define::TypePtr &type) {
-    type_ = type ? type->GetTrivialType() : nullptr;
-    org_type_ = type;
-  }
-  void set_metadata(const std::any &metadata) { metadata_ = metadata; }
 
  private:
   // pointer to logger
   front::LogPtr logger_;
   // trivial/orginal type of current value
-  define::TypePtr type_, org_type_;
+  define::TypePtr type_;
   // metadata
   std::any metadata_;
   // linked list of 'Use'
@@ -130,7 +121,9 @@ class Value {
 class Use {
  public:
   explicit Use(const SSAPtr &value, User *user)
-      : value_(value), user_(user) {}
+      : value_(value), user_(user) {
+    if (value_) value_->AddUse(this);
+  }
   // copy constructor
   Use(const Use &use) : value_(use.value_), user_(use.user_) {
     if (value_) value_->AddUse(this);
@@ -151,10 +144,9 @@ class Use {
   // copy assignment operator
   Use &operator=(const Use &use) {
     if (this != &use) {
-      value_ = use.value_;
-      user_ = use.user_;
       // update reference
-      if (value_) value_->AddUse(this);
+      set_value(use.value_);
+      user_ = use.user_;
     }
     return *this;
   }
@@ -162,13 +154,10 @@ class Use {
   // move assignment operator
   Use &operator=(Use &&use) noexcept {
     if (this != &use) {
-      value_ = std::move(use.value_);
-      user_ = use.user_;
       // update reference
-      if (value_) {
-        value_->RemoveUse(&use);
-        value_->AddUse(this);
-      }
+      if (use.value_) use.value_->RemoveUse(&use);
+      set_value(std::move(use.value_));
+      user_ = use.user_;
     }
     return *this;
   }
