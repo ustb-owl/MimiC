@@ -34,6 +34,7 @@ class LoadSSA : public User {
   void Dump(std::ostream &os, IdManager &idm) const override;
   SSAPtr GetAddr() const override { return addr_; }
   bool IsConst() const override { return false; }
+  bool IsUndef() const override { return (*this)[0].value()->IsUndef(); }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -54,6 +55,7 @@ class StoreSSA : public User {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
+  bool IsUndef() const override { return false; }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -74,6 +76,9 @@ class AccessSSA : public User {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
+  bool IsUndef() const override {
+    return (*this)[0].value()->IsUndef() || (*this)[1].value()->IsUndef();
+  }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -103,6 +108,9 @@ class BinarySSA : public User {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
+  bool IsUndef() const override {
+    return (*this)[0].value()->IsUndef() || (*this)[1].value()->IsUndef();
+  }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -129,6 +137,7 @@ class UnarySSA : public User {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
+  bool IsUndef() const override { return (*this)[0].value()->IsUndef(); }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -151,6 +160,7 @@ class CastSSA : public User {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return (*this)[0].value()->IsConst(); }
+  bool IsUndef() const override { return (*this)[0].value()->IsUndef(); }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -168,6 +178,7 @@ class CallSSA : public User {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
+  bool IsUndef() const override { return (*this)[0].value()->IsUndef(); }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -187,6 +198,7 @@ class BranchSSA : public User {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
+  bool IsUndef() const override { return false; }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -203,6 +215,7 @@ class JumpSSA : public User {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
+  bool IsUndef() const override { return false; }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -220,6 +233,7 @@ class ReturnSSA : public User {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
+  bool IsUndef() const override { return false; }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -234,6 +248,7 @@ class FunctionSSA : public User {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
+  bool IsUndef() const override { return false; }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -263,6 +278,7 @@ class GlobalVarSSA : public User {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
+  bool IsUndef() const override { return false; }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -290,6 +306,7 @@ class AllocaSSA : public Value {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
+  bool IsUndef() const override { return false; }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -304,6 +321,7 @@ class BlockSSA : public User {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
+  bool IsUndef() const override { return false; }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -333,6 +351,7 @@ class ArgRefSSA : public Value {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
+  bool IsUndef() const override { return false; }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -353,6 +372,7 @@ class ConstIntSSA : public Value {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return true; }
+  bool IsUndef() const override { return false; }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -371,6 +391,7 @@ class ConstStrSSA : public Value {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return true; }
+  bool IsUndef() const override { return false; }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -393,6 +414,7 @@ class ConstStructSSA : public User {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return true; }
+  bool IsUndef() const override { return false; }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -409,6 +431,7 @@ class ConstArraySSA : public User {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return true; }
+  bool IsUndef() const override { return false; }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -421,6 +444,7 @@ class ConstZeroSSA : public Value {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return true; }
+  bool IsUndef() const override { return false; }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -438,6 +462,7 @@ class PhiOperandSSA : public User {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
+  bool IsUndef() const override { return (*this)[0].value()->IsUndef(); }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -454,6 +479,12 @@ class PhiSSA : public User {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
+  bool IsUndef() const override {
+    for (const auto &i : *this) {
+      if (!i.value()->IsUndef()) return false;
+    }
+    return true;
+  }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -473,6 +504,10 @@ class SelectSSA : public User {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
+  bool IsUndef() const override {
+    return (*this)[0].value()->IsUndef() ||
+           ((*this)[1].value()->IsUndef() && (*this)[2].value()->IsUndef());
+  }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
@@ -485,6 +520,7 @@ class UndefSSA : public Value {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
+  bool IsUndef() const override { return true; }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
