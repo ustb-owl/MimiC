@@ -24,6 +24,7 @@ std::ostream &operator<<(std::ostream &os, PassStage stage) {
         case PassStage::Opt: os << "Opt"; break;
         case PassStage::Demote: os << "Demote"; break;
         case PassStage::PostOpt: os << "PostOpt"; break;
+        default:;
       }
     }
   }
