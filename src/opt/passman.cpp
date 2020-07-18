@@ -62,9 +62,7 @@ void PassManager::ShowInfo(std::ostream &os) const {
   for (const auto &i : GetPasses()) {
     os << "  ";
     os << std::setw(20) << std::left << i->name();
-    os << "min_opt_level = " << i->min_opt_level() << ", ";
-    os << "is_analysis = " << std::boolalpha << i->is_analysis();
-    os << std::endl;
+    os << "min_opt_level = " << i->min_opt_level() << std::endl;
   }
   os << std::endl;
   // show enabled passes

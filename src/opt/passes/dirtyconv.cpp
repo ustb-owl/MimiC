@@ -104,4 +104,4 @@ class DirtyConversionPass : public ModulePass {
 
 }  // namespace
 
-REGISTER_PASS(DirtyConversionPass, dirty_conv, 0, false);
+REGISTER_PASS(DirtyConversionPass, dirty_conv, 0);
