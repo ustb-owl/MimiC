@@ -398,5 +398,6 @@ void SelectSSA::Dump(std::ostream &os, IdManager &idm) const {
 
 void UndefSSA::Dump(std::ostream &os, IdManager &idm) const {
   assert(in_expr);
-  os << "undef";
+  PrintType(os, type());
+  os << " undef";
 }
