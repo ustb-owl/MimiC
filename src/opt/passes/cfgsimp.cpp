@@ -159,4 +159,5 @@ class CFGSimplifyPass : public FunctionPass {
 }  // namespace
 
 // register current passs
-REGISTER_PASS(CFGSimplifyPass, cfg_simplify, 1);
+REGISTER_PASS(CFGSimplifyPass, cfg_simplify, 1,
+              PassStage::PreOpt | PassStage::Opt | PassStage::PostOpt);
