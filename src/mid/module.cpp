@@ -505,6 +505,15 @@ SSAPtr Module::GetArray(const SSAPtrList &elems, const TypePtr &type) {
   return const_array;
 }
 
+SSAPtr Module::GetUndef(const TypePtr &type) {
+  // assertion for type checking
+  assert(!type->IsVoid());
+  // create undefined value
+  auto undef = MakeSSA<UndefSSA>();
+  undef->set_type(type);
+  return undef;
+}
+
 xstl::Guard Module::SetContext(const Logger &logger) {
   auto log = std::make_shared<Logger>(logger);
   loggers_.push(log);
