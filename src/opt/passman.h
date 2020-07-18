@@ -27,15 +27,15 @@ enum class PassStage : unsigned {
 // count of stages
 constexpr std::size_t kPassStageCount = 5;
 // set specific stage
-PassStage operator|(PassStage lhs, PassStage rhs) {
+inline PassStage operator|(PassStage lhs, PassStage rhs) {
   using T = std::underlying_type_t<PassStage>;
   return static_cast<PassStage>(static_cast<T>(lhs) | static_cast<T>(rhs));
 }
-PassStage &operator|=(PassStage &lhs, PassStage rhs) {
+inline PassStage &operator|=(PassStage &lhs, PassStage rhs) {
   return lhs = lhs | rhs;
 }
 // check if specific stage is set
-PassStage operator&(PassStage lhs, PassStage rhs) {
+inline PassStage operator&(PassStage lhs, PassStage rhs) {
   using T = std::underlying_type_t<PassStage>;
   return static_cast<PassStage>(static_cast<T>(lhs) & static_cast<T>(rhs));
 }
