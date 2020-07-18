@@ -100,3 +100,7 @@ void PhiSSA::GenerateCode(CodeGen &gen) {
 void SelectSSA::GenerateCode(CodeGen &gen) {
   gen.GenerateOn(*this);
 }
+
+void UndefSSA::GenerateCode(CodeGen &gen) {
+  gen.GenerateOn(*this);
+}

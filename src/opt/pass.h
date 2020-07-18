@@ -51,6 +51,7 @@ class PassBase {
   virtual void RunOn(mid::PhiOperandSSA &ssa) {}
   virtual void RunOn(mid::PhiSSA &ssa) {}
   virtual void RunOn(mid::SelectSSA &ssa) {}
+  virtual void RunOn(mid::UndefSSA &ssa) {}
 };
 
 // pointer of pass

@@ -96,3 +96,7 @@ void PhiSSA::RunPass(PassBase &pass) {
 void SelectSSA::RunPass(PassBase &pass) {
   pass.RunOn(*this);
 }
+
+void UndefSSA::RunPass(PassBase &pass) {
+  pass.RunOn(*this);
+}
