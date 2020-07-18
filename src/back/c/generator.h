@@ -39,6 +39,7 @@ class CCodeGen : public CodeGenInterface {
   void GenerateOn(mid::ConstArraySSA &ssa) override;
   void GenerateOn(mid::ConstZeroSSA &ssa) override;
   void GenerateOn(mid::SelectSSA &ssa) override;
+  void GenerateOn(mid::UndefSSA &ssa) override;
 
   void Dump(std::ostream &os) const override;
 
