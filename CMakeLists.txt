@@ -11,6 +11,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# set(CMAKE_CXX_COMPILER /usr/bin/clang++)
+
 # enable all warnings and treat them as errors
 if(MSVC)
   add_compile_options(/W3 /WX)
