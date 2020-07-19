@@ -6,6 +6,7 @@
 #include "opt/pass.h"
 #include "opt/passman.h"
 #include "mid/module.h"
+#include "opt/passes/helper/utils.h"
 
 using namespace mimic::mid;
 using namespace mimic::opt;
@@ -46,21 +47,6 @@ class GetPromAllocaHelperPass : public HelperPass {
  private:
   bool is_prom_;
   std::unordered_set<Value *> prom_allocas_;
-};
-
-// check if value is a phi/alloca
-class PhiCheckerHelperPass : public HelperPass {
- public:
-  bool IsPhi(Value *value) {
-    is_phi_ = false;
-    value->RunPass(*this);
-    return is_phi_;
-  }
-
-  void RunOn(PhiSSA &ssa) override { is_phi_ = true; }
-
- private:
-  bool is_phi_;
 };
 
 /*
@@ -281,8 +267,7 @@ void MemToRegPass::TryRemoveTrivialPhi(const UserPtr &phi) {
   for (const auto &i : uses) {
     if (i->user() == phi.get()) continue;
     // check if user is a phi node
-    PhiCheckerHelperPass checker;
-    if (checker.IsPhi(i->user())) {
+    if (IsSSA<PhiSSA>(i->user())) {
       // try to get pointer to current user (tricky method)
       const auto &uses = i->user()->uses();
       assert(!uses.empty());
