@@ -1,8 +1,6 @@
 #include <unordered_set>
 #include <queue>
 #include <unordered_map>
-#include <forward_list>
-#include <utility>
 #include <cassert>
 
 #include "opt/pass.h"
@@ -50,79 +48,6 @@ class GetPromAllocaHelperPass : public HelperPass {
   std::unordered_set<Value *> prom_allocas_;
 };
 
-// // traverse blocks in BFS order
-// class BFSTraverseHelperPass : public HelperPass {
-//  public:
-//   // iterator class
-//   class Iter {
-//    public:
-//     // switch to next block
-//     Iter &operator++() {
-//       assert(parent_);
-//       parent_->NextBlock();
-//       return *this;
-//     }
-
-//     // check if two iterators are equal
-//     // NOTE:  can only be used when comparing with the 'end' iterator
-//     bool operator!=(const Iter &other) const {
-//       assert(parent_ && !other.parent_);
-//       return parent_->block_;
-//     }
-
-//     // get current block
-//     BlockSSA *operator*() const { return parent_->block_; }
-
-//    private:
-//     friend class BFSTraverseHelperPass;
-//     Iter(BFSTraverseHelperPass *parent) : parent_(parent) {}
-//     BFSTraverseHelperPass *parent_;
-//   };
-
-//   BFSTraverseHelperPass(BlockSSA *entry)
-//       : block_(entry), visited_({entry}) {}
-
-//   void RunOn(BranchSSA &ssa) override {
-//     // push true/false block to queue
-//     Push(ssa[1].value());
-//     Push(ssa[2].value());
-//   }
-
-//   void RunOn(JumpSSA &ssa) override {
-//     // push target block to queue
-//     Push(ssa[0].value());
-//   }
-
-//   // iterator method
-//   Iter begin() { return Iter(this); }
-//   Iter end() { return Iter(nullptr); }
-
-//  private:
-//   // switch to next block
-//   void NextBlock() {
-//     // try to push successors to queue
-//     block_->insts().back()->RunPass(*this);
-//     // update current block
-//     if (queue_.empty()) {
-//       block_ = nullptr;
-//     }
-//     else {
-//       block_ = queue_.front();
-//       queue_.pop();
-//     }
-//   }
-
-//   // push block to queue if not visited
-//   void Push(const SSAPtr &block) {
-//     auto ptr = static_cast<BlockSSA *>(block.get());
-//     if (visited_.insert(ptr).second) queue_.push(ptr);
-//   }
-
-//   BlockSSA *block_;
-//   std::unordered_set<BlockSSA *> visited_;
-//   std::queue<BlockSSA *> queue_;
-// };
-
 // check if value is a phi/alloca
 class PhiCheckerHelperPass : public HelperPass {
  public:
@@ -140,8 +65,10 @@ class PhiCheckerHelperPass : public HelperPass {
 
 /*
   promote alloca instructions to SSA form (if possible)
+
   reference:  Simple and Efficient Construction of
               Static Single Assignment Form
+  * made some simplification
 */
 class MemToRegPass : public FunctionPass {
  public:
@@ -156,11 +83,16 @@ class MemToRegPass : public FunctionPass {
       i.value()->RunPass(*this);
     }
     // handle created phi nodes
-    for (const auto &i : created_phis_) {
-      // insert to block if current phi node is used by other user
-      if (!i.second->uses().empty()) {
-        i.first->insts().push_front(i.second);
+    while (!created_phis_.empty()) {
+      const auto &[phi, block, alloca] = created_phis_.front();
+      // check if current phi node is used by other user
+      if (!phi->uses().empty()) {
+        // add operands for current phi node
+        AddPhiOperands(phi, block, alloca);
+        // insert to block
+        block->insts().push_front(phi);
       }
+      created_phis_.pop();
     }
     // remove all promotable allocas
     auto &entry_insts = entry->insts();
@@ -174,9 +106,8 @@ class MemToRegPass : public FunctionPass {
         ++it;
       }
     }
-    // release resources
+    // release local definitions
     cur_defs_.clear();
-    created_phis_.clear();
     return true;
   }
 
@@ -219,15 +150,24 @@ class MemToRegPass : public FunctionPass {
   }
 
  private:
+  struct PhiInfo {
+    // phi node
+    UserPtr phi;
+    // block where phi node located
+    BlockSSA *block;
+    // alloca where value of phi node comes from
+    SSAPtr alloca;
+  };
+
   UserPtr CreatePhi(const SSAPtr &alloca, BlockSSA *block);
 
   void WriteVariable(BlockSSA *block, const SSAPtr &alloca,
                      const SSAPtr &val);
   SSAPtr ReadVariable(BlockSSA *block, const SSAPtr &alloca);
   SSAPtr ReadVariableRecursive(BlockSSA *block, const SSAPtr &alloca);
-  SSAPtr AddPhiOperands(const UserPtr &phi, BlockSSA *block,
-                        const SSAPtr &alloca);
-  SSAPtr TryRemoveTrivialPhi(const UserPtr &phi);
+  void AddPhiOperands(const UserPtr &phi, BlockSSA *block,
+                      const SSAPtr &alloca);
+  void TryRemoveTrivialPhi(const UserPtr &phi);
 
   // helper pass
   GetPromAllocaHelperPass prom_helper_;
@@ -238,7 +178,7 @@ class MemToRegPass : public FunctionPass {
   std::unordered_map<BlockSSA *, std::unordered_map<Value *, SSAPtr>>
       cur_defs_;
   // all created phi nodes
-  std::forward_list<std::pair<BlockSSA *, SSAPtr>> created_phis_;
+  std::queue<PhiInfo> created_phis_;
 };
 
 }  // namespace
@@ -254,7 +194,7 @@ UserPtr MemToRegPass::CreatePhi(const SSAPtr &alloca, BlockSSA *block) {
   phi->set_type(alloca->type()->GetDerefedType());
   phi->set_logger(alloca->logger());
   // remember it
-  created_phis_.push_front({block, phi});
+  created_phis_.push({phi, block, alloca});
   return phi;
 }
 
@@ -288,12 +228,8 @@ SSAPtr MemToRegPass::ReadVariableRecursive(BlockSSA *block,
     val = ReadVariable(pred, alloca);
   }
   else {
-    // create phi node
-    auto phi = CreatePhi(alloca, block);
-    // break potential cycles with operandless phi
-    WriteVariable(block, alloca, phi);
-    // add operands
-    val = AddPhiOperands(phi, block, alloca);
+    // create an empty phi node
+    val = CreatePhi(alloca, block);
   }
   WriteVariable(block, alloca, val);
   return val;
@@ -301,8 +237,8 @@ SSAPtr MemToRegPass::ReadVariableRecursive(BlockSSA *block,
 
 // add operands to specific phi node by looking up definition
 // param block: block where the phi node is located
-SSAPtr MemToRegPass::AddPhiOperands(const UserPtr &phi, BlockSSA *block,
-                                    const SSAPtr &alloca) {
+void MemToRegPass::AddPhiOperands(const UserPtr &phi, BlockSSA *block,
+                                  const SSAPtr &alloca) {
   phi->Reserve(block->size());
   // determine operands from predecessors
   for (const auto &i : *block) {
@@ -314,18 +250,19 @@ SSAPtr MemToRegPass::AddPhiOperands(const UserPtr &phi, BlockSSA *block,
     auto mod = MakeModule();
     phi->AddValue(mod.CreatePhiOperand(val, pred));
   }
-  return TryRemoveTrivialPhi(phi);
+  TryRemoveTrivialPhi(phi);
 }
 
 // detect and recursively remove a trivial phi node
-SSAPtr MemToRegPass::TryRemoveTrivialPhi(const UserPtr &phi) {
+void MemToRegPass::TryRemoveTrivialPhi(const UserPtr &phi) {
   SSAPtr same;
   for (const auto &i : *phi) {
-    const auto &op = i.value();
+    auto op_ptr = static_cast<PhiOperandSSA *>(i.value().get());
+    const auto &op = (*op_ptr)[0].value();
     // unique value or self-reference
     if (op == same || op == phi) continue;
     // the phi node merges at least two values, not trivial
-    if (same) return phi;
+    if (same) return;
     // remember current operand
     same = op;
   }
@@ -353,5 +290,4 @@ SSAPtr MemToRegPass::TryRemoveTrivialPhi(const UserPtr &phi) {
       TryRemoveTrivialPhi(user);
     }
   }
-  return same;
 }
