@@ -2,6 +2,7 @@
 #define MIMIC_PASS_HELPER_UTILS_H_
 
 #include <type_traits>
+#include <memory>
 
 #include "opt/pass.h"
 
@@ -41,6 +42,16 @@ inline bool IsSSA(mid::Value &ssa) {
 template <typename T>
 inline bool IsSSA(const mid::SSAPtr &ssa) {
   return IsSSA<T>(ssa.get());
+}
+
+// perform dynamic casting on SSA values
+template <typename T>
+inline T *SSACast(mid::Value *ssa) {
+  return IsSSA<T>(ssa) ? static_cast<T *>(ssa) : nullptr;
+}
+template <typename T>
+inline std::shared_ptr<T> SSACast(const mid::SSAPtr &ssa) {
+  return IsSSA<T>(ssa) ? std::static_pointer_cast<T>(ssa) : nullptr;
 }
 
 }  // namespace mimic::opt
