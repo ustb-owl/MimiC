@@ -5,22 +5,56 @@
 
 using namespace mimic::opt;
 
+namespace {
+
+std::ostream &operator<<(std::ostream &os, PassStage stage) {
+  bool is_first = true;
+  for (std::size_t i = 0; i < kPassStageCount; ++i) {
+    auto cur = stage & static_cast<PassStage>(1 << i);
+    if (cur != PassStage::None) {
+      if (!is_first) {
+        os << " | ";
+      }
+      else {
+        is_first = false;
+      }
+      switch (cur) {
+        case PassStage::PreOpt: os << "PreOpt"; break;
+        case PassStage::Promote: os << "Promote"; break;
+        case PassStage::Opt: os << "Opt"; break;
+        case PassStage::Demote: os << "Demote"; break;
+        case PassStage::PostOpt: os << "PostOpt"; break;
+        default:;
+      }
+    }
+  }
+  return os;
+}
+
+}  // namespace
+
 std::list<PassInfo *> &PassManager::GetPasses() {
   static std::list<PassInfo *> passes;
   return passes;
 }
 
-void PassManager::RegisterPass(PassInfo *info) {
-  GetPasses().push_back(info);
+std::list<PassInfo *> PassManager::GetPasses(PassStage stage) const {
+  std::list<PassInfo *> passes;
+  for (const auto &pass : GetPasses()) {
+    if ((pass->stage() & stage) != PassStage::None) {
+      passes.push_front(pass);
+    }
+  }
+  return passes;
 }
 
-void PassManager::RunPasses() const {
+void PassManager::RunPasses(const std::list<PassInfo *> &passes) const {
   bool changed = true;
   // run until nothing changes
   while (changed) {
     changed = false;
     // traverse all passes
-    for (const auto &info : GetPasses()) {
+    for (const auto &info : passes) {
       if (info->min_opt_level() > opt_level_) continue;
       const auto &pass = info->pass();
       // handle by pass type
@@ -49,6 +83,21 @@ void PassManager::RunPasses() const {
   }
 }
 
+void PassManager::RegisterPass(PassInfo *info) {
+  GetPasses().push_back(info);
+}
+
+void PassManager::RunPasses() const {
+  // traverse all stages
+  for (std::size_t i = 0; i < kPassStageCount; ++i) {
+    // get passes in current stage
+    auto cur = static_cast<PassStage>(1 << i);
+    auto passes = GetPasses(cur);
+    // run on current stage
+    RunPasses(passes);
+  }
+}
+
 void PassManager::ShowInfo(std::ostream &os) const {
   // display optimization level
   os << "current optimization level: " << opt_level_ << std::endl;
@@ -63,8 +112,7 @@ void PassManager::ShowInfo(std::ostream &os) const {
     os << "  ";
     os << std::setw(20) << std::left << i->name();
     os << "min_opt_level = " << i->min_opt_level() << ", ";
-    os << "is_analysis = " << std::boolalpha << i->is_analysis();
-    os << std::endl;
+    os << "pass_stage = " << i->stage() << std::endl;
   }
   os << std::endl;
   // show enabled passes

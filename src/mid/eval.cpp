@@ -145,17 +145,30 @@ std::optional<std::uint32_t> Evaluator::EvalOn(BlockAST &ast) {
 }
 
 std::optional<std::uint32_t> Evaluator::EvalOn(IfElseAST &ast) {
+  // evaluate condition
+  auto cond = ast.cond()->Eval(*this);
+  if (cond) ast.set_cond(MakeAST(*cond, ast.cond()));
+  // evaluate blocks
   ast.then()->Eval(*this);
   if (ast.else_then()) ast.else_then()->Eval(*this);
   return {};
 }
 
 std::optional<std::uint32_t> Evaluator::EvalOn(WhileAST &ast) {
+  // evaluate condition
+  auto cond = ast.cond()->Eval(*this);
+  if (cond) ast.set_cond(MakeAST(*cond, ast.cond()));
+  // evaluate body
   ast.body()->Eval(*this);
   return {};
 }
 
 std::optional<std::uint32_t> Evaluator::EvalOn(ControlAST &ast) {
+  // evaluate expression
+  if (ast.expr()) {
+    auto expr = ast.expr()->Eval(*this);
+    if (expr) ast.set_expr(MakeAST(*expr, ast.expr()));
+  }
   return {};
 }
 
@@ -226,14 +239,28 @@ std::optional<std::uint32_t> Evaluator::EvalOn(UnaryAST &ast) {
 }
 
 std::optional<std::uint32_t> Evaluator::EvalOn(IndexAST &ast) {
+  // evaluate expression
+  ast.expr()->Eval(*this);
+  // evaluate & update index
+  auto val = ast.index()->Eval(*this);
+  if (val) ast.set_index(MakeAST(*val, ast.index()));
   return {};
 }
 
 std::optional<std::uint32_t> Evaluator::EvalOn(FuncCallAST &ast) {
+  // evaluate expression
+  ast.expr()->Eval(*this);
+  // evaluate & update arguments
+  for (std::size_t i = 0; i < ast.args().size(); ++i) {
+    auto val = ast.args()[i]->Eval(*this);
+    if (val) ast.set_arg(i, MakeAST(*val, ast.args()[i]));
+  }
   return {};
 }
 
 std::optional<std::uint32_t> Evaluator::EvalOn(AccessAST &ast) {
+  // evaluate expression
+  ast.expr()->Eval(*this);
   return {};
 }
 

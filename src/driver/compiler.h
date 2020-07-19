@@ -51,6 +51,12 @@ class Compiler {
     os_ = os;
   }
 
+  // getters
+  bool dump_ast() const { return dump_ast_; }
+  bool dump_yuir() const { return dump_yuir_; }
+  bool dump_pass_info() const { return dump_pass_info_; }
+  bool dump_code() const { return dump_code_; }
+
  private:
   front::Lexer lexer_;
   front::Parser parser_;

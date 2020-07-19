@@ -408,7 +408,12 @@ void CCodeGen::GenerateOn(ArgRefSSA &ssa) {
 }
 
 void CCodeGen::GenerateOn(ConstIntSSA &ssa) {
-  SetVal(ssa, std::to_string(ssa.value()));
+  if (ssa.type()->IsUnsigned() || ssa.type()->IsPointer()) {
+    SetVal(ssa, std::to_string(ssa.value()));
+  }
+  else {
+    SetVal(ssa, std::to_string(static_cast<std::int32_t>(ssa.value())));
+  }
 }
 
 void CCodeGen::GenerateOn(ConstStrSSA &ssa) {
@@ -468,6 +473,14 @@ void CCodeGen::GenerateOn(ConstZeroSSA &ssa) {
     // not fully implemented
     assert(false);
   }
+}
+
+void CCodeGen::GenerateOn(SelectSSA &ssa) {
+  auto var = DeclVar(ssa);
+  code_ << GetVal(ssa[0].value()) << " ? " << GetVal(ssa[1].value());
+  code_ << " : " << GetVal(ssa[2].value());
+  GenEnd(ssa);
+  SetVal(ssa, var);
 }
 
 void CCodeGen::Dump(std::ostream &os) const {

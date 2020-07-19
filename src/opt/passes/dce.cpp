@@ -6,20 +6,20 @@ using namespace mimic::opt;
 
 namespace {
 
-// dead code elimination
+/*
+  dead code elimination
+  this pass will remove unused instructions
+*/
 class DeadCodeEliminationPass : public FunctionPass {
  public:
   DeadCodeEliminationPass() {}
 
   bool RunOnFunction(const UserPtr &func) override {
     changed_ = false;
-    cur_func_ = func.get();
     // traverse all basic blocks
     for (const auto &i : *func) {
       i.value()->RunPass(*this);
     }
-    // remove all marked blocks
-    if (changed_) func->RemoveValue(nullptr);
     return changed_;
   }
 
@@ -36,20 +36,6 @@ class DeadCodeEliminationPass : public FunctionPass {
       else {
         ++it;
       }
-    }
-    // remove non-entry blocks with no predecessors
-    if (ssa.empty() && (*cur_func_)[0].value().get() != &ssa) {
-      if (ssa.insts().size() > 1) {
-        ssa.logger()->LogWarning("unreachable code");
-      }
-      // remove current block
-      auto uses = ssa.uses();
-      ssa.ReplaceBy(nullptr);
-      // remove from all successors
-      for (const auto &i : uses) {
-        if (i->user() != cur_func_) i->user()->RemoveValue(nullptr);
-      }
-      changed_ = true;
     }
   }
 
@@ -80,16 +66,20 @@ class DeadCodeEliminationPass : public FunctionPass {
     }
   }
 
+  void RunOn(PhiSSA &ssa) override {
+    if (ssa.uses().empty()) remove_flag_ = true;
+  }
+
+  void RunOn(SelectSSA &ssa) override {
+    if (ssa.uses().empty()) remove_flag_ = true;
+  }
+
  private:
-  // set if IR changed
-  bool changed_;
-  // current function
-  User *cur_func_;
-  // set if instruction need to be removed
-  bool remove_flag_;
+  bool changed_, remove_flag_;
 };
 
 }  // namespace
 
 // register current pass
-REGISTER_PASS(DeadCodeEliminationPass, dead_code_elim, 0, false);
+REGISTER_PASS(DeadCodeEliminationPass, dead_code_elim, 0,
+              PassStage::PreOpt | PassStage::Opt | PassStage::PostOpt);

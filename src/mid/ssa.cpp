@@ -98,14 +98,8 @@ inline void DumpVal(std::ostream &os, IdManager &idm, const Use &use) {
 
 template <typename It>
 inline void DumpVal(std::ostream &os, IdManager &idm, It begin, It end) {
-  bool need_sep = false;
   for (auto it = begin; it != end; ++it) {
-    if (need_sep) {
-      os << ", ";
-    }
-    else {
-      need_sep = true;
-    }
+    if (it != begin) os << ", ";
     DumpVal(os, idm, *it);
   }
 }
@@ -322,7 +316,13 @@ void ConstIntSSA::Dump(std::ostream &os, IdManager &idm) const {
   assert(in_expr);
   os << "constant ";
   PrintType(os, type());
-  os << ' ' << value_;
+  os << ' ';
+  if (type()->IsUnsigned() || type()->IsPointer()) {
+    os << value_;
+  }
+  else {
+    os << static_cast<std::int32_t>(value_);
+  }
 }
 
 void ConstStrSSA::Dump(std::ostream &os, IdManager &idm) const {
@@ -363,4 +363,35 @@ void ConstZeroSSA::Dump(std::ostream &os, IdManager &idm) const {
   os << "constant ";
   PrintType(os, type());
   os << " zero";
+}
+
+void PhiOperandSSA::Dump(std::ostream &os, IdManager &idm) const {
+  assert(in_expr);
+  os << '[';
+  DumpVal(os, idm, (*this)[0]);
+  os << ", ";
+  DumpVal(os, idm, (*this)[1]);
+  os << ']';
+}
+
+void PhiSSA::Dump(std::ostream &os, IdManager &idm) const {
+  if (PrintPrefix(os, idm, this)) return;
+  auto inex = InExpr();
+  os << "phi ";
+  PrintType(os, type());
+  os << ' ';
+  DumpVal(os, idm, begin(), end());
+  os << std::endl;
+}
+
+void SelectSSA::Dump(std::ostream &os, IdManager &idm) const {
+  if (PrintPrefix(os, idm, this)) return;
+  auto inex = InExpr();
+  os << "select ";
+  DumpWithType(os, idm, (*this)[0]);
+  os << ", ";
+  DumpWithType(os, idm, (*this)[1]);
+  os << ", ";
+  DumpWithType(os, idm, (*this)[2]);
+  os << std::endl;
 }

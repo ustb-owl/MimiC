@@ -48,6 +48,9 @@ class PassBase {
   virtual void RunOn(mid::ConstStructSSA &ssa) {}
   virtual void RunOn(mid::ConstArraySSA &ssa) {}
   virtual void RunOn(mid::ConstZeroSSA &ssa) {}
+  virtual void RunOn(mid::PhiOperandSSA &ssa) {}
+  virtual void RunOn(mid::PhiSSA &ssa) {}
+  virtual void RunOn(mid::SelectSSA &ssa) {}
 };
 
 // pointer of pass
@@ -94,6 +97,24 @@ class BlockPass : public PassBase {
     return false;
   }
   bool RunOnFunction(const mid::UserPtr &func) override final {
+    return false;
+  }
+};
+
+// helper pass, for one-time use only, unregisterable
+class HelperPass : public PassBase {
+ public:
+  bool IsModulePass() const override final { return false; }
+  bool IsFunctionPass() const override final { return false; }
+  bool IsBlockPass() const override final { return false; }
+
+  bool RunOnModule(mid::UserPtrList &global_vals) override final {
+    return false;
+  }
+  bool RunOnFunction(const mid::UserPtr &func) override final {
+    return false;
+  }
+  bool RunOnBlock(const mid::BlockPtr &block) override final {
     return false;
   }
 };
