@@ -170,4 +170,5 @@ class AlgebraicSimplification : public BlockPass {
 };
 }  // namespace
 
-REGISTER_PASS(AlgebraicSimplification, Algebraic_Simp, 1, false);
+REGISTER_PASS(AlgebraicSimplification, Algebraic_Simp, 0,
+              PassStage::PreOpt | PassStage::Opt | PassStage::PostOpt);
