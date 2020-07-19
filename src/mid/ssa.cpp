@@ -2,6 +2,7 @@
 
 #include <iomanip>
 #include <streambuf>
+#include <unordered_set>
 #include <cctype>
 #include <cassert>
 
@@ -400,4 +401,23 @@ void UndefSSA::Dump(std::ostream &os, IdManager &idm) const {
   assert(in_expr);
   PrintType(os, type());
   os << " undef";
+}
+
+
+namespace {
+
+// used in 'PhiOperandSSA::IsUndef' to prevent infinite loop
+std::unordered_set<const Value *> visited_vals;
+
+}  // namespace
+
+bool PhiOperandSSA::IsUndef() const {
+  const auto &val = (*this)[0].value();
+  // break cycle
+  auto [it, succ] = visited_vals.insert(val.get());
+  if (!succ) return true;
+  // check if is undefined
+  auto ret = val->IsUndef();
+  visited_vals.erase(it);
+  return ret;
 }

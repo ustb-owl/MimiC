@@ -462,7 +462,8 @@ class PhiOperandSSA : public User {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
-  bool IsUndef() const override { return (*this)[0].value()->IsUndef(); }
+  // defined in 'ssa.cpp'
+  bool IsUndef() const override;
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
