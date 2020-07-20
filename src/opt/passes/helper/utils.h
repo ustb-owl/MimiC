@@ -3,6 +3,7 @@
 
 #include <type_traits>
 #include <memory>
+#include <cassert>
 
 #include "opt/pass.h"
 
@@ -46,12 +47,24 @@ inline bool IsSSA(const mid::SSAPtr &ssa) {
 
 // perform dynamic casting on SSA values
 template <typename T>
-inline T *SSACast(mid::Value *ssa) {
+inline T *SSADynCast(mid::Value *ssa) {
   return IsSSA<T>(ssa) ? static_cast<T *>(ssa) : nullptr;
 }
 template <typename T>
-inline std::shared_ptr<T> SSACast(const mid::SSAPtr &ssa) {
+inline std::shared_ptr<T> SSADynCast(const mid::SSAPtr &ssa) {
   return IsSSA<T>(ssa) ? std::static_pointer_cast<T>(ssa) : nullptr;
+}
+
+// perform static casting on SSA values
+template <typename T>
+inline T *SSACast(mid::Value *ssa) {
+  assert(IsSSA<T>(ssa) && "SSACast failed");
+  return static_cast<T *>(ssa);
+}
+template <typename T>
+inline std::shared_ptr<T> SSACast(const mid::SSAPtr &ssa) {
+  assert(IsSSA<T>(ssa) && "SSACast failed");
+  return std::static_pointer_cast<T>(ssa);
 }
 
 }  // namespace mimic::opt
