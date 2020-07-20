@@ -50,57 +50,116 @@ class ConstPropagation : public BlockPass {
 
     if (operand_.size() == 2) {
       auto mod = MakeModule();
+      uint32_t result;
       switch (ssa.op()) {
+        case BinarySSA::Operator::NotEq: {
+          result = operand_[0] != operand_[1];
+          break;
+        }
         case BinarySSA::Operator::Add: {
-          int result = operand_[0] + operand_[1];
-          finalSSA_ = GenIntResultSSA(result, mod);
+          result = operand_[0] + operand_[1];
           break;
         }
         case BinarySSA::Operator::Sub: {
-          int result = operand_[0] - operand_[1];
+          result = operand_[0] - operand_[1];
           //          auto type = GenIntType();
           //          SSAPtr resultSSA = mod.GetInt(result, type);
-          finalSSA_ = GenIntResultSSA(result, mod);
           break;
         }
         case BinarySSA::Operator::Mul: {
-          int result = operand_[0] * operand_[1];
-          finalSSA_ = GenIntResultSSA(result, mod);
+          result = operand_[0] * operand_[1];
+          break;
+        }
+        case BinarySSA::Operator::SDiv: {
+          result =
+              static_cast<int>(operand_[0]) / static_cast<int>(operand_[1]);
           break;
         }
         case BinarySSA::Operator::AShr: {
-          int result = operand_[0] >> operand_[1];
-          finalSSA_ = GenIntResultSSA(result, mod);
+          result = static_cast<int>(operand_[0]) >>
+                   static_cast<int>(operand_[1]);
           break;
         }
         case BinarySSA::Operator::Equal: {
-          int result = (operand_[0] == operand_[1]);
-          finalSSA_ = GenIntResultSSA(result, mod);
+          result = (operand_[0] == operand_[1]);
           break;
         }
         case BinarySSA::Operator::SLess: {
-          int result = operand_[0] < operand_[1];
-          finalSSA_ = GenIntResultSSA(result, mod);
+          result =
+              static_cast<int>(operand_[0]) < static_cast<int>(operand_[1]);
           break;
         }
         case BinarySSA::Operator::SGreat: {
-          int result = operand_[0] > operand_[1];
-          finalSSA_ = GenIntResultSSA(result, mod);
+          result =
+              static_cast<int>(operand_[0]) > static_cast<int>(operand_[1]);
           break;
         }
         case BinarySSA::Operator::SLessEq: {
-          int result = operand_[0] <= operand_[1];
-          finalSSA_ = GenIntResultSSA(result, mod);
+          result = static_cast<int>(operand_[0]) <=
+                   static_cast<int>(operand_[1]);
           break;
         }
         case BinarySSA::Operator::SGreatEq: {
-          int result = operand_[0] >= operand_[1];
-          finalSSA_ = GenIntResultSSA(result, mod);
+          result = static_cast<int>(operand_[0]) >=
+                   static_cast<int>(operand_[1]);
+          break;
+        }
+        case BinarySSA::Operator::SRem: {
+          result =
+              static_cast<int>(operand_[0]) % static_cast<int>(operand_[1]);
+          break;
+        }
+
+        /*无符号相关 */
+        case BinarySSA::Operator::ULess: {
+          result = operand_[0] < operand_[1];
+          break;
+        }
+        case BinarySSA::Operator::UGreat: {
+          result = operand_[0] > operand_[1];
+          break;
+        }
+        case BinarySSA::Operator::ULessEq: {
+          result = operand_[0] <= operand_[1];
+          break;
+        }
+        case BinarySSA::Operator::UGreatEq: {
+          result = operand_[0] >= operand_[1];
+          break;
+        }
+        case BinarySSA::Operator::LShr: {
+          result = operand_[0] >> operand_[1];
+          break;
+        }
+        case BinarySSA::Operator::And: {
+          result = operand_[0] & operand_[1];
+          break;
+        }
+        case BinarySSA::Operator::Or: {
+          result = operand_[0] | operand_[1];
+          break;
+        }
+        case BinarySSA::Operator::Xor: {
+          result = operand_[0] ^ operand_[1];
+          break;
+        }
+        case BinarySSA::Operator::Shl: {
+          result = operand_[0] << operand_[1];
+          break;
+        }
+        case BinarySSA::Operator::UDiv: {
+          result = operand_[0] / operand_[1];
+          break;
+        }
+        case BinarySSA::Operator::URem: {
+          result = operand_[0] % operand_[1];
           break;
         }
         default:
+          operand_.clear();
           return;
       }
+      finalSSA_ = GenIntResultSSA(result, mod);
       changed_ = needFold_ = true;
     }
 
@@ -112,17 +171,14 @@ class ConstPropagation : public BlockPass {
 
  private:
   bool needFold_{}, changed_{};
-  std::vector<int> operand_;
+  std::vector<uint32_t> operand_;
   SSAPtr finalSSA_ = nullptr;
 
-  static inline bool Is2Power(int32_t num) {
-    return (((num) & (num - 1)) == 0);
-  }
-  static inline int Log2(int32_t num) { return (int)log2(num); }
   static inline TypePtr GenIntType() {
     return MakePrimType(PrimType::Type::Int32, false);
   }
-  static inline SSAPtr GenIntResultSSA(const int &result, Module &mod) {
+  static inline SSAPtr GenIntResultSSA(const uint32_t &result,
+                                       Module &mod) {
     auto type = GenIntType();
     SSAPtr resultSSA = mod.GetInt(result, type);
     return resultSSA;
