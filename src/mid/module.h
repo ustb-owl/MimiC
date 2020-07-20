@@ -19,9 +19,12 @@ namespace mimic::mid {
 class Module {
  public:
   Module() { Reset(); }
+  Module(const front::LogPtr &log) { Reset(log); }
 
   // reset module status & content
   void Reset();
+  // reset module status & content, and specify a default logger
+  void Reset(const front::LogPtr &log);
 
   // create a function declaration
   UserPtr CreateFunction(LinkageTypes link, const std::string &name,
@@ -195,24 +198,25 @@ class Module {
 
 // make a temporary module to perform IR insertion
 // IR should be inserted before the end of the specific block
-inline Module MakeModule(const BlockPtr &block) {
-  Module mod;
+inline Module MakeModule(const front::LogPtr &log, const BlockPtr &block) {
+  Module mod(log);
   mod.SetInsertPoint(block);
   return mod;
 }
 
 // make a temporary module to perform IR insertion
 // IR should be inserted before the specific position
-inline Module MakeModule(const BlockPtr &block, SSAPtrList::iterator pos) {
-  Module mod;
+inline Module MakeModule(const front::LogPtr &log, const BlockPtr &block,
+                         SSAPtrList::iterator pos) {
+  Module mod(log);
   mod.SetInsertPoint(block, pos);
   return mod;
 }
 
 // make a temporary module to create specific IR, for one-time use only
-inline Module MakeModule() {
+inline Module MakeModule(const front::LogPtr &log) {
   auto block = std::make_shared<BlockSSA>(nullptr, "");
-  return MakeModule(block);
+  return MakeModule(log, block);
 }
 
 }  // namespace mimic::mid

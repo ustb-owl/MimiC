@@ -48,7 +48,7 @@ void Module::SealGlobalCtor() {
   }
 }
 
-void Module::Reset()  {
+void Module::Reset() {
   vars_.clear();
   funcs_.clear();
   global_ctor_ = nullptr;
@@ -59,9 +59,12 @@ void Module::Reset()  {
   insert_pos_ = SSAPtrList::iterator();
   // reset logger stack
   while (!loggers_.empty()) loggers_.pop();
+}
+
+void Module::Reset(const LogPtr &log)  {
+  Reset();
   // add a default logger
-  // TODO: not very elegant, fixme?
-  loggers_.push(std::make_shared<Logger>());
+  loggers_.push(log);
 }
 
 UserPtr Module::CreateFunction(LinkageTypes link, const std::string &name,
