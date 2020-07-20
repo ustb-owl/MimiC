@@ -470,6 +470,13 @@ class PhiOperandSSA : public User {
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+
+  // setters
+  void set_value(const SSAPtr &value) { (*this)[0].set_value(value); }
+
+  // getters
+  const SSAPtr &value() const { return (*this)[0].value(); }
+  const SSAPtr &block() const { return (*this)[1].value(); }
 };
 
 // phi node
