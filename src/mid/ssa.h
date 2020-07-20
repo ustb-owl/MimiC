@@ -329,6 +329,9 @@ class BlockSSA : public User {
   // add a new instruction
   void AddInst(const SSAPtr &inst) { insts_.push_back(inst); }
 
+  // setters
+  void set_parent(const UserPtr &parent) { parent_ = parent; }
+
   // getters
   const std::string &name() const { return name_; }
   const UserPtr &parent() const { return parent_; }
