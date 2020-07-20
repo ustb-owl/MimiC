@@ -175,8 +175,7 @@ class Module {
   template <typename T, typename... Args>
   SSAPtr AddInst(Args &&... args) {
     auto inst = MakeSSA<T>(std::forward<Args>(args)...);
-    insert_pos_ = insert_block_->insts().insert(insert_pos_, inst);
-    ++insert_pos_;
+    insert_pos_ = ++insert_block_->insts().insert(insert_pos_, inst);
     return inst;
   }
 
