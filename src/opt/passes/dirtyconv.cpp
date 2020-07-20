@@ -45,7 +45,7 @@ class DirtyConversionPass : public ModulePass {
     ssa[0].value()->RunPass(*this);
     if (name_ != "starttime" && name_ != "stoptime") return;
     // create temp module
-    auto mod = MakeModule();
+    auto mod = MakeModule(ssa.logger());
     // create function declaration if does not exist
     auto &decl = name_ == "starttime" ? start_time_ : stop_time_;
     if (!decl) {
