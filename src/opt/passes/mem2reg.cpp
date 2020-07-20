@@ -75,9 +75,10 @@ class MemToRegPass : public FunctionPass {
       // check if current phi node is used by other user
       if (!phi->uses().empty()) {
         // add operands for current phi node
-        AddPhiOperands(phi, block, alloca);
-        // insert to block
-        block->insts().push_front(phi);
+        if (!AddPhiOperands(phi, block, alloca)) {
+          // insert to block
+          block->insts().push_front(phi);
+        }
       }
       created_phis_.pop();
     }
@@ -152,9 +153,9 @@ class MemToRegPass : public FunctionPass {
                      const SSAPtr &val);
   SSAPtr ReadVariable(BlockSSA *block, const SSAPtr &alloca);
   SSAPtr ReadVariableRecursive(BlockSSA *block, const SSAPtr &alloca);
-  void AddPhiOperands(const UserPtr &phi, BlockSSA *block,
+  bool AddPhiOperands(const UserPtr &phi, BlockSSA *block,
                       const SSAPtr &alloca);
-  void TryRemoveTrivialPhi(const UserPtr &phi);
+  bool TryRemoveTrivialPhi(const UserPtr &phi);
 
   // helper pass
   GetPromAllocaHelperPass prom_helper_;
@@ -223,8 +224,9 @@ SSAPtr MemToRegPass::ReadVariableRecursive(BlockSSA *block,
 }
 
 // add operands to specific phi node by looking up definition
+// return true if phi node is trivial
 // param block: block where the phi node is located
-void MemToRegPass::AddPhiOperands(const UserPtr &phi, BlockSSA *block,
+bool MemToRegPass::AddPhiOperands(const UserPtr &phi, BlockSSA *block,
                                   const SSAPtr &alloca) {
   phi->Reserve(block->size());
   // determine operands from predecessors
@@ -237,11 +239,12 @@ void MemToRegPass::AddPhiOperands(const UserPtr &phi, BlockSSA *block,
     auto mod = MakeModule(phi->logger());
     phi->AddValue(mod.CreatePhiOperand(val, pred));
   }
-  TryRemoveTrivialPhi(phi);
+  return TryRemoveTrivialPhi(phi);
 }
 
 // detect and recursively remove a trivial phi node
-void MemToRegPass::TryRemoveTrivialPhi(const UserPtr &phi) {
+// return true if phi node is trivial
+bool MemToRegPass::TryRemoveTrivialPhi(const UserPtr &phi) {
   SSAPtr same;
   for (const auto &i : *phi) {
     auto op_ptr = static_cast<PhiOperandSSA *>(i.value().get());
@@ -249,7 +252,7 @@ void MemToRegPass::TryRemoveTrivialPhi(const UserPtr &phi) {
     // unique value or self-reference
     if (op == same || op == phi) continue;
     // the phi node merges at least two values, not trivial
-    if (same) return;
+    if (same) return false;
     // remember current operand
     same = op;
   }
@@ -276,4 +279,5 @@ void MemToRegPass::TryRemoveTrivialPhi(const UserPtr &phi) {
       TryRemoveTrivialPhi(user);
     }
   }
+  return true;
 }
