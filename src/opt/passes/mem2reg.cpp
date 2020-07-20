@@ -234,7 +234,7 @@ void MemToRegPass::AddPhiOperands(const UserPtr &phi, BlockSSA *block,
     auto val = ReadVariable(pred.get(), alloca);
     assert(val->type()->IsIdentical(phi->type()));
     // create phi operand
-    auto mod = MakeModule();
+    auto mod = MakeModule(phi->logger());
     phi->AddValue(mod.CreatePhiOperand(val, pred));
   }
   TryRemoveTrivialPhi(phi);
@@ -255,7 +255,7 @@ void MemToRegPass::TryRemoveTrivialPhi(const UserPtr &phi) {
   }
   // check if is unreachable or in the start block
   if (!same) {
-    auto mod = MakeModule();
+    auto mod = MakeModule(phi->logger());
     same = mod.GetUndef(phi->type());
     phi->logger()->LogWarning("using uninitialized variable");
   }
