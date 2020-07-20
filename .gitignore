@@ -33,6 +33,10 @@ Temporary Items
 # VS Code
 .vscode
 
+# clion
+.idea
+cmake-build-debug
+
 # Build & Debug
 build
 debug
