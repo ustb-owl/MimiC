@@ -76,6 +76,8 @@ class Value {
   virtual void Dump(std::ostream &os, IdManager &idm) const = 0;
   // return true if current value is a constant
   virtual bool IsConst() const = 0;
+  // return true if current value is an undefined value
+  virtual bool IsUndef() const = 0;
   // get address value of current value
   virtual SSAPtr GetAddr() const { return nullptr; }
 

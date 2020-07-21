@@ -107,9 +107,11 @@ class RegisterPass : public PassInfo {
 };
 
 // register a pass
-#define REGISTER_PASS(cls, name, min_opt_level, stage) \
-  static_assert(!std::is_base_of_v<HelperPass, cls>,   \
-                "helper pass is unregisterable");      \
+#define REGISTER_PASS(cls, name, min_opt_level, stage)    \
+  static_assert(!std::is_base_of_v<HelperPass, cls>,      \
+                "helper pass is unregisterable");         \
+  static_assert(min_opt_level >= 0 && min_opt_level <= 3, \
+                "invalid optimization level");            \
   static RegisterPass<cls> pass_##name(#name, min_opt_level, stage)
 
 }  // namespace mimic::opt

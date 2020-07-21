@@ -2,6 +2,7 @@
 
 #include "opt/pass.h"
 #include "opt/passman.h"
+#include "opt/passes/helper/cast.h"
 
 using namespace mimic::mid;
 using namespace mimic::opt;
@@ -53,11 +54,11 @@ class BlockElimHelperPass : public HelperPass {
 
   void RunOn(PhiOperandSSA &ssa) override {
     // check if parent block is target block
-    if (ssa[1].value().get() == block_) {
+    if (ssa.block().get() == block_) {
       ssa.RemoveFromUser();
       // simplify parent phi node if necessary
       auto phi = ssa.uses().front()->user();
-      if (phi->size() == 1) phi->ReplaceBy(ssa[0].value());
+      if (phi->size() == 1) phi->ReplaceBy(ssa.value());
     }
   }
 
@@ -119,7 +120,7 @@ class CFGSimplifyPass : public FunctionPass {
       if (op_ == Op::IsJump) {
         // check if can be merged
         BlockMergeHelperPass helper;
-        auto target = static_cast<BlockSSA *>(target_.get());
+        auto target = SSACast<BlockSSA>(target_.get());
         if (helper.CheckAndMerge(&ssa, target)) {
           op_ = Op::ReplaceBlock;
           changed_ = true;
@@ -142,7 +143,7 @@ class CFGSimplifyPass : public FunctionPass {
   }
 
   void RunOn(JumpSSA &ssa) override {
-    target_ = ssa[0].value();
+    target_ = ssa.target();
     op_ = Op::IsJump;
   }
 

@@ -2,6 +2,7 @@
 
 #include "opt/pass.h"
 #include "opt/passman.h"
+#include "opt/passes/helper/cast.h"
 
 using namespace mimic::mid;
 using namespace mimic::opt;
@@ -12,7 +13,7 @@ namespace {
   simplify branch instructions
   this pass will:
   1.  replace branch with two equal targets to jump
-  2.  replace branch with constant condition to jump
+  2.  replace branch with constant/undefined condition to jump
 */
 class BranchSimplifyPass : public BlockPass {
  public:
@@ -42,20 +43,27 @@ class BranchSimplifyPass : public BlockPass {
   void RunOn(BranchSSA &ssa) override {
     if (scan_phi_) return;
     // record condition
-    cond_ = ssa[0].value();
+    cond_ = ssa.cond();
     // check if can be replaced
-    if (ssa[1].value() == ssa[2].value()) {
+    if (ssa.true_block() == ssa.false_block()) {
       replace_ = true;
-      target_ = ssa[1].value();
+      target_ = ssa.true_block();
     }
-    else if (cond_->IsConst()) {
+    else if (cond_->IsConst() || cond_->IsUndef()) {
       // mark as replaced
       replace_ = true;
-      cond_->RunPass(*this);
-      target_ = val_ ? ssa[1].value() : ssa[2].value();
+      // get value of condition
+      if (cond_->IsConst()) {
+        cond_->RunPass(*this);
+      }
+      else {
+        val_ = 0;
+      }
+      // get target of branch
+      target_ = val_ ? ssa.true_block() : ssa.false_block();
       // remove current block from non-target block's predecessor list
-      const auto &block = !val_ ? ssa[1].value() : ssa[2].value();
-      auto ptr = static_cast<BlockSSA *>(block.get());
+      const auto &block = !val_ ? ssa.true_block() : ssa.false_block();
+      auto ptr = SSACast<BlockSSA>(block.get());
       ptr->RemoveValue(cur_block_);
       // check & handle phi nodes in non-target block
       scan_phi_ = true;
@@ -89,8 +97,8 @@ class BranchSimplifyPass : public BlockPass {
   }
 
   void RunOn(PhiOperandSSA &ssa) override {
-    opr_val_ = ssa[0].value();
-    opr_block_ = ssa[1].value();
+    opr_val_ = ssa.value();
+    opr_block_ = ssa.block();
   }
 
  private:

@@ -36,20 +36,16 @@ std::optional<std::string_view> IdManager::GetName(const Value *v) const {
 }
 
 void Value::ReplaceBy(const SSAPtr &value) {
-  // copy an use list from current value
-  auto uses = uses_;
   // reroute all uses to new value
-  for (const auto &use : uses) {
-    use->set_value(value);
+  while (!uses_.empty()) {
+    uses_.front()->set_value(value);
   }
 }
 
 void Value::RemoveFromUser() {
-  // copy an use list from current value
-  auto uses = uses_;
   // remove from all users
-  for (const auto &use : uses) {
-    use->user()->RemoveValue(this);
+  while (!uses_.empty()) {
+    uses_.front()->user()->RemoveValue(this);
   }
 }
 
