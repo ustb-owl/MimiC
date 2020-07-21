@@ -74,11 +74,11 @@ class IsSSAHelperPass : public HelperPass {
 
 // check if value is specific type
 template <typename T>
-inline bool IsSSA(mid::Value *ssa) {
-  return __impl::IsSSAHelperPass::Check<T>(ssa);
+inline bool IsSSA(const mid::Value *ssa) {
+  return __impl::IsSSAHelperPass::Check<T>(const_cast<mid::Value *>(ssa));
 }
 template <typename T>
-inline bool IsSSA(mid::Value &ssa) {
+inline bool IsSSA(const mid::Value &ssa) {
   return IsSSA<T>(&ssa);
 }
 template <typename T>
@@ -87,6 +87,10 @@ inline bool IsSSA(const mid::SSAPtr &ssa) {
 }
 
 // perform dynamic casting on SSA values
+template <typename T>
+inline const T *SSADynCast(const mid::Value *ssa) {
+  return IsSSA<T>(ssa) ? static_cast<const T *>(ssa) : nullptr;
+}
 template <typename T>
 inline T *SSADynCast(mid::Value *ssa) {
   return IsSSA<T>(ssa) ? static_cast<T *>(ssa) : nullptr;
@@ -97,6 +101,11 @@ inline std::shared_ptr<T> SSADynCast(const mid::SSAPtr &ssa) {
 }
 
 // perform static casting on SSA values
+template <typename T>
+inline const T *SSACast(const mid::Value *ssa) {
+  assert(IsSSA<T>(ssa) && "SSACast failed");
+  return static_cast<const T *>(ssa);
+}
 template <typename T>
 inline T *SSACast(mid::Value *ssa) {
   assert(IsSSA<T>(ssa) && "SSACast failed");
