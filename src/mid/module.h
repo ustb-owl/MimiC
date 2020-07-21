@@ -19,9 +19,12 @@ namespace mimic::mid {
 class Module {
  public:
   Module() { Reset(); }
+  Module(const front::LogPtr &log) { Reset(log); }
 
   // reset module status & content
   void Reset();
+  // reset module status & content, and specify a default logger
+  void Reset(const front::LogPtr &log);
 
   // create a function declaration
   UserPtr CreateFunction(LinkageTypes link, const std::string &name,
@@ -130,6 +133,8 @@ class Module {
   SSAPtr GetStruct(const SSAPtrList &elems, const define::TypePtr &type);
   // get a constant array
   SSAPtr GetArray(const SSAPtrList &elems, const define::TypePtr &type);
+  // get an undefined value
+  SSAPtr GetUndef(const define::TypePtr &type);
 
   // set insert point to end of specific basic block
   void SetInsertPoint(const BlockPtr &block) {
@@ -146,6 +151,8 @@ class Module {
   const BlockPtr &GetInsertPoint() const { return insert_block_; }
   // set current context (logger)
   xstl::Guard SetContext(const front::Logger &logger);
+  // set current context (pointer to logger)
+  xstl::Guard SetContext(const front::LogPtr &logger);
   // set insert point to global constructor
   xstl::Guard EnterGlobalCtor();
 
@@ -170,8 +177,7 @@ class Module {
   template <typename T, typename... Args>
   SSAPtr AddInst(Args &&... args) {
     auto inst = MakeSSA<T>(std::forward<Args>(args)...);
-    insert_pos_ = insert_block_->insts().insert(insert_pos_, inst);
-    ++insert_pos_;
+    insert_pos_ = ++insert_block_->insts().insert(insert_pos_, inst);
     return inst;
   }
 
@@ -193,24 +199,25 @@ class Module {
 
 // make a temporary module to perform IR insertion
 // IR should be inserted before the end of the specific block
-inline Module MakeModule(const BlockPtr &block) {
-  Module mod;
+inline Module MakeModule(const front::LogPtr &log, const BlockPtr &block) {
+  Module mod(log);
   mod.SetInsertPoint(block);
   return mod;
 }
 
 // make a temporary module to perform IR insertion
 // IR should be inserted before the specific position
-inline Module MakeModule(const BlockPtr &block, SSAPtrList::iterator pos) {
-  Module mod;
+inline Module MakeModule(const front::LogPtr &log, const BlockPtr &block,
+                         SSAPtrList::iterator pos) {
+  Module mod(log);
   mod.SetInsertPoint(block, pos);
   return mod;
 }
 
 // make a temporary module to create specific IR, for one-time use only
-inline Module MakeModule() {
+inline Module MakeModule(const front::LogPtr &log) {
   auto block = std::make_shared<BlockSSA>(nullptr, "");
-  return MakeModule(block);
+  return MakeModule(log, block);
 }
 
 }  // namespace mimic::mid

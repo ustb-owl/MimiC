@@ -48,7 +48,7 @@ void Module::SealGlobalCtor() {
   }
 }
 
-void Module::Reset()  {
+void Module::Reset() {
   vars_.clear();
   funcs_.clear();
   global_ctor_ = nullptr;
@@ -59,9 +59,12 @@ void Module::Reset()  {
   insert_pos_ = SSAPtrList::iterator();
   // reset logger stack
   while (!loggers_.empty()) loggers_.pop();
+}
+
+void Module::Reset(const LogPtr &log)  {
+  Reset();
   // add a default logger
-  // TODO: not very elegant, fixme?
-  loggers_.push(std::make_shared<Logger>());
+  loggers_.push(log);
 }
 
 UserPtr Module::CreateFunction(LinkageTypes link, const std::string &name,
@@ -505,9 +508,21 @@ SSAPtr Module::GetArray(const SSAPtrList &elems, const TypePtr &type) {
   return const_array;
 }
 
+SSAPtr Module::GetUndef(const TypePtr &type) {
+  // assertion for type checking
+  assert(!type->IsVoid());
+  // create undefined value
+  auto undef = MakeSSA<UndefSSA>();
+  undef->set_type(type);
+  return undef;
+}
+
 xstl::Guard Module::SetContext(const Logger &logger) {
-  auto log = std::make_shared<Logger>(logger);
-  loggers_.push(log);
+  return SetContext(std::make_shared<Logger>(logger));
+}
+
+xstl::Guard Module::SetContext(const LogPtr &logger) {
+  loggers_.push(logger);
   return xstl::Guard([this] { loggers_.pop(); });
 }
 
