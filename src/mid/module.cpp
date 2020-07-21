@@ -518,8 +518,11 @@ SSAPtr Module::GetUndef(const TypePtr &type) {
 }
 
 xstl::Guard Module::SetContext(const Logger &logger) {
-  auto log = std::make_shared<Logger>(logger);
-  loggers_.push(log);
+  return SetContext(std::make_shared<Logger>(logger));
+}
+
+xstl::Guard Module::SetContext(const LogPtr &logger) {
+  loggers_.push(logger);
   return xstl::Guard([this] { loggers_.pop(); });
 }
 
