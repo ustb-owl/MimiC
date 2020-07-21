@@ -1,4 +1,5 @@
 #include "mid/ssa.h"
+#include "opt/passes/helper/cast.h"
 
 #include <iomanip>
 #include <streambuf>
@@ -79,6 +80,9 @@ void ConvertChar(std::ostream &os, char c) {
 inline void PrintId(std::ostream &os, IdManager &idm, const Value *val) {
   if (auto name = idm.GetName(val)) {
     os << '@' << *name;
+    if (mimic::opt::IsSSA<BlockSSA>(val)) {
+      os << '.' << idm.GetId(val);
+    }
   }
   else {
     os << '%' << idm.GetId(val);
