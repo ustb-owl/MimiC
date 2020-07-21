@@ -2,6 +2,7 @@
 
 #include "opt/pass.h"
 #include "opt/passman.h"
+#include "opt/passes/helper/cast.h"
 
 using namespace mimic::mid;
 using namespace mimic::opt;
@@ -62,7 +63,7 @@ class BranchSimplifyPass : public BlockPass {
       target_ = val_ ? ssa[1].value() : ssa[2].value();
       // remove current block from non-target block's predecessor list
       const auto &block = !val_ ? ssa[1].value() : ssa[2].value();
-      auto ptr = static_cast<BlockSSA *>(block.get());
+      auto ptr = SSACast<BlockSSA>(block.get());
       ptr->RemoveValue(cur_block_);
       // check & handle phi nodes in non-target block
       scan_phi_ = true;

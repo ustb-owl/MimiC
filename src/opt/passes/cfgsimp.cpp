@@ -2,6 +2,7 @@
 
 #include "opt/pass.h"
 #include "opt/passman.h"
+#include "opt/passes/helper/cast.h"
 
 using namespace mimic::mid;
 using namespace mimic::opt;
@@ -119,7 +120,7 @@ class CFGSimplifyPass : public FunctionPass {
       if (op_ == Op::IsJump) {
         // check if can be merged
         BlockMergeHelperPass helper;
-        auto target = static_cast<BlockSSA *>(target_.get());
+        auto target = SSACast<BlockSSA>(target_.get());
         if (helper.CheckAndMerge(&ssa, target)) {
           op_ = Op::ReplaceBlock;
           changed_ = true;
