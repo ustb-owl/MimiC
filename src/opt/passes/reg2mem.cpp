@@ -189,21 +189,21 @@ class RegToMemPass : public FunctionPass {
   bool RunOnFunction(const UserPtr &func) override {
     // skip declarations
     if (func->empty()) return false;
+    // find target instructions
+    GetInstsHelperPass insts(func);
+    if (insts.escaped_insts().empty()) return false;
+    insts_ = &insts;
     // try to break critical edges in current function
     CriticalEdgeBreakerHelperPass breaker;
     breaker.BreakOn(func);
     // get entry block
     auto entry = SSACast<BlockSSA>((*func)[0].value());
     assert(entry->empty());
-    // find target instructions
-    GetInstsHelperPass insts(func);
-    insts_ = &insts;
     // demote escaped instructions
     for (const auto &i : insts.escaped_insts()) DemoteRegToStack(i, entry);
     // demote phi nodes
     for (const auto &i : insts.phis()) DemotePhiToStack(i, entry);
-    // NOTE: this pass will run only once
-    return false;
+    return true;
   }
 
  private:
