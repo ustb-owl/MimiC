@@ -111,8 +111,12 @@ void PassManager::ShowInfo(std::ostream &os) const {
   for (const auto &i : GetPasses()) {
     os << "  ";
     os << std::setw(20) << std::left << i->name();
+<<<<<<< HEAD
     os << "min_opt_level = " << i->min_opt_level() << ", ";
     os << "pass_stage = " << i->stage() << std::endl;
+=======
+    os << "min_opt_level = " << i->min_opt_level() << std::endl;
+>>>>>>> daacd85... (passman) removed option 'is_analysis'
   }
   os << std::endl;
   // show enabled passes

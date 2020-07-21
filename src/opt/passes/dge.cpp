@@ -66,5 +66,9 @@ class DeadGlobalValEliminationPass : public ModulePass {
 }  // namespace
 
 // register current pass
+<<<<<<< HEAD
 REGISTER_PASS(DeadGlobalValEliminationPass, dead_glob_elim, 0,
               PassStage::PreOpt | PassStage::Opt);
+=======
+REGISTER_PASS(DeadGlobalValEliminationPass, dead_glob_elim, 0);
+>>>>>>> daacd85... (passman) removed option 'is_analysis'

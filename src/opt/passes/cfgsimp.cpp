@@ -160,5 +160,9 @@ class CFGSimplifyPass : public FunctionPass {
 }  // namespace
 
 // register current passs
+<<<<<<< HEAD
 REGISTER_PASS(CFGSimplifyPass, cfg_simplify, 1,
               PassStage::PreOpt | PassStage::Opt | PassStage::PostOpt);
+=======
+REGISTER_PASS(CFGSimplifyPass, cfg_simplify, 1);
+>>>>>>> daacd85... (passman) removed option 'is_analysis'
