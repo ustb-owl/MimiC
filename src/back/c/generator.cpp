@@ -331,7 +331,7 @@ void CCodeGen::GenerateOn(JumpSSA &ssa) {
 
 void CCodeGen::GenerateOn(ReturnSSA &ssa) {
   code_ << kIndent << "return";
-  if (ssa.value()) code_ << ' ' << GetLabel(ssa.value());
+  if (ssa.value()) code_ << ' ' << GetVal(ssa.value());
   GenEnd(ssa);
 }
 
