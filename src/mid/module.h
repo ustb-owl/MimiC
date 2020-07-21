@@ -151,6 +151,8 @@ class Module {
   const BlockPtr &GetInsertPoint() const { return insert_block_; }
   // set current context (logger)
   xstl::Guard SetContext(const front::Logger &logger);
+  // set current context (pointer to logger)
+  xstl::Guard SetContext(const front::LogPtr &logger);
   // set insert point to global constructor
   xstl::Guard EnterGlobalCtor();
 
