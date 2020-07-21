@@ -140,7 +140,7 @@ class AlgebraicSimplification : public BlockPass {
       else if (right->IsConst()) {
         if (ssa.op() == BinarySSA::Operator::SDiv) {
           if (Is2Power(operand_[0])) {  // 处理2的幂
-            auto mod = MakeModule();
+            auto mod = MakeModule(ssa.logger());
             auto type = MakePrimType(PrimType::Type::Int32, false);
             SSAPtr rhs = mod.GetInt(Log2(operand_[0]), type);
             auto newBinarySSA = mod.CreateShr(left, rhs);

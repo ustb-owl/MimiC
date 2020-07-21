@@ -49,7 +49,7 @@ class ConstPropagation : public BlockPass {
     right->RunPass(*this);
 
     if (operand_.size() == 2) {
-      auto mod = MakeModule();
+      auto mod = MakeModule(ssa.logger());
       uint32_t result;
       switch (ssa.op()) {
         case BinarySSA::Operator::NotEq: {
