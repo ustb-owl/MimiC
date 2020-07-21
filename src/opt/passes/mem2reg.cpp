@@ -117,7 +117,7 @@ class MemToRegPass : public FunctionPass {
   }
 
   void RunOn(LoadSSA &ssa) override {
-    const auto &alloca = ssa[0].value();
+    const auto &alloca = ssa.ptr();
     // check if is promotable
     if (!prom_helper_.IsPromotable(alloca)) return;
     // read value from local definitions
@@ -128,11 +128,11 @@ class MemToRegPass : public FunctionPass {
   }
 
   void RunOn(StoreSSA &ssa) override {
-    const auto &alloca = ssa[1].value();
+    const auto &alloca = ssa.ptr();
     // check if is promotable
     if (!prom_helper_.IsPromotable(alloca)) return;
     // write value
-    WriteVariable(cur_block_, alloca, ssa[0].value());
+    WriteVariable(cur_block_, alloca, ssa.value());
     // mark as removed
     remove_flag_ = true;
   }
@@ -248,7 +248,7 @@ bool MemToRegPass::TryRemoveTrivialPhi(const UserPtr &phi) {
   SSAPtr same;
   for (const auto &i : *phi) {
     auto op_ptr = SSACast<PhiOperandSSA>(i.value().get());
-    const auto &op = (*op_ptr)[0].value();
+    const auto &op = op_ptr->value();
     // unique value or self-reference
     if (op == same || op == phi) continue;
     // the phi node merges at least two values, not trivial

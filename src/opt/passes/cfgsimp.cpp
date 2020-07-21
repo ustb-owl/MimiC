@@ -54,11 +54,11 @@ class BlockElimHelperPass : public HelperPass {
 
   void RunOn(PhiOperandSSA &ssa) override {
     // check if parent block is target block
-    if (ssa[1].value().get() == block_) {
+    if (ssa.block().get() == block_) {
       ssa.RemoveFromUser();
       // simplify parent phi node if necessary
       auto phi = ssa.uses().front()->user();
-      if (phi->size() == 1) phi->ReplaceBy(ssa[0].value());
+      if (phi->size() == 1) phi->ReplaceBy(ssa.value());
     }
   }
 
@@ -143,7 +143,7 @@ class CFGSimplifyPass : public FunctionPass {
   }
 
   void RunOn(JumpSSA &ssa) override {
-    target_ = ssa[0].value();
+    target_ = ssa.target();
     op_ = Op::IsJump;
   }
 

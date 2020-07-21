@@ -42,7 +42,7 @@ class DirtyConversionPass : public ModulePass {
   void RunOn(CallSSA &ssa) override {
     // check if is target function call
     if (ssa.size() != 1) return;
-    ssa[0].value()->RunPass(*this);
+    ssa.callee()->RunPass(*this);
     if (name_ != "starttime" && name_ != "stoptime") return;
     // create temp module
     auto mod = MakeModule(ssa.logger());
@@ -59,7 +59,7 @@ class DirtyConversionPass : public ModulePass {
                                 std::move(type));
     }
     // modify current call instruction
-    ssa[0].set_value(decl);
+    ssa.set_callee(decl);
     ssa.AddValue(mod.GetInt32(ssa.logger()->line_pos()));
     if (!changed_) changed_ = true;
   }

@@ -77,7 +77,7 @@ class BlockMergePass : public FunctionPass {
 
   void RunOn(JumpSSA &ssa) override {
     // get target
-    target_ = SSACast<BlockSSA>(ssa[0].value().get());
+    target_ = SSACast<BlockSSA>(ssa.target().get());
     // check if can be merged
     merge_flag_ = target_->size() == 1;
   }

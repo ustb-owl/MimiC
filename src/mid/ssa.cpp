@@ -112,13 +112,6 @@ inline void DumpWithType(std::ostream &os, IdManager &idm,
   DumpVal(os, idm, val);
 }
 
-inline void DumpWithType(std::ostream &os, IdManager &idm,
-                         const Use &use) {
-  PrintType(os, use.value()->type());
-  os << ' ';
-  DumpVal(os, idm, use);
-}
-
 // print indent, id and assign
 // return true if in expression
 inline bool PrintPrefix(std::ostream &os, IdManager &idm,
@@ -137,16 +130,16 @@ void LoadSSA::Dump(std::ostream &os, IdManager &idm) const {
   os << "load ";
   PrintType(os, type());
   os << ", ";
-  DumpWithType(os, idm, (*this)[0]);
+  DumpWithType(os, idm, ptr());
   os << std::endl;
 }
 
 void StoreSSA::Dump(std::ostream &os, IdManager &idm) const {
   auto inex = InExpr();
   os << kIndent << "store ";
-  DumpWithType(os, idm, (*this)[0]);
+  DumpWithType(os, idm, value());
   os << ", ";
-  DumpWithType(os, idm, (*this)[1]);
+  DumpWithType(os, idm, ptr());
   os << std::endl;
 }
 
@@ -160,9 +153,9 @@ void AccessSSA::Dump(std::ostream &os, IdManager &idm) const {
   else {
     os << "elem ";
   }
-  DumpWithType(os, idm, (*this)[0]);
+  DumpWithType(os, idm, ptr());
   os << ", ";
-  DumpVal(os, idm, (*this)[1]);
+  DumpVal(os, idm, index());
   os << std::endl;
 }
 
@@ -172,9 +165,9 @@ void BinarySSA::Dump(std::ostream &os, IdManager &idm) const {
   os << kBinOps[static_cast<int>(op_)] << ' ';
   PrintType(os, type());
   os << ' ';
-  DumpVal(os, idm, (*this)[0]);
+  DumpVal(os, idm, lhs());
   os << ", ";
-  DumpVal(os, idm, (*this)[1]);
+  DumpVal(os, idm, rhs());
   os << std::endl;
 }
 
@@ -184,7 +177,7 @@ void UnarySSA::Dump(std::ostream &os, IdManager &idm) const {
   os << kUnaOps[static_cast<int>(op_)] << ' ';
   PrintType(os, type());
   os << ' ';
-  DumpVal(os, idm, (*this)[0]);
+  DumpVal(os, idm, opr());
   os << std::endl;
 }
 
@@ -194,7 +187,7 @@ void CastSSA::Dump(std::ostream &os, IdManager &idm) const {
   os << "cast ";
   PrintType(os, type());
   os << ' ';
-  DumpVal(os, idm, (*this)[0]);
+  DumpVal(os, idm, opr());
   if (!IsConst()) os << std::endl;
 }
 
@@ -202,7 +195,7 @@ void CallSSA::Dump(std::ostream &os, IdManager &idm) const {
   if (PrintPrefix(os, idm, this)) return;
   auto inex = InExpr();
   os << "call ";
-  DumpWithType(os, idm, (*this)[0].value());
+  DumpWithType(os, idm, callee());
   for (std::size_t i = 1; i < size(); ++i) {
     os << ", ";
     DumpVal(os, idm, (*this)[i]);
@@ -213,29 +206,29 @@ void CallSSA::Dump(std::ostream &os, IdManager &idm) const {
 void BranchSSA::Dump(std::ostream &os, IdManager &idm) const {
   auto inex = InExpr();
   os << kIndent << "branch ";
-  DumpVal(os, idm, (*this)[0]);
+  DumpVal(os, idm, cond());
   os << ", ";
-  DumpVal(os, idm, (*this)[1]);
+  DumpVal(os, idm, true_block());
   os << ", ";
-  DumpVal(os, idm, (*this)[2]);
+  DumpVal(os, idm, false_block());
   os << std::endl;
 }
 
 void JumpSSA::Dump(std::ostream &os, IdManager &idm) const {
   auto inex = InExpr();
   os << kIndent << "jump ";
-  DumpVal(os, idm, (*this)[0]);
+  DumpVal(os, idm, target());
   os << std::endl;
 }
 
 void ReturnSSA::Dump(std::ostream &os, IdManager &idm) const {
   auto inex = InExpr();
   os << kIndent << "return ";
-  if (!(*this)[0].value()) {
+  if (!value()) {
     os << "void";
   }
   else {
-    DumpWithType(os, idm, (*this)[0]);
+    DumpWithType(os, idm, value());
   }
   os << std::endl;
 }
@@ -246,17 +239,17 @@ void FunctionSSA::Dump(std::ostream &os, IdManager &idm) const {
     PrintId(os, idm, this);
     return;
   }
-  if (size()) {
-    os << "define ";
+  if (is_decl()) {
+    os << "declare ";
   }
   else {
-    os << "declare ";
+    os << "define ";
   }
   os << kLinkTypes[static_cast<int>(link_)] << ' ';
   PrintType(os, type());
   os << ' ';
   PrintId(os, idm, this);
-  if (size()) {
+  if (!is_decl()) {
     idm.ResetId();
     // log block name first
     {
@@ -278,10 +271,10 @@ void GlobalVarSSA::Dump(std::ostream &os, IdManager &idm) const {
   os << " = " << kLinkTypes[static_cast<int>(link_)] << " global ";
   os << (is_var_ ? "var" : "const") << ' ';
   PrintType(os, type());
-  if ((*this)[0].value()) {
+  if (init()) {
     auto inex = InExpr();
     os << ", ";
-    DumpVal(os, idm, (*this)[0]);
+    DumpVal(os, idm, init());
   }
   os << std::endl;
 }
@@ -369,9 +362,9 @@ void ConstZeroSSA::Dump(std::ostream &os, IdManager &idm) const {
 void PhiOperandSSA::Dump(std::ostream &os, IdManager &idm) const {
   assert(in_expr);
   os << '[';
-  DumpVal(os, idm, (*this)[0]);
+  DumpVal(os, idm, value());
   os << ", ";
-  DumpVal(os, idm, (*this)[1]);
+  DumpVal(os, idm, block());
   os << ']';
 }
 
@@ -389,11 +382,11 @@ void SelectSSA::Dump(std::ostream &os, IdManager &idm) const {
   if (PrintPrefix(os, idm, this)) return;
   auto inex = InExpr();
   os << "select ";
-  DumpWithType(os, idm, (*this)[0]);
+  DumpWithType(os, idm, cond());
   os << ", ";
-  DumpWithType(os, idm, (*this)[1]);
+  DumpWithType(os, idm, true_val());
   os << ", ";
-  DumpWithType(os, idm, (*this)[2]);
+  DumpWithType(os, idm, false_val());
   os << std::endl;
 }
 
