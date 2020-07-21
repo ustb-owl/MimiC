@@ -7,6 +7,13 @@
 
 #include "mid/usedef.h"
 
+// declare a getter/setter method of SSA
+#define DECL_GETTER_SETTER(name, idx)                         \
+  const SSAPtr &name() const { return (*this)[idx].value(); } \
+  void set_##name(const SSAPtr &name) {                       \
+    return (*this)[idx].set_value(name);                      \
+  }
+
 namespace mimic::mid {
 
 // forward declarations
@@ -34,10 +41,13 @@ class LoadSSA : public User {
   void Dump(std::ostream &os, IdManager &idm) const override;
   SSAPtr GetAddr() const override { return addr_; }
   bool IsConst() const override { return false; }
-  bool IsUndef() const override { return (*this)[0].value()->IsUndef(); }
+  bool IsUndef() const override { return ptr()->IsUndef(); }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+
+  // getter/setter
+  DECL_GETTER_SETTER(ptr, 0);
 
  private:
   SSAPtr addr_;
@@ -59,6 +69,10 @@ class StoreSSA : public User {
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+
+  // getter/setter
+  DECL_GETTER_SETTER(value, 0);
+  DECL_GETTER_SETTER(ptr, 1);
 };
 
 // element accessing (load effective address)
@@ -77,11 +91,15 @@ class AccessSSA : public User {
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
   bool IsUndef() const override {
-    return (*this)[0].value()->IsUndef() || (*this)[1].value()->IsUndef();
+    return ptr()->IsUndef() || index()->IsUndef();
   }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+
+  // getter/setter
+  DECL_GETTER_SETTER(ptr, 0);
+  DECL_GETTER_SETTER(index, 1);
 
   // getters
   AccessType acc_type() const { return acc_type_; }
@@ -109,11 +127,15 @@ class BinarySSA : public User {
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
   bool IsUndef() const override {
-    return (*this)[0].value()->IsUndef() || (*this)[1].value()->IsUndef();
+    return lhs()->IsUndef() || rhs()->IsUndef();
   }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+
+  // getter/setter
+  DECL_GETTER_SETTER(lhs, 0);
+  DECL_GETTER_SETTER(rhs, 1);
 
   // getters
   Operator op() const { return op_; }
@@ -137,10 +159,13 @@ class UnarySSA : public User {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
-  bool IsUndef() const override { return (*this)[0].value()->IsUndef(); }
+  bool IsUndef() const override { return opr()->IsUndef(); }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+
+  // getter/setter
+  DECL_GETTER_SETTER(opr, 0);
 
   // getters
   Operator op() const { return op_; }
@@ -159,11 +184,14 @@ class CastSSA : public User {
   }
 
   void Dump(std::ostream &os, IdManager &idm) const override;
-  bool IsConst() const override { return (*this)[0].value()->IsConst(); }
-  bool IsUndef() const override { return (*this)[0].value()->IsUndef(); }
+  bool IsConst() const override { return opr()->IsConst(); }
+  bool IsUndef() const override { return opr()->IsUndef(); }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+
+  // getter/setter
+  DECL_GETTER_SETTER(opr, 0);
 };
 
 // function call
@@ -178,10 +206,13 @@ class CallSSA : public User {
 
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
-  bool IsUndef() const override { return (*this)[0].value()->IsUndef(); }
+  bool IsUndef() const override { return callee()->IsUndef(); }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+
+  // getter/setter
+  DECL_GETTER_SETTER(callee, 0);
 };
 
 // conditional branch
@@ -202,6 +233,11 @@ class BranchSSA : public User {
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+
+  // getter/setter
+  DECL_GETTER_SETTER(cond, 0);
+  DECL_GETTER_SETTER(true_block, 1);
+  DECL_GETTER_SETTER(false_block, 2);
 };
 
 // unconditional jump
@@ -219,6 +255,9 @@ class JumpSSA : public User {
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+
+  // getter/setter
+  DECL_GETTER_SETTER(target, 0);
 };
 
 // function return
@@ -237,6 +276,9 @@ class ReturnSSA : public User {
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+
+  // getter/setter
+  DECL_GETTER_SETTER(value, 0);
 };
 
 // function definition/declaration
@@ -253,12 +295,16 @@ class FunctionSSA : public User {
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
 
+  // getter/setter
+  DECL_GETTER_SETTER(entry, 0);
+
   // setters
   void set_link(LinkageTypes link) { link_ = link; }
 
   // getters
   LinkageTypes link() const { return link_; }
   const std::string &name() const { return name_; }
+  bool is_decl() const { return empty(); }
 
  private:
   LinkageTypes link_;
@@ -283,15 +329,16 @@ class GlobalVarSSA : public User {
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
 
+  // getter/setter
+  DECL_GETTER_SETTER(init, 0);
+
   // setters
   void set_link(LinkageTypes link) { link_ = link; }
-  void set_init(const SSAPtr &init) { (*this)[0].set_value(init); }
 
   // getters
   LinkageTypes link() const { return link_; }
   bool is_var() const { return is_var_; }
   const std::string &name() const { return name_; }
-  const SSAPtr &init() const { return (*this)[0].value(); }
 
  private:
   LinkageTypes link_;
@@ -471,12 +518,9 @@ class PhiOperandSSA : public User {
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
 
-  // setters
-  void set_value(const SSAPtr &value) { (*this)[0].set_value(value); }
-
-  // getters
-  const SSAPtr &value() const { return (*this)[0].value(); }
-  const SSAPtr &block() const { return (*this)[1].value(); }
+  // getter/setter
+  DECL_GETTER_SETTER(value, 0);
+  DECL_GETTER_SETTER(block, 1);
 };
 
 // phi node
@@ -516,12 +560,17 @@ class SelectSSA : public User {
   void Dump(std::ostream &os, IdManager &idm) const override;
   bool IsConst() const override { return false; }
   bool IsUndef() const override {
-    return (*this)[0].value()->IsUndef() ||
-           ((*this)[1].value()->IsUndef() && (*this)[2].value()->IsUndef());
+    return cond()->IsUndef() ||
+           (true_val()->IsUndef() && false_val()->IsUndef());
   }
 
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
+
+  // getter/setter
+  DECL_GETTER_SETTER(cond, 0);
+  DECL_GETTER_SETTER(true_val, 1);
+  DECL_GETTER_SETTER(false_val, 2);
 };
 
 // undefined value
@@ -538,5 +587,7 @@ class UndefSSA : public Value {
 };
 
 }  // namespace mimic::mid
+
+#undef DECL_GETTER_SETTER
 
 #endif  // MIMIC_MID_SSA_H_

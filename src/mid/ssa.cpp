@@ -412,7 +412,7 @@ std::unordered_set<const Value *> visited_vals;
 }  // namespace
 
 bool PhiOperandSSA::IsUndef() const {
-  const auto &val = (*this)[0].value();
+  const auto &val = value();
   // break cycle
   auto [it, succ] = visited_vals.insert(val.get());
   if (!succ) return true;
