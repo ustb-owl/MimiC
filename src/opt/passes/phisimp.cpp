@@ -39,17 +39,29 @@ class PhiSimplifyPass : public BlockPass {
   }
 
   void RunOn(PhiSSA &ssa) override {
-    // scan all operands
     SSAPtr same;
+    std::uint32_t same_val;
+    // scan all operands
     for (const auto &i : ssa) {
       auto op_ptr = SSACast<PhiOperandSSA>(i.value().get());
       const auto &op = op_ptr->value();
       // unique value or self-reference
       if (op == same || op.get() == &ssa) continue;
+      // check if is constant
+      if (op->IsConst() && same && same->IsConst()) {
+        op->RunPass(*this);
+        // same constant, continue
+        if (val_ == same_val) continue;
+      }
       // the phi node merges at least two values, not trivial
       if (same) return;
       // remember current operand
       same = op;
+      if (same->IsConst()) {
+        assert(same->type()->IsInteger());
+        same->RunPass(*this);
+        same_val = val_;
+      }
     }
     // check if is unreachable or in the start block
     if (!same) {
@@ -62,8 +74,12 @@ class PhiSimplifyPass : public BlockPass {
     is_trivial_ = true;
   }
 
+  void RunOn(ConstIntSSA &ssa) override { val_ = ssa.value(); }
+  void RunOn(ConstZeroSSA &ssa) override { val_ = 0; }
+
  private:
   bool is_trivial_;
+  std::uint32_t val_;
 };
 
 }  // namespace
