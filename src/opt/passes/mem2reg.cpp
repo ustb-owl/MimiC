@@ -63,7 +63,7 @@ class MemToRegPass : public FunctionPass {
   bool RunOnFunction(const UserPtr &func) override {
     // check if need to run
     if (func->empty()) return false;
-    auto entry = static_cast<BlockSSA *>((*func)[0].value().get());
+    auto entry = SSACast<BlockSSA>((*func)[0].value().get());
     if (!prom_helper_.ScanAlloca(entry)) return false;
     // traverse all blocks
     for (const auto &i : *func) {
@@ -212,7 +212,7 @@ SSAPtr MemToRegPass::ReadVariableRecursive(BlockSSA *block,
   SSAPtr val;
   if (block->size() == 1) {
     // block only has one predecessor, no phi needed
-    auto pred = static_cast<BlockSSA *>((*block)[0].value().get());
+    auto pred = SSACast<BlockSSA>((*block)[0].value().get());
     val = ReadVariable(pred, alloca);
   }
   else {
@@ -247,7 +247,7 @@ bool MemToRegPass::AddPhiOperands(const UserPtr &phi, BlockSSA *block,
 bool MemToRegPass::TryRemoveTrivialPhi(const UserPtr &phi) {
   SSAPtr same;
   for (const auto &i : *phi) {
-    auto op_ptr = static_cast<PhiOperandSSA *>(i.value().get());
+    auto op_ptr = SSACast<PhiOperandSSA>(i.value().get());
     const auto &op = (*op_ptr)[0].value();
     // unique value or self-reference
     if (op == same || op == phi) continue;

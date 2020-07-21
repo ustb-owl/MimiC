@@ -1,5 +1,7 @@
 #include "opt/passes/helper/blkiter.h"
 
+#include "opt/passes/helper/cast.h"
+
 using namespace mimic::mid;
 using namespace mimic::opt::__impl;
 
@@ -17,7 +19,7 @@ void BFSTraverseHelperPass::NextBlock() {
 }
 
 void BFSTraverseHelperPass::Push(const SSAPtr &block) {
-  auto ptr = static_cast<BlockSSA *>(block.get());
+  auto ptr = SSACast<BlockSSA>(block.get());
   if (visited_.insert(ptr).second) queue_.push(ptr);
 }
 

@@ -111,23 +111,23 @@ class GetInstsHelperPass : public HelperPass {
   GetInstsHelperPass(const UserPtr &func) { func->RunPass(*this); }
 
   void RunOn(FunctionSSA &ssa) override {
-    entry_ = static_cast<BlockSSA *>(ssa[0].value().get());
+    entry_ = SSACast<BlockSSA>(ssa[0].value().get());
     // traverse all blocks to get parent relationship
     for (const auto &use : ssa) {
-      auto block = static_cast<BlockSSA *>(use.value().get());
+      auto block = SSACast<BlockSSA>(use.value().get());
       for (const auto &i : block->insts()) {
         parent_map_.insert({i.get(), block});
       }
     }
     // traverse all blocks to get escaped instructions & phi nodes
     for (const auto &use : ssa) {
-      auto block = static_cast<BlockSSA *>(use.value().get());
+      auto block = SSACast<BlockSSA>(use.value().get());
       for (const auto &i : block->insts()) {
         ignore_ = is_phi_ = false;
         i->RunPass(*this);
         if (is_phi_) {
           escaped_insts_.push_back(i.get());
-          phis_.push_back(static_cast<PhiSSA *>(i.get()));
+          phis_.push_back(SSACast<PhiSSA>(i.get()));
         }
         else if (!ignore_ && IsEscaped(i)) {
           escaped_insts_.push_back(i.get());

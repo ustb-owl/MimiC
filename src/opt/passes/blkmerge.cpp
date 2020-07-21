@@ -1,5 +1,6 @@
 #include "opt/pass.h"
 #include "opt/passman.h"
+#include "opt/passes/helper/cast.h"
 
 using namespace mimic::mid;
 using namespace mimic::opt;
@@ -76,7 +77,7 @@ class BlockMergePass : public FunctionPass {
 
   void RunOn(JumpSSA &ssa) override {
     // get target
-    target_ = static_cast<BlockSSA *>(ssa[0].value().get());
+    target_ = SSACast<BlockSSA>(ssa[0].value().get());
     // check if can be merged
     merge_flag_ = target_->size() == 1;
   }
