@@ -25,11 +25,11 @@ void BFSTraverseHelperPass::Push(const SSAPtr &block) {
 
 void BFSTraverseHelperPass::RunOn(BranchSSA &ssa) {
   // push true/false block to queue
-  Push(ssa[1].value());
-  Push(ssa[2].value());
+  Push(ssa.true_block());
+  Push(ssa.false_block());
 }
 
 void BFSTraverseHelperPass::RunOn(JumpSSA &ssa) {
   // push target block to queue
-  Push(ssa[0].value());
+  Push(ssa.target());
 }

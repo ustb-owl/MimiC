@@ -72,12 +72,12 @@ class CriticalEdgeBreakerHelperPass : public HelperPass {
   void RunOn(BranchSSA &ssa) override {
     if (is_check_) {
       // check if current instruction is branch
-      assert(ssa[1].value() != ssa[2].value());
+      assert(ssa.true_block() != ssa.false_block());
       has_serveral_succs_ = true;
     }
     else {
       // replace target block to new target
-      auto &use = ssa[1].value() == cur_block_ ? ssa[1] : ssa[2];
+      auto &use = ssa.true_block() == cur_block_ ? ssa[1] : ssa[2];
       use.set_value(target_);
     }
   }
@@ -111,7 +111,7 @@ class GetInstsHelperPass : public HelperPass {
   GetInstsHelperPass(const UserPtr &func) { func->RunPass(*this); }
 
   void RunOn(FunctionSSA &ssa) override {
-    entry_ = SSACast<BlockSSA>(ssa[0].value().get());
+    entry_ = SSACast<BlockSSA>(ssa.entry().get());
     // traverse all blocks to get parent relationship
     for (const auto &use : ssa) {
       auto block = SSACast<BlockSSA>(use.value().get());
