@@ -104,8 +104,4 @@ class DirtyConversionPass : public ModulePass {
 
 }  // namespace
 
-<<<<<<< HEAD
 REGISTER_PASS(DirtyConversionPass, dirty_conv, 0, PassStage::PreOpt);
-=======
-REGISTER_PASS(DirtyConversionPass, dirty_conv, 0);
->>>>>>> daacd85... (passman) removed option 'is_analysis'

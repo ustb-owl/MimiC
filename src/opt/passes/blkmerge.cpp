@@ -90,9 +90,5 @@ class BlockMergePass : public FunctionPass {
 }  // namespace
 
 // register current passs
-<<<<<<< HEAD
 REGISTER_PASS(BlockMergePass, blk_merge, 1,
               PassStage::PreOpt | PassStage::Opt | PassStage::PostOpt);
-=======
-REGISTER_PASS(BlockMergePass, blk_merge, 1);
->>>>>>> daacd85... (passman) removed option 'is_analysis'

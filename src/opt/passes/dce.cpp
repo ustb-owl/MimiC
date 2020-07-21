@@ -81,9 +81,5 @@ class DeadCodeEliminationPass : public FunctionPass {
 }  // namespace
 
 // register current pass
-<<<<<<< HEAD
 REGISTER_PASS(DeadCodeEliminationPass, dead_code_elim, 0,
               PassStage::PreOpt | PassStage::Opt | PassStage::PostOpt);
-=======
-REGISTER_PASS(DeadCodeEliminationPass, dead_code_elim, 0);
->>>>>>> daacd85... (passman) removed option 'is_analysis'
