@@ -72,14 +72,10 @@ class MemToRegPass : public FunctionPass {
     // handle created phi nodes
     while (!created_phis_.empty()) {
       const auto &[phi, block, alloca] = created_phis_.front();
-      // check if current phi node is used by other user
-      if (!phi->uses().empty()) {
-        // add operands for current phi node
-        if (!AddPhiOperands(phi, block, alloca)) {
-          // insert to block
-          block->insts().push_front(phi);
-        }
-      }
+      // add operands for current phi node
+      AddPhiOperands(phi, block, alloca);
+      // insert to block & remove
+      block->insts().push_front(phi);
       created_phis_.pop();
     }
     // remove all promotable allocas
@@ -153,9 +149,8 @@ class MemToRegPass : public FunctionPass {
                      const SSAPtr &val);
   SSAPtr ReadVariable(BlockSSA *block, const SSAPtr &alloca);
   SSAPtr ReadVariableRecursive(BlockSSA *block, const SSAPtr &alloca);
-  bool AddPhiOperands(const UserPtr &phi, BlockSSA *block,
+  void AddPhiOperands(const UserPtr &phi, BlockSSA *block,
                       const SSAPtr &alloca);
-  bool TryRemoveTrivialPhi(const UserPtr &phi);
 
   // helper pass
   GetPromAllocaHelperPass prom_helper_;
@@ -224,9 +219,8 @@ SSAPtr MemToRegPass::ReadVariableRecursive(BlockSSA *block,
 }
 
 // add operands to specific phi node by looking up definition
-// return true if phi node is trivial
 // param block: block where the phi node is located
-bool MemToRegPass::AddPhiOperands(const UserPtr &phi, BlockSSA *block,
+void MemToRegPass::AddPhiOperands(const UserPtr &phi, BlockSSA *block,
                                   const SSAPtr &alloca) {
   phi->Reserve(block->size());
   // determine operands from predecessors
@@ -239,45 +233,4 @@ bool MemToRegPass::AddPhiOperands(const UserPtr &phi, BlockSSA *block,
     auto mod = MakeModule(phi->logger());
     phi->AddValue(mod.CreatePhiOperand(val, pred));
   }
-  return TryRemoveTrivialPhi(phi);
-}
-
-// detect and recursively remove a trivial phi node
-// return true if phi node is trivial
-bool MemToRegPass::TryRemoveTrivialPhi(const UserPtr &phi) {
-  SSAPtr same;
-  for (const auto &i : *phi) {
-    auto op_ptr = SSACast<PhiOperandSSA>(i.value().get());
-    const auto &op = op_ptr->value();
-    // unique value or self-reference
-    if (op == same || op == phi) continue;
-    // the phi node merges at least two values, not trivial
-    if (same) return false;
-    // remember current operand
-    same = op;
-  }
-  // check if is unreachable or in the start block
-  if (!same) {
-    auto mod = MakeModule(phi->logger());
-    same = mod.GetUndef(phi->type());
-    phi->logger()->LogWarning("using uninitialized variable");
-  }
-  // remember all uses
-  auto uses = phi->uses();
-  // reroute all uses of phi node to 'same'
-  phi->ReplaceBy(same);
-  // try to recursively remove all phi users (except current phi)
-  for (const auto &i : uses) {
-    if (i->user() == phi.get()) continue;
-    // check if user is a phi node
-    if (IsSSA<PhiSSA>(i->user())) {
-      // try to get pointer to current user (tricky method)
-      const auto &uses = i->user()->uses();
-      assert(!uses.empty());
-      auto user = std::static_pointer_cast<User>(uses.front()->value());
-      // handle current user
-      TryRemoveTrivialPhi(user);
-    }
-  }
-  return true;
 }
