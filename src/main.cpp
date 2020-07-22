@@ -8,6 +8,7 @@
 
 #include "front/logger.h"
 #include "driver/compiler.h"
+#include "opt/stage.h"
 #include "back/c/generator.h"
 
 #include "xstl/argparse.h"
@@ -15,6 +16,7 @@
 using namespace std;
 using namespace mimic::front;
 using namespace mimic::driver;
+using namespace mimic::opt;
 using namespace mimic::back::c;
 
 namespace {
@@ -24,7 +26,7 @@ xstl::ArgParser GetArgp() {
   argp.AddArgument<string>("input", "input source file");
   argp.AddOption<bool>("help", "h", "show this message", false);
   argp.AddOption<bool>("version", "v", "show version info", false);
-  argp.AddOption<bool>("string", "S", "dump string instead of binary",
+  argp.AddOption<bool>("asm", "S", "dump ARM assembly",
                        false);
   argp.AddOption<bool>("opt-2", "O2", "enable level-2 optimization",
                        false);
@@ -37,6 +39,8 @@ xstl::ArgParser GetArgp() {
                        false);
   argp.AddOption<bool>("dump-ast", "da", "dump AST to output", false);
   argp.AddOption<bool>("dump-ir", "di", "dump IR to output", false);
+  argp.AddOption<string>("pass-stage", "ps",
+                         "optimize until specific stage", "");
   return argp;
 }
 
@@ -102,6 +106,17 @@ int main(int argc, const char *argv[]) {
   }
   comp.set_dump_pass_info(argp.GetValue<bool>("verbose"));
   comp.set_opt_level(argp.GetValue<bool>("opt-2") ? 2 : 0);
+
+  // initialize pass stage
+  auto stage_name = argp.GetValue<string>("pass-stage");
+  if (!stage_name.empty()) {
+    auto stage = GetStageByName(stage_name);
+    if (stage == PassStage::None) {
+      Logger::LogRawError("invalid stage name");
+      return 1;
+    }
+    comp.set_stage(stage);
+  }
 
   // initialize input stream & logger
   auto in_file = argp.GetValue<string>("input");
