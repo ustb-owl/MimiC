@@ -6,6 +6,7 @@
 
 using namespace mimic::driver;
 using namespace mimic::front;
+using namespace mimic::opt;
 using namespace mimic::back;
 
 void Compiler::Reset() {
