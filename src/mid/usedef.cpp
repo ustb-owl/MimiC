@@ -36,6 +36,7 @@ std::optional<std::string_view> IdManager::GetName(const Value *v) const {
 }
 
 void Value::ReplaceBy(const SSAPtr &value) {
+  if (value.get() == this) return;
   // reroute all uses to new value
   while (!uses_.empty()) {
     uses_.front()->set_value(value);
@@ -50,11 +51,7 @@ void Value::RemoveFromUser() {
 }
 
 void User::RemoveValue(const SSAPtr &value) {
-  uses_.erase(std::remove_if(uses_.begin(), uses_.end(),
-                             [&value](const Use &use) {
-                               return use.value() == value;
-                             }),
-              uses_.end());
+  RemoveValue(value.get());
 }
 
 void User::RemoveValue(Value *value) {

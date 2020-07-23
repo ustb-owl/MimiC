@@ -9,36 +9,10 @@
 #include <cstddef>
 
 #include "opt/pass.h"
+#include "opt/stage.h"
 #include "mid/usedef.h"
 
 namespace mimic::opt {
-
-// stage of pass running
-// represented as bit flags
-enum class PassStage : unsigned {
-  None    = 0,
-  PreOpt  = 1 << 0,
-  Promote = 1 << 1,
-  Opt     = 1 << 2,
-  Demote  = 1 << 3,
-  PostOpt = 1 << 4,
-};
-
-// count of stages
-constexpr std::size_t kPassStageCount = 5;
-// set specific stage
-inline PassStage operator|(PassStage lhs, PassStage rhs) {
-  using T = std::underlying_type_t<PassStage>;
-  return static_cast<PassStage>(static_cast<T>(lhs) | static_cast<T>(rhs));
-}
-inline PassStage &operator|=(PassStage &lhs, PassStage rhs) {
-  return lhs = lhs | rhs;
-}
-// check if specific stage is set
-inline PassStage operator&(PassStage lhs, PassStage rhs) {
-  using T = std::underlying_type_t<PassStage>;
-  return static_cast<PassStage>(static_cast<T>(lhs) & static_cast<T>(rhs));
-}
 
 // pass information
 class PassInfo {
@@ -65,18 +39,19 @@ class PassInfo {
 // pass manager for all SSA IR passes
 class PassManager {
  public:
-  PassManager() : opt_level_(0) {}
+  PassManager() : opt_level_(0), stage_(kLastPassStage) {}
 
   // register a new pass
   static void RegisterPass(PassInfo *info);
 
-  // run all passes on specific module
+  // run passes on current module
   void RunPasses() const;
   // show info of passes
   void ShowInfo(std::ostream &os) const;
 
   // setters
   void set_opt_level(std::size_t opt_level) { opt_level_ = opt_level; }
+  void set_stage(PassStage stage) { stage_ = stage; }
   void set_vars(mid::UserPtrList *vars) { vars_ = vars; }
   void set_funcs(mid::UserPtrList *funcs) { funcs_ = funcs; }
 
@@ -92,6 +67,7 @@ class PassManager {
   void RunPasses(const std::list<PassInfo *> &passes) const;
 
   std::size_t opt_level_;
+  PassStage stage_;
   mid::UserPtrList *vars_, *funcs_;
 };
 

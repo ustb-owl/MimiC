@@ -1,5 +1,7 @@
 #include "mid/module.h"
 
+#include "opt/passes/helper/cast.h"
+
 using namespace mimic::mid;
 using namespace mimic::define;
 using namespace mimic::front;
@@ -102,6 +104,8 @@ SSAPtr Module::CreateArgRef(const SSAPtr &func, std::size_t index) {
   // create argument reference
   auto arg_ref = MakeSSA<ArgRefSSA>(func, index);
   arg_ref->set_type(args_type[index]);
+  // add to function
+  SSACast<FunctionSSA>(func.get())->set_arg(index, arg_ref);
   return arg_ref;
 }
 
@@ -449,7 +453,7 @@ SSAPtr Module::GetZero(const TypePtr &type) {
 
 SSAPtr Module::GetInt(std::uint32_t value, const TypePtr &type) {
   // assertion for type checking
-  assert(type->IsInteger());
+  assert(type->IsInteger() || type->IsPointer());
   // create constant integer
   auto const_int = MakeSSA<ConstIntSSA>(value);
   const_int->set_type(type);

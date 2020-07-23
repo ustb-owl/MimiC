@@ -89,18 +89,18 @@ void PassManager::RegisterPass(PassInfo *info) {
 
 void PassManager::RunPasses() const {
   // traverse all stages
-  for (std::size_t i = 0; i < kPassStageCount; ++i) {
+  for (auto i = kFirstPassStage; i <= stage_; ++i) {
     // get passes in current stage
-    auto cur = static_cast<PassStage>(1 << i);
-    auto passes = GetPasses(cur);
+    auto passes = GetPasses(i);
     // run on current stage
     RunPasses(passes);
   }
 }
 
 void PassManager::ShowInfo(std::ostream &os) const {
-  // display optimization level
+  // display optimization level & stage
   os << "current optimization level: " << opt_level_ << std::endl;
+  os << "run until stage: " << stage_ << std::endl;
   os << std::endl;
   // show registed info
   os << "registed passes:" << std::endl;
@@ -119,7 +119,8 @@ void PassManager::ShowInfo(std::ostream &os) const {
   int count = 0;
   os << "enabled passes:" << std::endl;
   for (const auto &i : GetPasses()) {
-    if (opt_level_ >= i->min_opt_level()) {
+    if (opt_level_ >= i->min_opt_level() &&
+        IsStageContain(stage_, i->stage())) {
       if (count % 5 == 0) os << "  ";
       os << std::setw(16) << std::left << i->name();
       if (count % 5 == 4) os << std::endl;
