@@ -449,7 +449,7 @@ SSAPtr Module::GetZero(const TypePtr &type) {
 
 SSAPtr Module::GetInt(std::uint32_t value, const TypePtr &type) {
   // assertion for type checking
-  assert(type->IsInteger());
+  assert(type->IsInteger() || type->IsPointer());
   // create constant integer
   auto const_int = MakeSSA<ConstIntSSA>(value);
   const_int->set_type(type);
