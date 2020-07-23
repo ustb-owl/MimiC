@@ -66,7 +66,7 @@ class LatticeVal {
   // set as a constant value
   // returns false if does not change
   bool setAsConst(const SSAPtr &value) {
-    assert(value_ && IsSSA<ConstIntSSA>(value_));
+    assert(value && IsSSA<ConstIntSSA>(value));
     // has already been a constant but not a forced constant
     if (type_ == LatticeType::Const) {
       assert(**this == SSACast<ConstIntSSA>(value.get())->value());
@@ -95,7 +95,7 @@ class LatticeVal {
 
   // set as a forced constant value
   void setAsForcedConst(const SSAPtr &value) {
-    assert(value_ && IsSSA<ConstIntSSA>(value_));
+    assert(value && IsSSA<ConstIntSSA>(value));
     type_ = LatticeType::ForcedConst;
     value_ = value;
   }
@@ -260,14 +260,6 @@ class SparseCondConstPropagationPass : public FunctionPass {
   LatticeVal &GetValue(Value &ssa) {
     assert(!ssa.uses().empty());
     return GetValue(ssa.uses().front()->value());
-  }
-
-  // return the lattice value of the specific value
-  // just find value, not perform insertion
-  const LatticeVal &GetValueFor(Value *val) {
-    auto it = values_.find(val);
-    assert(it != values_.end());
-    return it->second;
   }
 
   // push value to worklist
@@ -548,6 +540,7 @@ void SparseCondConstPropagationPass::RunOn(BranchSSA &ssa) {
   if (cond.is_overdefined()) {
     MarkEdgeExecutable(block, tb);
     MarkEdgeExecutable(block, fb);
+    return;
   }
   // constant condition, branch can only go a single way
   MarkEdgeExecutable(block, *cond ? tb : fb);
@@ -834,9 +827,12 @@ bool SparseCondConstPropagationPass::ResolvedUndefsIn(FunctionSSA *func) {
   return false;
 }
 
+// replace value with constant, returns true if replaced
 bool SparseCondConstPropagationPass::TryToReplaceWithConst(Value *val) {
   // get lattice value
-  const auto &lv = GetValueFor(val);
+  auto it = values_.find(val);
+  if (it == values_.end()) return false;
+  const auto &lv = it->second;
   if (lv.is_overdefined()) return false;
   // read constant value, or make an undef
   auto mod = MakeModule(val->logger());
