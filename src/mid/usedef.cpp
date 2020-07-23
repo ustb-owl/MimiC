@@ -36,6 +36,7 @@ std::optional<std::string_view> IdManager::GetName(const Value *v) const {
 }
 
 void Value::ReplaceBy(const SSAPtr &value) {
+  if (value.get() == this) return;
   // reroute all uses to new value
   while (!uses_.empty()) {
     uses_.front()->set_value(value);
