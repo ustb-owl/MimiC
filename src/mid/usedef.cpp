@@ -51,11 +51,7 @@ void Value::RemoveFromUser() {
 }
 
 void User::RemoveValue(const SSAPtr &value) {
-  uses_.erase(std::remove_if(uses_.begin(), uses_.end(),
-                             [&value](const Use &use) {
-                               return use.value() == value;
-                             }),
-              uses_.end());
+  RemoveValue(value.get());
 }
 
 void User::RemoveValue(Value *value) {
