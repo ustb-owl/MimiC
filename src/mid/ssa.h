@@ -2,6 +2,7 @@
 #define MIMIC_MID_SSA_H_
 
 #include <string>
+#include <vector>
 #include <cstddef>
 #include <cstdint>
 
@@ -300,15 +301,21 @@ class FunctionSSA : public User {
 
   // setters
   void set_link(LinkageTypes link) { link_ = link; }
+  void set_arg(std::size_t i, const SSAPtr &arg) {
+    args_.resize(i + 1);
+    args_[i] = arg;
+  }
 
   // getters
   LinkageTypes link() const { return link_; }
   const std::string &name() const { return name_; }
   bool is_decl() const { return empty(); }
+  const std::vector<SSAPtr> &args() const { return args_; }
 
  private:
   LinkageTypes link_;
   std::string name_;
+  std::vector<SSAPtr> args_;
 };
 
 // global variable definition/declaration
