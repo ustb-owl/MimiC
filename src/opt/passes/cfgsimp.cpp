@@ -55,10 +55,16 @@ class BlockElimHelperPass : public HelperPass {
   void RunOn(PhiOperandSSA &ssa) override {
     // check if parent block is target block
     if (ssa.block().get() == block_) {
+      // get parent phi node
+      assert(!ssa.uses().empty());
+      auto phi = ssa.uses().front()->user();
+      // remove from phi
       ssa.RemoveFromUser();
       // simplify parent phi node if necessary
-      auto phi = ssa.uses().front()->user();
-      if (phi->size() == 1) phi->ReplaceBy(ssa.value());
+      if (phi->size() == 1) {
+        auto opr = SSACast<PhiOperandSSA>((*phi)[0].value().get());
+        phi->ReplaceBy(opr->value());
+      }
     }
   }
 
@@ -113,7 +119,20 @@ class CFGSimplifyPass : public FunctionPass {
 
   void RunOn(BlockSSA &ssa) override {
     op_ = Op::Nop;
-    if (ssa.insts().size() == 1) {
+    if (ssa.empty()) {
+      // block has no predecessor
+      if (ssa.insts().size() > 1) {
+        ssa.logger()->LogWarning("unreachable code");
+      }
+      // remove current block from all users except parent function
+      BlockElimHelperPass helper(&ssa);
+      auto uses = ssa.uses();
+      for (const auto &i : uses) i->user()->RunPass(helper);
+      // mark current block as removed
+      ssa.ReplaceBy(nullptr);
+      changed_ = true;
+    }
+    else if (ssa.insts().size() == 1) {
       // block contains only one instruction
       ssa.insts().back()->RunPass(*this);
       // check if is jump instruction
@@ -126,19 +145,6 @@ class CFGSimplifyPass : public FunctionPass {
           changed_ = true;
         }
       }
-    }
-    else if (ssa.empty()) {
-      // block has no predecessor
-      if (ssa.insts().size() > 1) {
-        ssa.logger()->LogWarning("unreachable code");
-      }
-      // remove current block from all users except parent function
-      BlockElimHelperPass helper(&ssa);
-      auto uses = ssa.uses();
-      for (const auto &i : uses) i->user()->RunPass(helper);
-      // mark current block as removed
-      ssa.ReplaceBy(nullptr);
-      changed_ = true;
     }
   }
 
