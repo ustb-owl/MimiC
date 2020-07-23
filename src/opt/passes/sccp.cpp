@@ -141,6 +141,10 @@ class SparseCondConstPropagationPass : public FunctionPass {
     // mark entry block as executable
     auto entry = SSACast<BlockSSA>(func_ptr->entry().get());
     MarkBlockExecutable(entry);
+    // mark all arguments as overdefined
+    for (const auto &i : func_ptr->args()) {
+      MarkOverdefined(i.get());
+    }
     // solve for constants
     bool resoved_undefs = true;
     while (resoved_undefs) {
@@ -156,12 +160,17 @@ class SparseCondConstPropagationPass : public FunctionPass {
         // clear all instructions (except terminator) in current block
         auto mod = MakeModule(nullptr);
         while (insts.size() > 1) {
-          // remove & replace with undef
-          auto log = mod.SetContext(insts.front()->logger());
-          insts.front()->ReplaceBy(mod.GetUndef(insts.front()->type()));
+          auto &inst = insts.front();
+          if (!inst->uses().empty() && inst->type() &&
+              !inst->type()->IsVoid()) {
+            // replace with undef
+            auto log = mod.SetContext(insts.front()->logger());
+            insts.front()->ReplaceBy(mod.GetUndef(insts.front()->type()));
+          }
+          // remove from list
           insts.pop_front();
+          if (!changed) changed = true;
         }
-        if (!changed) changed = true;
       }
       else {
         // traverse all instruction & replace with constants
@@ -185,7 +194,7 @@ class SparseCondConstPropagationPass : public FunctionPass {
     known_edges_.clear();
     assert(block_list_.empty() && inst_list_.empty() &&
            overdefed_list_.empty());
-    return changed;
+    return false;
   }
 
   void RunOn(LoadSSA &ssa) override;
@@ -256,10 +265,6 @@ class SparseCondConstPropagationPass : public FunctionPass {
       it->second.setAsConst(val);
     }
     return it->second;
-  }
-  LatticeVal &GetValue(Value &ssa) {
-    assert(!ssa.uses().empty());
-    return GetValue(ssa.uses().front()->value());
   }
 
   // push value to worklist
@@ -365,11 +370,13 @@ void SparseCondConstPropagationPass::RunOn(AccessSSA &ssa) {
   using AccType = AccessSSA::AccessType;
   // if all operands are constants then we can turn this into a constant
   if (values_[&ssa].is_overdefined()) return;
-  const auto &ptr = GetValue(ssa.ptr()), &index = GetValue(ssa.index());
+  // mark access from global variables as overdefined
+  if (IsSSA<GlobalVarSSA>(ssa.ptr())) return MarkOverdefined(&ssa);
   // not resolved yet
-  if (!ptr.is_unknown() || !index.is_unknown()) return;
+  const auto &ptr = GetValue(ssa.ptr()), &index = GetValue(ssa.index());
+  if (ptr.is_unknown() || index.is_unknown()) return;
   // not a constant
-  if (!ptr.is_overdefined() || !index.is_overdefined()) {
+  if (ptr.is_overdefined() || index.is_overdefined()) {
     return MarkOverdefined(&ssa);
   }
   // perform address calculation
@@ -489,7 +496,7 @@ void SparseCondConstPropagationPass::RunOn(UnarySSA &ssa) {
     return MarkConst(ssa_val, &ssa, mod.GetInt(val, ssa.type()));
   }
   // if something is undef, wait for it to resolve
-  if (opr.is_overdefined()) return;
+  if (!opr.is_overdefined()) return;
   MarkOverdefined(&ssa);
 }
 
@@ -583,7 +590,7 @@ void SparseCondConstPropagationPass::RunOn(PhiOperandSSA &ssa) {
 
 void SparseCondConstPropagationPass::RunOn(PhiSSA &ssa) {
   // quick exit
-  if (GetValue(ssa).is_overdefined()) return;
+  if (values_[&ssa].is_overdefined()) return;
   // super-extra-high-degree phi nodes are unlikely to ever be
   // marked constant, skip for speed
   if (ssa.size() > 64) return MarkOverdefined(&ssa);
@@ -619,7 +626,7 @@ void SparseCondConstPropagationPass::RunOn(PhiSSA &ssa) {
 }
 
 void SparseCondConstPropagationPass::RunOn(SelectSSA &ssa) {
-  const auto &cond = GetValue(ssa);
+  const auto &cond = GetValue(ssa.cond());
   if (cond.is_unknown()) return;
   // fold if condition is constant
   if (cond) {
