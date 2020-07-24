@@ -10,13 +10,17 @@ class VirtRegOperand : public OperandBase {
  public:
   VirtRegOperand(std::uint32_t id) : id_(id) {}
 
-  bool IsReg() const { return true; }
-  bool IsVirtual() const { return true; }
-  bool IsImm() const { return false; }
-  bool IsLabel() const { return false; }
-  bool IsSlot() const { return false; }
-  bool IsMem() const { return false; }
-  void Dump(std::ostream &os) const { os << "vreg[" << id_ << std::endl; }
+  bool IsReg() const override { return true; }
+  bool IsVirtual() const override { return true; }
+  bool IsImm() const override { return false; }
+  bool IsLabel() const override { return false; }
+  bool IsSlot() const override { return false; }
+  void Dump(std::ostream &os) const override {
+    os << "vreg[" << id_ << ']';
+  }
+
+  // getters
+  std::uint32_t id() const { return id_; }
 
  private:
   std::uint32_t id_;

@@ -23,8 +23,6 @@ class OperandBase {
   virtual bool IsLabel() const = 0;
   // check if operand is a stack slot
   virtual bool IsSlot() const = 0;
-  // check if operand is a global memory
-  virtual bool IsMem() const = 0;
 
   // dump operand to output stream
   virtual void Dump(std::ostream &os) const = 0;
