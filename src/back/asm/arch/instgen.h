@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 #include <utility>
+#include <memory>
 #include <cstdint>
 #include <cassert>
 
@@ -99,6 +100,9 @@ class InstGenBase {
   std::unordered_map<OprPtr, MemInfo> mems_;
   FuncInfo *cur_func_;
 };
+
+// pointer to instruction generator
+using InstGen = std::unique_ptr<InstGenBase>;
 
 }  // namespace mimic::back::asmgen
 
