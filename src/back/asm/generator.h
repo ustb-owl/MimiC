@@ -1,15 +1,18 @@
 #ifndef MIMIC_BACK_ASM_GENERATOR_H_
 #define MIMIC_BACK_ASM_GENERATOR_H_
 
+#include <string_view>
+#include <cstddef>
+
 #include "back/codegen.h"
+#include "back/asm/arch/archinfo.h"
 
 namespace mimic::back::asmgen {
 
+// code generator for multi-architecture assembly
 class AsmCodeGen : public CodeGenInterface {
  public:
-  AsmCodeGen() { Reset(); }
-
-  void Reset();
+  AsmCodeGen() : opt_level_(0) {}
 
   void GenerateOn(mid::LoadSSA &ssa) override;
   void GenerateOn(mid::StoreSSA &ssa) override;
@@ -36,8 +39,18 @@ class AsmCodeGen : public CodeGenInterface {
 
   void Dump(std::ostream &os) const override;
 
+  // set target architecture of assembly generator
+  // returns false if target is invalid
+  bool SetTargetArch(std::string_view arch_name);
+
+  // setters
+  void set_opt_level(std::size_t opt_level) { opt_level_ = opt_level; }
+
  private:
-  //
+  // info of target architecture
+  ArchInfoPtr arch_info_;
+  // optimization level
+  std::size_t opt_level_;
 };
 
 }  // namespace mimic::back::asm
