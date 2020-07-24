@@ -11,6 +11,7 @@
 
 #include "mid/ssa.h"
 #include "back/asm/mir/mir.h"
+#include "back/asm/mir/pass.h"
 
 namespace mimic::back::asmgen {
 
@@ -45,9 +46,9 @@ class InstGenBase {
   // dump to assembly
   virtual void Dump(std::ostream &os) const = 0;
 
-  // run machine level passes on all functions
-  void RunPasses(/* pass manager interface */) {
-    // TODO
+  // run a machine level pass on all functions
+  void RunPass(const PassPtr &pass) {
+    for (auto &&[_, info] : funcs_) pass->RunOn(info.insts);
   }
 
  protected:
@@ -100,9 +101,6 @@ class InstGenBase {
   std::unordered_map<OprPtr, MemInfo> mems_;
   FuncInfo *cur_func_;
 };
-
-// pointer to instruction generator
-using InstGen = std::unique_ptr<InstGenBase>;
 
 }  // namespace mimic::back::asmgen
 

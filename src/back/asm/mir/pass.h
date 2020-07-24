@@ -3,7 +3,6 @@
 
 #include <memory>
 #include <list>
-#include <cstddef>
 
 #include "back/asm/mir/mir.h"
 
@@ -15,9 +14,7 @@ class PassInterface {
   virtual ~PassInterface() = default;
 
   // run on the specific function (instruction list)
-  virtual void RunOnFunction(InstPtrList &insts) const = 0;
-  // get minimal optimization level
-  virtual std::size_t GetMinOptLevel() const = 0;
+  virtual void RunOn(InstPtrList &insts) = 0;
 };
 
 using PassPtr = std::unique_ptr<PassInterface>;
