@@ -51,26 +51,38 @@ class InstGenBase {
     for (auto &&[_, info] : funcs_) pass->RunOn(info.insts);
   }
 
+  // setters
+  void set_parent(CodeGen *parent) { parent_ = parent; }
+
  protected:
-  // information of function
-  struct FuncInfo {
-    // set if function is global
-    bool is_global;
-    // instruction list of function
+  // linkage types for backend
+  enum class LinkageTypes {
+    Internal, External, Ctor, Dtor,
+  };
+
+  // information of instruction sequence
+  struct InstSeqInfo {
+    LinkageTypes link;
     InstPtrList insts;
   };
 
-  // information of memory data
-  struct MemInfo {
-    // set if memory data is global
-    bool is_global;
-    // data in bytes
-    std::vector<std::uint8_t> data;
-  };
+  // map of instruction sequence
+  using InstSeqMap = std::unordered_map<OprPtr, InstSeqInfo>;
+
+  // get operator pointer from SSA IR
+  const OprPtr &GetOpr(const mid::SSAPtr &ssa) {
+    auto val = std::any_cast<OprPtr>(&ssa->metadata());
+    if (!val) {
+      ssa->GenerateCode(*parent_);
+      val = std::any_cast<OprPtr>(&ssa->metadata());
+      assert(val);
+    }
+    return *val;
+  }
 
   // enter a new function
-  void EnterFunction(const OprPtr &label, bool is_global) {
-    auto [it, succ] = funcs_.insert({label, {is_global}});
+  void EnterFunction(const OprPtr &label, LinkageTypes link) {
+    auto [it, succ] = funcs_.insert({label, {link}});
     assert(succ);
     static_cast<void>(succ);
     cur_func_ = &it->second;
@@ -82,7 +94,7 @@ class InstGenBase {
   }
 
   // create a new memory data
-  void CreateMem(const OprPtr &label, MemInfo mem_info) {
+  void CreateMem(const OprPtr &label, InstSeqInfo mem_info) {
     auto succ = mems_.insert({label, std::move(mem_info)}).second;
     assert(succ);
     static_cast<void>(succ);
@@ -90,16 +102,14 @@ class InstGenBase {
 
   // getters
   // all generated functions
-  const std::unordered_map<OprPtr, FuncInfo> &funcs() const {
-    return funcs_;
-  }
+  const InstSeqMap &funcs() const { return funcs_; }
   // all generated memory data
-  const std::unordered_map<OprPtr, MemInfo> &mems() const { return mems_; }
+  const InstSeqMap &mems() const { return mems_; }
 
  private:
-  std::unordered_map<OprPtr, FuncInfo> funcs_;
-  std::unordered_map<OprPtr, MemInfo> mems_;
-  FuncInfo *cur_func_;
+  CodeGen *parent_;
+  InstSeqMap funcs_, mems_;
+  InstSeqInfo *cur_func_;
 };
 
 }  // namespace mimic::back::asmgen

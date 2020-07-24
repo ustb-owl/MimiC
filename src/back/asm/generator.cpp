@@ -104,5 +104,11 @@ void AsmCodeGen::Dump(std::ostream &os) const {
 
 bool AsmCodeGen::SetTargetArch(std::string_view arch_name) {
   arch_info_ = ArchManager::GetArch(arch_name);
-  return !!arch_info_;
+  if (!arch_info_) {
+    return false;
+  }
+  else {
+    arch_info_->GetInstGen().set_parent(this);
+    return true;
+  }
 }
