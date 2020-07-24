@@ -21,8 +21,6 @@ class ArchInfoBase {
   virtual InstGenBase &GetInstGen() const = 0;
   // return a list of required passes
   virtual PassPtrList GetPassList(std::size_t opt_level) const = 0;
-
-  // TODO: register info
 };
 
 // pointer to architecture information
