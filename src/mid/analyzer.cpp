@@ -162,7 +162,7 @@ TypePtr Analyzer::AnalyzeOn(InitListAST &ast) {
       // create a new initializer list
       ASTPtrList sub_exprs;
       for (std::size_t j = 0; j < elem->GetLength() &&
-                              !(*it)->IsInitList() && it != exprs.end();
+                              it != exprs.end() && !(*it)->IsInitList();
            ++j, ++it) {
         sub_exprs.push_back(std::move(*it));
       }
