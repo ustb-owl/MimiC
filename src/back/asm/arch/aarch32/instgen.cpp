@@ -408,8 +408,10 @@ void AArch32InstGen::Dump(std::ostream &os) const {
   os << "\t.text" << std::endl;
   DumpSeqs(os, funcs());
   // dump all memory data
-  os << "\t.data" << std::endl;
-  DumpSeqs(os, mems());
+  if (!mems().empty()) {
+    os << "\t.data" << std::endl;
+    DumpSeqs(os, mems());
+  }
 }
 
 void AArch32InstGen::Reset() {
