@@ -18,7 +18,7 @@ class ArchInfoBase {
   virtual ~ArchInfoBase() = default;
 
   // return instruction generator of current architecture
-  virtual InstGenBase &GetInstGen() const = 0;
+  virtual InstGenBase &GetInstGen() = 0;
   // return a list of required passes
   virtual PassPtrList GetPassList(std::size_t opt_level) const = 0;
 };
