@@ -35,7 +35,7 @@ using OprPtrList = std::vector<OprPtr>;
 // base class of all instruction (machine IR)
 class InstBase {
  public:
-  virtual ~InstBase() = 0;
+  virtual ~InstBase() = default;
 
   // check if is a move instruction (for general purpose optimizations)
   virtual bool IsMove() const = 0;

@@ -68,7 +68,7 @@ class AArch32InstGen : public InstGenBase {
 
   // get a stack slot
   const OprPtr &GetSlot(bool based_on_sp, std::int32_t offset) {
-    auto index = (static_cast<std::uint64_t>(based_on_sp) << 64) | offset;
+    auto index = (static_cast<std::uint64_t>(based_on_sp) << 32) | offset;
     auto it = slots_.find(index);
     if (it != slots_.end()) {
       return it->second;
@@ -93,7 +93,8 @@ class AArch32InstGen : public InstGenBase {
   // push a new instruction to current function
   template <typename... Args>
   void PushInst(AArch32Inst::OpCode opcode, Args &&... args) {
-    AddInst(std::make_shared<AArch32Inst>(opcode, std::forward(args)...));
+    AddInst(std::make_shared<AArch32Inst>(opcode,
+                                          std::forward<Args>(args)...));
   }
 
   // linkage type conversion
