@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <utility>
 #include <cassert>
+#include <cstddef>
 
 #include "back/asm/arch/instgen.h"
 #include "back/asm/arch/aarch32/instdef.h"
@@ -66,34 +67,58 @@ class AArch32InstGen : public InstGenBase {
   }
 
   // get a stack slot
-  const OprPtr &GetSlot(std::int32_t offset) {
-    auto it = slots_.find(offset);
+  const OprPtr &GetSlot(bool based_on_sp, std::int32_t offset) {
+    auto index = (static_cast<std::uint64_t>(based_on_sp) << 64) | offset;
+    auto it = slots_.find(index);
     if (it != slots_.end()) {
       return it->second;
     }
     else {
-      auto slot = std::make_shared<AArch32Slot>(offset);
-      auto [it, _] = slots_.insert({offset, std::move(slot)});
+      auto slot = std::make_shared<AArch32Slot>(based_on_sp, offset);
+      auto [it, _] = slots_.insert({index, std::move(slot)});
       return it->second;
     }
+  }
+
+  // get a in-frame stack slot
+  const OprPtr &GetSlot(std::int32_t offset) {
+    return GetSlot(false, offset);
+  }
+
+  // get a virtual register
+  OprPtr GetVReg(mid::Value &ssa) {
+    return vreg_fact_.GetReg(ssa.type()->GetSize());
   }
 
   // push a new instruction to current function
   template <typename... Args>
   void PushInst(AArch32Inst::OpCode opcode, Args &&... args) {
-    auto inst = std::make_shared<AArch32Inst>(opcode,
-                                              std::forward(args)...);
-    AddInst(inst);
+    AddInst(std::make_shared<AArch32Inst>(opcode, std::forward(args)...));
   }
+
+  // linkage type conversion
+  LinkageTypes GetLinkType(mid::LinkageTypes link);
+  // generate zeros
+  OprPtr GenerateZeros(const define::TypePtr &type);
+  // dump instruction sequences
+  void DumpSeqs(std::ostream &os, const InstSeqMap &seqs) const;
 
   // map for registers
   std::unordered_map<AArch32Reg::RegName, OprPtr> regs_;
-  // map for immediate numbers / stack slots
-  std::unordered_map<std::int32_t, OprPtr> imms_, slots_;
+  // map for immediate numbers
+  std::unordered_map<std::int32_t, OprPtr> imms_;
+  // map for stack slots
+  std::unordered_map<std::uint64_t, OprPtr> slots_;
   // for creating virtual registers
   VirtRegFactory vreg_fact_;
   // for creating labels
   LabelFactory label_fact_;
+  // label of global variable
+  OprPtr global_label_;
+  // link type of global variable
+  LinkageTypes global_link_;
+  // used when generating constant arrays
+  std::size_t arr_depth_;
 };
 
 }  // namespace mimic::back::asmgen::aarch32
