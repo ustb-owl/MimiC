@@ -1,8 +1,8 @@
 #include "back/c/generator.h"
 
-#include <iomanip>
 #include <cassert>
-#include <cctype>
+
+#include "utils/strprint.h"
 
 using namespace mimic::define;
 using namespace mimic::mid;
@@ -55,32 +55,6 @@ inline std::string_view GetLinkType(LinkageTypes link) {
     case LinkageTypes::GlobalCtor: return "__attribute((constructor)) ";
     case LinkageTypes::GlobalDtor: return "__attribute((destructor)) ";
     default: return "";
-  }
-}
-
-void ConvertChar(std::ostream &os, char c) {
-  switch (c) {
-    case '\a':  os << "\\a";  break;
-    case '\b':  os << "\\b";  break;
-    case '\f':  os << "\\f";  break;
-    case '\n':  os << "\\n";  break;
-    case '\r':  os << "\\r";  break;
-    case '\t':  os << "\\t";  break;
-    case '\v':  os << "\\v'"; break;
-    case '\\':  os << "\\\\"; break;
-    case '\'':  os << "'";    break;
-    case '"':   os << "\\\""; break;
-    case '\0':  os << "\\0";  break;
-    default: {
-      if (std::isprint(c)) {
-        os << c;
-      }
-      else {
-        os << "\\x" << std::setw(2) << std::setfill('0') << std::hex
-           << static_cast<int>(c) << std::dec;
-      }
-      break;
-    }
   }
 }
 
@@ -419,7 +393,7 @@ void CCodeGen::GenerateOn(ConstIntSSA &ssa) {
 void CCodeGen::GenerateOn(ConstStrSSA &ssa) {
   std::ostringstream oss;
   oss << '"';
-  for (const auto &c : ssa.str()) ConvertChar(oss, c);
+  utils::DumpStr(oss, ssa.str());
   oss << '"';
   SetVal(ssa, oss.str());
 }

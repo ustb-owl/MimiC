@@ -1,11 +1,11 @@
 #include "mid/ssa.h"
 #include "opt/passes/helper/cast.h"
 
-#include <iomanip>
 #include <streambuf>
 #include <unordered_set>
-#include <cctype>
 #include <cassert>
+
+#include "utils/strprint.h"
 
 #include "xstl/guard.h"
 
@@ -49,32 +49,6 @@ int in_expr = 0;
 xstl::Guard InExpr() {
   ++in_expr;
   return xstl::Guard([] { --in_expr; });
-}
-
-void ConvertChar(std::ostream &os, char c) {
-  switch (c) {
-    case '\a':  os << "\\a";  break;
-    case '\b':  os << "\\b";  break;
-    case '\f':  os << "\\f";  break;
-    case '\n':  os << "\\n";  break;
-    case '\r':  os << "\\r";  break;
-    case '\t':  os << "\\t";  break;
-    case '\v':  os << "\\v'"; break;
-    case '\\':  os << "\\\\"; break;
-    case '\'':  os << "'";    break;
-    case '"':   os << "\\\""; break;
-    case '\0':  os << "\\0";  break;
-    default: {
-      if (std::isprint(c)) {
-        os << c;
-      }
-      else {
-        os << "\\x" << std::setw(2) << std::setfill('0') << std::hex
-           << static_cast<int>(c) << std::dec;
-      }
-      break;
-    }
-  }
 }
 
 inline void PrintId(std::ostream &os, IdManager &idm, const Value *val) {
@@ -328,7 +302,7 @@ void ConstStrSSA::Dump(std::ostream &os, IdManager &idm) const {
   os << "constant ";
   PrintType(os, type());
   os << " \"";
-  for (const auto &c : str_) ConvertChar(os, c);
+  utils::DumpStr(os, str_);
   os << '"';
 }
 
