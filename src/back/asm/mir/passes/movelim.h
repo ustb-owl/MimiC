@@ -5,6 +5,9 @@
 
 namespace mimic::back::asmgen {
 
+/*
+  this pass will eliminate redundant move instructions
+*/
 class MoveEliminatePass : public PassInterface {
  public:
   MoveEliminatePass() {}
