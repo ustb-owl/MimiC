@@ -13,6 +13,8 @@
 #include "back/asm/mir/mir.h"
 #include "back/asm/mir/pass.h"
 
+#include "xstl/guard.h"
+
 namespace mimic::back::asmgen {
 
 // base class of all machine instruction generator
@@ -69,35 +71,45 @@ class InstGenBase {
   // map of instruction sequence
   using InstSeqMap = std::unordered_map<OprPtr, InstSeqInfo>;
 
-  // get operator pointer from SSA IR
-  const OprPtr &GetOpr(const mid::SSAPtr &ssa) {
-    auto val = std::any_cast<OprPtr>(&ssa->metadata());
+  // generate the specific SSA value
+  void GenerateCode(mid::Value &ssa) {
+    ssa.GenerateCode(*parent_);
+  }
+
+  // generate the specific SSA IR
+  void GenerateCode(const mid::SSAPtr &ssa) {
+    ssa->GenerateCode(*parent_);
+  }
+
+  // get operator pointer from SSA value
+  const OprPtr &GetOpr(mid::Value &ssa) {
+    auto val = std::any_cast<OprPtr>(&ssa.metadata());
     if (!val) {
-      ssa->GenerateCode(*parent_);
-      val = std::any_cast<OprPtr>(&ssa->metadata());
+      ssa.GenerateCode(*parent_);
+      val = std::any_cast<OprPtr>(&ssa.metadata());
       assert(val);
     }
     return *val;
   }
 
+  // get operator pointer from SSA IR
+  const OprPtr &GetOpr(const mid::SSAPtr &ssa) {
+    return GetOpr(*ssa);
+  }
+
   // enter a new function
-  void EnterFunction(const OprPtr &label, LinkageTypes link) {
-    auto [it, succ] = funcs_.insert({label, {link}});
-    assert(succ);
-    static_cast<void>(succ);
-    cur_func_ = &it->second;
+  xstl::Guard EnterFunction(const OprPtr &label, LinkageTypes link) {
+    return EnterInstSeq(funcs_, label, link);
   }
 
-  // add instruction to current function
+  // enter a new memory data
+  xstl::Guard EnterMemData(const OprPtr &label, LinkageTypes link) {
+    return EnterInstSeq(mems_, label, link);
+  }
+
+  // add instruction to current instruction sequence
   void AddInst(const InstPtr &inst) {
-    cur_func_->insts.push_back(inst);
-  }
-
-  // create a new memory data
-  void CreateMem(const OprPtr &label, InstSeqInfo mem_info) {
-    auto succ = mems_.insert({label, std::move(mem_info)}).second;
-    assert(succ);
-    static_cast<void>(succ);
+    cur_seq_->insts.push_back(inst);
   }
 
   // getters
@@ -107,9 +119,19 @@ class InstGenBase {
   const InstSeqMap &mems() const { return mems_; }
 
  private:
+  xstl::Guard EnterInstSeq(InstSeqMap &seqs, const OprPtr &label,
+                           LinkageTypes link) {
+    auto [it, succ] = seqs.insert({label, {link}});
+    assert(succ);
+    static_cast<void>(succ);
+    auto last_seq = cur_seq_;
+    cur_seq_ = &it->second;
+    return xstl::Guard([this, last_seq] { cur_seq_ = last_seq; });
+  }
+
   CodeGen *parent_;
   InstSeqMap funcs_, mems_;
-  InstSeqInfo *cur_func_;
+  InstSeqInfo *cur_seq_;
 };
 
 }  // namespace mimic::back::asmgen
