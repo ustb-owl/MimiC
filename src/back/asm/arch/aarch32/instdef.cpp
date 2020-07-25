@@ -2,6 +2,8 @@
 
 #include <cassert>
 
+#include "utils/strprint.h"
+
 using namespace mimic::back::asmgen;
 using namespace mimic::back::asmgen::aarch32;
 
@@ -15,14 +17,20 @@ const char *kRegNames[] = {
 };
 
 const char *kOpCodes[] = {
-  "nop",
   "ldr", "str", "push", "pop",
-  "add", "sub", "mul", "mls", "sdiv", "udiv",
-  "cmp", "beq", "b", "bl",
-  "",
-  "mov", "movw",
+  "add", "sub", "subs", "rsb", "mul", "mls", "sdiv", "udiv",
+  "cmp", "beq", "b", "bl", "bx",
+  "mov", "movw", "movt", "mvn",
+  "moveq", "movwne",
+  "movwlo", "movwlt", "movwls", "movwle",
+  "movwhi", "movwgt", "movwhs", "movwge",
   "and", "orr", "eor",
   "lsl", "lsr", "asr",
+  "clz",
+  "sxtb", "uxtb",
+  "",
+  "nop", "lea",
+  ".zero", ".asciz", ".long", ".byte",
 };
 
 std::ostream &operator<<(std::ostream &os, AArch32Reg::RegName name) {
@@ -41,7 +49,7 @@ std::ostream &operator<<(std::ostream &os, const OprPtr &opr) {
 }
 
 std::ostream &operator<<(std::ostream &os, const OprPtrList &oprs) {
-  for (std::size_t i = 0; i < oprs().size(); ++i) {
+  for (std::size_t i = 0; i < oprs.size(); ++i) {
     if (i) os << ", ";
     oprs[i]->Dump(os);
   }
@@ -56,6 +64,16 @@ void AArch32Reg::Dump(std::ostream &os) const {
 
 void AArch32Imm::Dump(std::ostream &os) const {
   os << '#' << val_;
+}
+
+void AArch32Int::Dump(std::ostream &os) const {
+  os << val_;
+}
+
+void AArch32Str::Dump(std::ostream &os) const {
+  os << '"';
+  utils::DumpStr(os, str_);
+  os << '"';
 }
 
 void AArch32Slot::Dump(std::ostream &os) const {
