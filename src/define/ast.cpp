@@ -4,7 +4,8 @@
 #include <tuple>
 #include <utility>
 #include <sstream>
-#include <cctype>
+
+#include "utils/strprint.h"
 
 #include "xstl/guard.h"
 
@@ -51,32 +52,6 @@ const auto indent = [](std::ostream &os) {
 std::ostream &operator<<(std::ostream &os, decltype(indent) func) {
   func(os);
   return os;
-}
-
-void ConvertChar(std::ostream &os, char c, bool in_char) {
-  switch (c) {
-    case '\a':  os << "\\a";                      break;
-    case '\b':  os << "\\b";                      break;
-    case '\f':  os << "\\f";                      break;
-    case '\n':  os << "\\n";                      break;
-    case '\r':  os << "\\r";                      break;
-    case '\t':  os << "\\t";                      break;
-    case '\v':  os << "\\v'";                     break;
-    case '\\':  os << "\\\\";                     break;
-    case '\'':  os << (in_char ? "\\'" : "'");    break;
-    case '"':   os << (in_char ? "\'" : "\\\"");  break;
-    case '\0':  os << "\\0";                      break;
-    default: {
-      if (std::isprint(c)) {
-        os << c;
-      }
-      else {
-        os << "\\x" << std::setw(2) << std::setfill('0') << std::hex
-           << static_cast<int>(c);
-      }
-      break;
-    }
-  }
 }
 
 template <typename... Attrs>
@@ -281,13 +256,13 @@ void IntAST::Dump(std::ostream &os) const {
 
 void CharAST::Dump(std::ostream &os) const {
   std::ostringstream oss;
-  ConvertChar(oss, c_, true);
+  utils::DumpChar(oss, c_);
   ATOM(Char, std::make_tuple("c", oss.str()));
 }
 
 void StringAST::Dump(std::ostream &os) const {
   std::ostringstream oss;
-  for (const auto &c : str_) ConvertChar(oss, c, false);
+  utils::DumpStr(oss, str_);
   ATOM(String, std::make_tuple("str", oss.str()));
 }
 
