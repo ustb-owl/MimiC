@@ -1,6 +1,7 @@
 #ifndef MIMIC_BACK_ASM_ARCH_AARCH32_INSTDEF_H_
 #define MIMIC_BACK_ASM_ARCH_AARCH32_INSTDEF_H_
 
+#include <string>
 #include <initializer_list>
 #include <cstdint>
 
@@ -71,10 +72,51 @@ class AArch32Imm : public OperandBase {
   std::int32_t val_;
 };
 
+// aarch32 integer (used in directives)
+class AArch32Int : public OperandBase {
+ public:
+  AArch32Int(std::int32_t val) : val_(val) {}
+
+  bool IsReg() const override { return false; }
+  bool IsVirtual() const override { return false; }
+  bool IsImm() const override { return false; }
+  bool IsLabel() const override { return false; }
+  bool IsSlot() const override { return false; }
+
+  void Dump(std::ostream &os) const override;
+
+  // getters
+  std::int32_t val() const { return val_; }
+
+ private:
+  std::int32_t val_;
+};
+
+// aarch32 string (used in directives)
+class AArch32Str : public OperandBase {
+ public:
+  AArch32Str(const std::string &str) : str_(str) {}
+
+  bool IsReg() const override { return false; }
+  bool IsVirtual() const override { return false; }
+  bool IsImm() const override { return false; }
+  bool IsLabel() const override { return false; }
+  bool IsSlot() const override { return false; }
+
+  void Dump(std::ostream &os) const override;
+
+  // getters
+  const std::string &str() const { return str_; }
+
+ private:
+  std::string str_;
+};
+
 // aarch32 stack slot
 class AArch32Slot : public OperandBase {
  public:
-  AArch32Slot(std::int32_t offset) : offset_(offset) {}
+  AArch32Slot(bool based_on_sp, std::int32_t offset)
+      : based_on_sp_(based_on_sp), offset_(offset) {}
 
   bool IsReg() const override { return false; }
   bool IsVirtual() const override { return false; }
@@ -85,9 +127,12 @@ class AArch32Slot : public OperandBase {
   void Dump(std::ostream &os) const override;
 
   // getters
+  bool based_on_sp() const { return based_on_sp_; }
   std::int32_t offset() const { return offset_; }
 
  private:
+  // set if base register of slot is SP rather than FP
+  bool based_on_sp_;
   std::int32_t offset_;
 };
 
@@ -95,22 +140,31 @@ class AArch32Slot : public OperandBase {
 class AArch32Inst : public InstBase {
  public:
   enum class OpCode {
-    // no operation
-    NOP,
     // memory accessing
     LDR, STR, PUSH, POP,
     // arithmetic
-    ADD, SUB, MUL, MLS, SDIV, UDIV,
+    ADD, SUB, SUBS, RSB, MUL, MLS, SDIV, UDIV,
     // comparison/branch/jump
-    CMP, BEQ, B, BL,
-    // just a label definition
-    LABEL,
+    CMP, BEQ, B, BL, BX,
     // data moving
-    MOV, MOVW,
+    MOV, MOVW, MOVT, MVN,
+    MOVEQ, MOVWNE,
+    MOVWLO, MOVWLT, MOVWLS, MOVWLE,
+    MOVWHI, MOVWGT, MOVWHS, MOVWGE,
     // logical
     AND, ORR, EOR,
     // shifting
     LSL, LSR, ASR,
+    // bit manipulating
+    CLZ,
+    // extending
+    SXTB, UXTB,
+    // just a label definition
+    LABEL,
+    // pseudo instructions
+    NOP, LEA,
+    // assembler directives
+    ZERO, ASCIZ, LONG, BYTE,
   };
 
   // push/pop/...
@@ -136,11 +190,19 @@ class AArch32Inst : public InstBase {
     AddOpr(opr1);
     AddOpr(opr2);
   }
-  // ldr/mov/...
+  // ldr/mov/cmp/...
   AArch32Inst(OpCode opcode, const OprPtr &dest, const OprPtr &opr)
       : opcode_(opcode) {
-    set_dest(dest);
-    AddOpr(opr);
+    if (opcode == OpCode::CMP) {
+      // CMP does not have destination register
+      set_dest(nullptr);
+      AddOpr(dest);
+      AddOpr(opr);
+    }
+    else {
+      set_dest(dest);
+      AddOpr(opr);
+    }
   }
   // beq/label/...
   AArch32Inst(OpCode opcode, const OprPtr &opr)
