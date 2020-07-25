@@ -76,7 +76,9 @@ OprPtr AArch32InstGen::GenerateOn(LoadSSA &ssa) {
     PushInst(OpCode::MOV, dest, src);
   }
   else {
-    PushInst(OpCode::LDR, dest, src);
+    auto base_ty = ssa.ptr()->type()->GetDerefedType();
+    auto opcode = base_ty->GetSize() == 1 ? OpCode::LDRB : OpCode::LDR;
+    PushInst(opcode, dest, src);
   }
   return dest;
 }
@@ -90,7 +92,9 @@ OprPtr AArch32InstGen::GenerateOn(StoreSSA &ssa) {
   else {
     auto temp = GetVReg(*ssa.value());
     PushInst(OpCode::MOV, temp, val);
-    PushInst(OpCode::STR, ptr, temp);
+    auto base_ty = ssa.ptr()->type()->GetDerefedType();
+    auto opcode = base_ty->GetSize() == 1 ? OpCode::STRB : OpCode::STR;
+    PushInst(opcode, ptr, temp);
   }
   return nullptr;
 }

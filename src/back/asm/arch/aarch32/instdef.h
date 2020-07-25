@@ -141,7 +141,7 @@ class AArch32Inst : public InstBase {
  public:
   enum class OpCode {
     // memory accessing
-    LDR, STR, PUSH, POP,
+    LDR, LDRB, STR, STRB, PUSH, POP,
     // arithmetic
     ADD, SUB, SUBS, RSB, MUL, MLS, SDIV, UDIV,
     // comparison/branch/jump
