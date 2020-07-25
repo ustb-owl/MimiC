@@ -14,9 +14,8 @@ class MoveEliminatePass : public PassInterface {
     for (auto it = insts.begin(); it != insts.end();) {
       if (last && (*it)->IsMove()) {
         // check if current instruction needs to be removed
-        if ((*it)->oprs()[0] == last->dest()) {
+        if ((*it)->oprs()[0].value() == last->dest()) {
           last->set_dest((*it)->dest());
-          last = *it;
           it = insts.erase(it);
           continue;
         }
