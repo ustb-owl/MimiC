@@ -77,7 +77,7 @@ void AArch32Str::Dump(std::ostream &os) const {
 }
 
 void AArch32Slot::Dump(std::ostream &os) const {
-  os << "[sp, #" << offset_ * 4 << ']';
+  os << '[' << (based_on_sp_ ? "sp" : "fp") << ", #" << offset_ * 4 << ']';
 }
 
 void AArch32Inst::Dump(std::ostream &os) const {
