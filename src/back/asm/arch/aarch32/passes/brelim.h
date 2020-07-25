@@ -6,6 +6,11 @@
 
 namespace mimic::back::asmgen::aarch32 {
 
+/*
+  this pass will:
+  1.  eliminate redundant unconditional branch instructions
+  2.  eliminate unused labels
+*/
 class BranchEliminationPass : public PassInterface {
  public:
   BranchEliminationPass() {}
