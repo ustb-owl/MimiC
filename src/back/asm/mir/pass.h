@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <list>
+#include <utility>
 
 #include "back/asm/mir/mir.h"
 
@@ -19,6 +20,12 @@ class PassInterface {
 
 using PassPtr = std::unique_ptr<PassInterface>;
 using PassPtrList = std::list<PassPtr>;
+
+// create a new pass pointer
+template <typename T, typename... Args>
+inline PassPtr MakePass(Args &&... args) {
+  return std::make_unique<T>(std::forward<Args>(args)...);
+}
 
 }  // namespace mimic::back::asmgen
 
