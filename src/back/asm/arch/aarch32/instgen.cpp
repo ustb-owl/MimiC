@@ -71,24 +71,38 @@ void AArch32InstGen::DumpSeqs(std::ostream &os,
 
 OprPtr AArch32InstGen::GenerateOn(LoadSSA &ssa) {
   auto dest = GetVReg(ssa), src = GetOpr(ssa.ptr());
-  // treat as move (before register allocation)
-  PushInst(OpCode::MOV, dest, src);
+  if (IsSSA<AllocaSSA>(ssa.ptr())) {
+    // treat as move (before register allocation)
+    PushInst(OpCode::MOV, dest, src);
+  }
+  else {
+    PushInst(OpCode::LDR, dest, src);
+  }
   return dest;
 }
 
 OprPtr AArch32InstGen::GenerateOn(StoreSSA &ssa) {
   auto ptr = GetOpr(ssa.ptr()), val = GetOpr(ssa.value());
-  // treat as move (before register allocation)
-  PushInst(OpCode::MOV, ptr, val);
+  if (IsSSA<AllocaSSA>(ssa.ptr())) {
+    // treat as move (before register allocation)
+    PushInst(OpCode::MOV, ptr, val);
+  }
+  else {
+    auto temp = GetVReg(*ssa.value());
+    PushInst(OpCode::MOV, temp, val);
+    PushInst(OpCode::STR, ptr, temp);
+  }
   return nullptr;
 }
 
 OprPtr AArch32InstGen::GenerateOn(AccessSSA &ssa) {
+  using AccTy = AccessSSA::AccessType;
   auto ptr = GetOpr(ssa.ptr()), index = GetOpr(ssa.index());
   auto dest = GetVReg(ssa);
   // calculate index
   auto base_ty = ssa.ptr()->type()->GetDerefedType();
   if (base_ty->IsStruct()) {
+    assert(ssa.acc_type() == AccTy::Element);
     // structures
     std::size_t idx = SSACast<ConstIntSSA>(ssa.index().get())->value();
     std::size_t offset = 0, align = base_ty->GetAlignSize();
@@ -100,16 +114,28 @@ OprPtr AArch32InstGen::GenerateOn(AccessSSA &ssa) {
   }
   else {
     // pointers or arrays
+    // check if is array accessing
+    if (ssa.acc_type() == AccTy::Element) {
+      assert(base_ty->IsArray());
+      base_ty = base_ty->GetDerefedType();
+    }
+    // get offset by size of base type
     auto size = base_ty->GetSize();
-    if (size & !(size & (size - 1))) {
-      // 'size' is not zero && is power of 2
-      PushInst(OpCode::LSL, dest, index, GetImm(std::log2(size)));
+    if (ssa.index()->IsConst()) {
+      auto ofs = SSACast<ConstIntSSA>(ssa.index().get())->value() * size;
+      index = GetImm(ofs);
     }
     else {
-      // generate multiplication
-      PushInst(OpCode::MUL, dest, index, GetImm(size));
+      if (size & !(size & (size - 1))) {
+        // 'size' is not zero && is power of 2
+        PushInst(OpCode::LSL, dest, index, GetImm(std::log2(size)));
+      }
+      else {
+        // generate multiplication
+        PushInst(OpCode::MUL, dest, index, GetImm(size));
+      }
+      index = dest;
     }
-    index = dest;
   }
   // get effective address
   PushInst(OpCode::LEA, dest, ptr, index);
@@ -366,8 +392,9 @@ OprPtr AArch32InstGen::GenerateOn(ConstArraySSA &ssa) {
       // combine all zeros
       if (!int_val) {
         zeros += size;
+        continue;
       }
-      else {
+      else if (zeros) {
         PushInst(OpCode::ZERO, std::make_shared<AArch32Int>(zeros));
         zeros = 0;
       }

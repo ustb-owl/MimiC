@@ -92,6 +92,10 @@ void AArch32Inst::Dump(std::ostream &os) const {
         os << "\t{" << oprs() << '}';
         break;
       }
+      case OpCode::STR: {
+        os << "\t" << oprs() << ", " << dest();
+        break;
+      }
       default: {
         if (!dest() && !oprs().empty()) {
           os << '\t' << oprs();
