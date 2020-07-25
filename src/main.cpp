@@ -9,6 +9,7 @@
 #include "front/logger.h"
 #include "driver/compiler.h"
 #include "opt/stage.h"
+#include "back/asm/generator.h"
 #include "back/c/generator.h"
 
 #include "xstl/argparse.h"
@@ -17,7 +18,7 @@ using namespace std;
 using namespace mimic::front;
 using namespace mimic::driver;
 using namespace mimic::opt;
-using namespace mimic::back::c;
+using namespace mimic::back;
 
 namespace {
 
@@ -148,7 +149,18 @@ int main(int argc, const char *argv[]) {
   if (comp.dump_yuir()) exit(0);
 
   // generate code
-  CCodeGen gen;
-  comp.GenerateCode(gen);
+  if (argp.GetValue<bool>("asm")) {
+    // generate assembly
+    asmgen::AsmCodeGen gen;
+    auto succ = gen.SetTargetArch("aarch32");
+    assert(succ);
+    static_cast<void>(succ);
+    comp.GenerateCode(gen);
+  }
+  else {
+    // generate C code
+    c::CCodeGen gen;
+    comp.GenerateCode(gen);
+  }
   return Logger::error_num();
 }
