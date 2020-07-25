@@ -35,7 +35,7 @@ class AArch32Reg : public OperandBase {
     PC,
   };
 
-  AArch32Reg(RegName name) {}
+  AArch32Reg(RegName name) : name_(name) {}
 
   bool IsReg() const override { return true; }
   bool IsVirtual() const override { return false; }
