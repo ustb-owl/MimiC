@@ -1,6 +1,8 @@
 #include "back/asm/arch/archinfo.h"
 
 #include "back/asm/arch/aarch32/instgen.h"
+#include "back/asm/arch/aarch32/passes/brelim.h"
+#include "back/asm/mir/passes/movelim.h"
 
 using namespace mimic::back::asmgen;
 using namespace mimic::back::asmgen::aarch32;
@@ -16,7 +18,10 @@ class AArch32ArchInfo : public ArchInfoBase {
   }
 
   PassPtrList GetPassList(std::size_t opt_level) const override {
-    return {};
+    PassPtrList list;
+    list.push_back(MakePass<BranchEliminationPass>());
+    list.push_back(MakePass<MoveEliminatePass>());
+    return list;
   }
 
  private:
