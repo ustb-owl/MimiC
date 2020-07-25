@@ -3,92 +3,100 @@
 using namespace mimic::mid;
 using namespace mimic::back::asmgen;
 
+namespace {
+
+void SetOpr(Value &ssa, const OprPtr &opr) {
+  if (!ssa.metadata().has_value()) ssa.set_metadata(opr);
+}
+
+}  // namespace
+
 void AsmCodeGen::GenerateOn(LoadSSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::GenerateOn(StoreSSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::GenerateOn(AccessSSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::GenerateOn(BinarySSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::GenerateOn(UnarySSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::GenerateOn(CastSSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::GenerateOn(CallSSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::GenerateOn(BranchSSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::GenerateOn(JumpSSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::GenerateOn(ReturnSSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::GenerateOn(FunctionSSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::GenerateOn(GlobalVarSSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::GenerateOn(AllocaSSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::GenerateOn(BlockSSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::GenerateOn(ArgRefSSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::GenerateOn(ConstIntSSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::GenerateOn(ConstStrSSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::GenerateOn(ConstStructSSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::GenerateOn(ConstArraySSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::GenerateOn(ConstZeroSSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::GenerateOn(SelectSSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::GenerateOn(UndefSSA &ssa) {
-  ssa.set_metadata(arch_info_->GetInstGen().GenerateOn(ssa));
+  SetOpr(ssa, arch_info_->GetInstGen().GenerateOn(ssa));
 }
 
 void AsmCodeGen::Dump(std::ostream &os) const {
