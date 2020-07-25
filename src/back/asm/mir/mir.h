@@ -50,6 +50,7 @@ class InstBase {
 
   // getters
   const OprPtr &dest() const { return dest_; }
+  OprPtrList &oprs() { return oprs_; }
   const OprPtrList &oprs() const { return oprs_; }
 
  private:
