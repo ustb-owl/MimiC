@@ -48,10 +48,10 @@ std::ostream &operator<<(std::ostream &os, const OprPtr &opr) {
   return os;
 }
 
-std::ostream &operator<<(std::ostream &os, const OprPtrList &oprs) {
+std::ostream &operator<<(std::ostream &os, const std::vector<Use> &oprs) {
   for (std::size_t i = 0; i < oprs.size(); ++i) {
     if (i) os << ", ";
-    oprs[i]->Dump(os);
+    oprs[i].value()->Dump(os);
   }
   return os;
 }
@@ -83,7 +83,7 @@ void AArch32Slot::Dump(std::ostream &os) const {
 void AArch32Inst::Dump(std::ostream &os) const {
   using OpCode = AArch32Inst::OpCode;
   if (opcode_ == OpCode::LABEL) {
-    os << oprs()[0] << ':';
+    os << oprs()[0].value() << ':';
   }
   else {
     os << '\t' << opcode_;
