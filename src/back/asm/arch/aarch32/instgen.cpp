@@ -39,7 +39,7 @@ OprPtr AArch32InstGen::GenerateZeros(const TypePtr &type) {
     // 'GenerateOn(ConstArraySSA)' will handle
     return GetImm(0);
   }
-  else if (type->IsInteger()) {
+  else if (type->IsInteger() || type->IsPointer()) {
     return GetImm(0);
   }
   else {
