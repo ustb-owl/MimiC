@@ -193,8 +193,9 @@ class AArch32Inst : public InstBase {
   // ldr/mov/cmp/...
   AArch32Inst(OpCode opcode, const OprPtr &dest, const OprPtr &opr)
       : opcode_(opcode) {
-    if (opcode == OpCode::CMP) {
-      // CMP does not have destination register
+    if (opcode_ == OpCode::CMP || opcode_ == OpCode::STR ||
+        opcode_ == OpCode::STRB) {
+      // CMP/STR/STRB does not have destination register
       set_dest(nullptr);
       AddOpr(dest);
       AddOpr(opr);
