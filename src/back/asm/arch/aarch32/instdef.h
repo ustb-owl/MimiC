@@ -161,8 +161,6 @@ class AArch32Inst : public InstBase {
     SXTB, UXTB,
     // just a label definition
     LABEL,
-    // pseudo instructions
-    NOP, LEA,
     // assembler directives
     ZERO, ASCIZ, LONG, BYTE,
   };

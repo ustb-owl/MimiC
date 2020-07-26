@@ -29,7 +29,6 @@ const char *kOpCodes[] = {
   "clz",
   "sxtb", "uxtb",
   "",
-  "nop", "lea",
   ".zero", ".asciz", ".long", ".byte",
 };
 
@@ -54,6 +53,18 @@ std::ostream &operator<<(std::ostream &os, const std::vector<Use> &oprs) {
     oprs[i].value()->Dump(os);
   }
   return os;
+}
+
+void DumpMemOpr(std::ostream &os, const OprPtr &opr) {
+  if (opr->IsLabel()) {
+    os << '=' << opr;
+  }
+  else if (opr->IsReg()) {
+    os << '[' << opr << ']';
+  }
+  else {
+    os << opr;
+  }
 }
 
 }  // namespace
@@ -86,18 +97,28 @@ void AArch32Inst::Dump(std::ostream &os) const {
     os << oprs()[0].value() << ':';
   }
   else {
-    os << '\t' << opcode_;
+    os << '\t' << opcode_ << '\t';
     switch (opcode_) {
       case OpCode::PUSH: case OpCode::POP: {
-        os << "\t{" << oprs() << '}';
+        os << '{' << oprs() << '}';
+        break;
+      }
+      case OpCode::LDR: case OpCode::LDRB: {
+        os << dest() << ", ";
+        DumpMemOpr(os, oprs()[0].value());
+        break;
+      }
+      case OpCode::STR: case OpCode::STRB: {
+        os << oprs()[1].value() << ", ";
+        DumpMemOpr(os, oprs()[1].value());
         break;
       }
       default: {
         if (!dest() && !oprs().empty()) {
-          os << '\t' << oprs();
+          os << oprs();
         }
         else if (dest()) {
-          os << '\t' << dest() << ", " << oprs();
+          os << dest() << ", " << oprs();
         }
         break;
       }
