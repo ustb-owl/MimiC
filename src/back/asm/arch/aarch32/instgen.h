@@ -1,8 +1,9 @@
 #ifndef BACK_ASM_ARCH_AARCH32_INSTGEN_H_
 #define BACK_ASM_ARCH_AARCH32_INSTGEN_H_
 
-#include <unordered_map>
 #include <utility>
+#include <unordered_map>
+#include <vector>
 #include <cassert>
 #include <cstddef>
 
@@ -85,9 +86,10 @@ class AArch32InstGen : public InstGenBase {
     return GetSlot(false, offset);
   }
 
-  // get a virtual register
-  OprPtr GetVReg(mid::Value &ssa) {
-    return vreg_fact_.GetReg(ssa.type()->GetSize());
+  // allocate next in-frame stack slot
+  const OprPtr &AllocNextSlot(std::size_t size) {
+    alloc_slots_ += (size + 3) / 4 * 4;
+    return GetSlot(-static_cast<std::int32_t>(alloc_slots_));
   }
 
   // push a new instruction to current function
@@ -101,6 +103,12 @@ class AArch32InstGen : public InstGenBase {
   LinkageTypes GetLinkType(mid::LinkageTypes link);
   // generate zeros
   OprPtr GenerateZeros(const define::TypePtr &type);
+  // load effective address
+  void LoadEffAddr(const OprPtr &dest_reg, const OprPtr &ptr,
+                   const OprPtr &offset);
+  // generate 'memcpy'
+  void GenerateMemCpy(const OprPtr &dest, const OprPtr &src,
+                      std::size_t size);
   // dump instruction sequences
   void DumpSeqs(std::ostream &os, const InstSeqMap &seqs) const;
 
@@ -110,14 +118,16 @@ class AArch32InstGen : public InstGenBase {
   std::unordered_map<std::int32_t, OprPtr> imms_;
   // map for stack slots
   std::unordered_map<std::uint64_t, OprPtr> slots_;
+  // allocated in-frame stack slots
+  std::size_t alloc_slots_;
   // for creating virtual registers
   VirtRegFactory vreg_fact_;
   // for creating labels
   LabelFactory label_fact_;
-  // label of global variable
-  OprPtr global_label_;
-  // link type of global variable
-  LinkageTypes global_link_;
+  // used when generating functions
+  std::vector<OprPtr> args_;
+  // used when generating global variables
+  std::size_t in_global_;
   // used when generating constant arrays
   std::size_t arr_depth_;
 };
