@@ -565,3 +565,7 @@ void AArch32InstGen::Reset() {
   in_global_ = 0;
   arr_depth_ = 0;
 }
+
+std::function<OprPtr()> AArch32InstGen::GetSlotAllocator() {
+  return [this] { return AllocNextSlot(4); };
+}
