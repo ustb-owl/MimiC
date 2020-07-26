@@ -201,15 +201,15 @@ OprPtr AArch32InstGen::GenerateOn(AccessSSA &ssa) {
       index = GetImm(ofs);
     }
     else {
-      if (size & !(size & (size - 1))) {
+      assert(index->IsReg() && size);
+      if (!(size & (size - 1))) {
         // 'size' is not zero && is power of 2
-        PushInst(OpCode::LSL, dest, index, GetImm(std::log2(size)));
+        PushInst(OpCode::LSL, index, index, GetImm(std::log2(size)));
       }
       else {
         // generate multiplication
-        PushInst(OpCode::MUL, dest, index, GetImm(size));
+        PushInst(OpCode::MUL, index, index, GetImm(size));
       }
-      index = dest;
     }
   }
   // get effective address
