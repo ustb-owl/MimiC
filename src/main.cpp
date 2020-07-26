@@ -155,6 +155,7 @@ int main(int argc, const char *argv[]) {
     auto succ = gen.SetTargetArch("aarch32");
     assert(succ);
     static_cast<void>(succ);
+    gen.set_opt_level(comp.opt_level());
     comp.GenerateCode(gen);
   }
   else {

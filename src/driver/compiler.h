@@ -39,7 +39,9 @@ class Compiler {
   void GenerateCode(back::CodeGen &gen);
 
   // setters
-  void set_opt_level(int opt_level) { pass_man_.set_opt_level(opt_level); }
+  void set_opt_level(std::size_t opt_level) {
+    pass_man_.set_opt_level(opt_level);
+  }
   void set_stage(opt::PassStage stage) { pass_man_.set_stage(stage); }
   void set_dump_ast(bool dump_ast) { dump_ast_ = dump_ast; }
   void set_dump_yuir(bool dump_yuir) { dump_yuir_ = dump_yuir; }
@@ -53,6 +55,7 @@ class Compiler {
   }
 
   // getters
+  std::size_t opt_level() const { return pass_man_.opt_level(); }
   bool dump_ast() const { return dump_ast_; }
   bool dump_yuir() const { return dump_yuir_; }
   bool dump_pass_info() const { return dump_pass_info_; }
