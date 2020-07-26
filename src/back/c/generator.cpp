@@ -196,11 +196,12 @@ void CCodeGen::Reset() {
   type_.clear();
   code_.str("");
   code_.clear();
+  in_global_var_ = false;
   arr_depth_ = 0;
 }
 
 void CCodeGen::GenerateOn(LoadSSA &ssa) {
-  auto var = GetNewVar(kVarPrefix), val = GetVal(ssa[0].value());
+  auto var = GetNewVar(kVarPrefix), val = GetVal(ssa.ptr());
   const auto &type = ssa.type();
   code_ << kIndent << GetTypeName(type) << ' ' << var;
   if (type->IsArray() || type->IsStruct()) {
@@ -218,7 +219,7 @@ void CCodeGen::GenerateOn(LoadSSA &ssa) {
 }
 
 void CCodeGen::GenerateOn(StoreSSA &ssa) {
-  const auto &ptr = ssa[1].value(), &val = ssa[0].value();
+  const auto &ptr = ssa.ptr(), &val = ssa.value();
   auto type = ptr->type()->GetDerefedType();
   auto ptr_val = GetVal(ptr), val_val = GetVal(val);
   if (type->IsArray() || type->IsStruct()) {
@@ -236,7 +237,7 @@ void CCodeGen::GenerateOn(StoreSSA &ssa) {
 void CCodeGen::GenerateOn(AccessSSA &ssa) {
   using AccType = AccessSSA::AccessType;
   auto var = DeclVar(ssa);
-  auto ptr = GetVal(ssa[0].value()), index = GetVal(ssa[1].value());
+  auto ptr = GetVal(ssa.ptr()), index = GetVal(ssa.index());
   // handle by access type
   if (ssa.acc_type() == AccType::Pointer) {
     // pointer
@@ -244,7 +245,7 @@ void CCodeGen::GenerateOn(AccessSSA &ssa) {
   }
   else {
     assert(ssa.acc_type() == AccType::Element);
-    auto base_ty = ssa[0].value()->type()->GetDerefedType();
+    auto base_ty = ssa.ptr()->type()->GetDerefedType();
     if (base_ty->IsArray()) {
       // array
       code_ << "&(*" << ptr << ")[" << index << ']';
@@ -254,7 +255,7 @@ void CCodeGen::GenerateOn(AccessSSA &ssa) {
       assert(base_ty->IsStruct());
       code_ << '(' << GetTypeName(ssa.type());
       code_ << ")((unsigned char*)" << ptr << " + ";
-      assert(ssa[1].value()->IsConst());
+      assert(ssa.index()->IsConst());
       // calculate offset
       std::size_t idx = std::stoul(index), offset = 0;
       auto align = base_ty->GetAlignSize();
@@ -271,21 +272,21 @@ void CCodeGen::GenerateOn(AccessSSA &ssa) {
 
 void CCodeGen::GenerateOn(BinarySSA &ssa) {
   auto var = DeclVar(ssa);
-  code_ << GetVal(ssa[0].value()) << ' ' << GetBinOp(ssa.op());
-  code_ << ' ' << GetVal(ssa[1].value());
+  code_ << GetVal(ssa.lhs()) << ' ' << GetBinOp(ssa.op());
+  code_ << ' ' << GetVal(ssa.rhs());
   GenEnd(ssa);
   SetVal(ssa, var);
 }
 
 void CCodeGen::GenerateOn(UnarySSA &ssa) {
   auto var = DeclVar(ssa);
-  code_ << GetUnaOp(ssa.op()) << GetVal(ssa[0].value());
+  code_ << GetUnaOp(ssa.op()) << GetVal(ssa.opr());
   GenEnd(ssa);
   SetVal(ssa, var);
 }
 
 void CCodeGen::GenerateOn(CastSSA &ssa) {
-  auto val = '(' + GetTypeName(ssa.type()) + ')' + GetVal(ssa[0].value());
+  auto val = '(' + GetTypeName(ssa.type()) + ')' + GetVal(ssa.opr());
   if (!ssa.IsConst()) {
     auto var = DeclVar(ssa);
     code_ << val;
@@ -305,9 +306,9 @@ void CCodeGen::GenerateOn(CallSSA &ssa) {
   else {
     code_ << kIndent;
   }
-  code_ << GetVal(ssa[0].value()) << '(';
+  code_ << GetVal(ssa.callee()) << '(';
   // generate arguments
-  for (int i = 1; i < ssa.size(); ++i) {
+  for (std::size_t i = 1; i < ssa.size(); ++i) {
     if (i > 1) code_ << ", ";
     code_ << GetVal(ssa[i].value());
   }
@@ -316,21 +317,21 @@ void CCodeGen::GenerateOn(CallSSA &ssa) {
 }
 
 void CCodeGen::GenerateOn(BranchSSA &ssa) {
-  code_ << kIndent << "if (" << GetVal(ssa[0].value()) << ") goto ";
-  code_ << GetLabel(ssa[1].value()) << "; else goto ";
-  code_ << GetLabel(ssa[2].value());
+  code_ << kIndent << "if (" << GetVal(ssa.cond()) << ") goto ";
+  code_ << GetLabel(ssa.true_block()) << "; else goto ";
+  code_ << GetLabel(ssa.false_block());
   GenEnd(ssa);
 }
 
 void CCodeGen::GenerateOn(JumpSSA &ssa) {
   code_ << kIndent << "goto ";
-  code_ << GetLabel(ssa[0].value());
+  code_ << GetLabel(ssa.target());
   GenEnd(ssa);
 }
 
 void CCodeGen::GenerateOn(ReturnSSA &ssa) {
   code_ << kIndent << "return";
-  if (ssa[0].value()) code_ << ' ' << GetLabel(ssa[0].value());
+  if (ssa.value()) code_ << ' ' << GetVal(ssa.value());
   GenEnd(ssa);
 }
 
@@ -348,7 +349,7 @@ void CCodeGen::GenerateOn(FunctionSSA &ssa) {
     code_ << GetTypeName(args_ty[i]) << ' ' << kArgPrefix << i;
   }
   code_ << ')';
-  if (ssa.empty()) {
+  if (ssa.is_decl()) {
     GenEnd(ssa);
     return;
   }
@@ -367,9 +368,9 @@ void CCodeGen::GenerateOn(GlobalVarSSA &ssa) {
   auto type = ssa.type()->GetDerefedType();
   code_ << GetTypeName(type) << ' ' << ssa.name();
   // generate initializer
-  if (ssa[0].value()) {
+  if (ssa.init()) {
     in_global_var_ = true;
-    code_ << " = " << GetVal(ssa[0].value());
+    code_ << " = " << GetVal(ssa.init());
     in_global_var_ = false;
   }
   GenEnd(ssa);
@@ -407,7 +408,12 @@ void CCodeGen::GenerateOn(ArgRefSSA &ssa) {
 }
 
 void CCodeGen::GenerateOn(ConstIntSSA &ssa) {
-  SetVal(ssa, std::to_string(ssa.value()));
+  if (ssa.type()->IsUnsigned() || ssa.type()->IsPointer()) {
+    SetVal(ssa, std::to_string(ssa.value()));
+  }
+  else {
+    SetVal(ssa, std::to_string(static_cast<std::int32_t>(ssa.value())));
+  }
 }
 
 void CCodeGen::GenerateOn(ConstStrSSA &ssa) {
@@ -467,6 +473,19 @@ void CCodeGen::GenerateOn(ConstZeroSSA &ssa) {
     // not fully implemented
     assert(false);
   }
+}
+
+void CCodeGen::GenerateOn(SelectSSA &ssa) {
+  auto var = DeclVar(ssa);
+  code_ << GetVal(ssa.cond()) << " ? " << GetVal(ssa.true_val());
+  code_ << " : " << GetVal(ssa.false_val());
+  GenEnd(ssa);
+  SetVal(ssa, var);
+}
+
+void CCodeGen::GenerateOn(UndefSSA &ssa) {
+  // treat undefined value as zero
+  SetVal(ssa, '(' + GetTypeName(ssa.type()) + ")0");
 }
 
 void CCodeGen::Dump(std::ostream &os) const {

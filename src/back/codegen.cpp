@@ -1,5 +1,7 @@
 #include "mid/ssa.h"
 
+#include <cassert>
+
 #include "back/codegen.h"
 
 using namespace mimic::mid;
@@ -82,5 +84,23 @@ void ConstArraySSA::GenerateCode(CodeGen &gen) {
 }
 
 void ConstZeroSSA::GenerateCode(CodeGen &gen) {
+  gen.GenerateOn(*this);
+}
+
+void PhiOperandSSA::GenerateCode(CodeGen &gen) {
+  // backend do not support phi node
+  assert(false);
+}
+
+void PhiSSA::GenerateCode(CodeGen &gen) {
+  // backend do not support phi node
+  assert(false);
+}
+
+void SelectSSA::GenerateCode(CodeGen &gen) {
+  gen.GenerateOn(*this);
+}
+
+void UndefSSA::GenerateCode(CodeGen &gen) {
   gen.GenerateOn(*this);
 }

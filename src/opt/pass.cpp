@@ -84,3 +84,19 @@ void ConstArraySSA::RunPass(PassBase &pass) {
 void ConstZeroSSA::RunPass(PassBase &pass) {
   pass.RunOn(*this);
 }
+
+void PhiOperandSSA::RunPass(PassBase &pass) {
+  pass.RunOn(*this);
+}
+
+void PhiSSA::RunPass(PassBase &pass) {
+  pass.RunOn(*this);
+}
+
+void SelectSSA::RunPass(PassBase &pass) {
+  pass.RunOn(*this);
+}
+
+void UndefSSA::RunPass(PassBase &pass) {
+  pass.RunOn(*this);
+}

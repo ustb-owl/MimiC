@@ -1,9 +1,12 @@
 #include "driver/compiler.h"
 
+#include <cstdlib>
+
 #include "front/logger.h"
 
 using namespace mimic::driver;
 using namespace mimic::front;
+using namespace mimic::opt;
 using namespace mimic::back;
 
 void Compiler::Reset() {
@@ -21,7 +24,7 @@ void Compiler::Open(std::istream *in) {
   parser_.Reset();
 }
 
-bool Compiler::CompileToIR() {
+void Compiler::CompileToIR() {
   while (auto ast = parser_.ParseNext()) {
     // perform sematic analyze
     if (!ast->SemaAnalyze(ana_)) break;
@@ -30,17 +33,19 @@ bool Compiler::CompileToIR() {
     // generate IR
     ast->GenerateIR(irb_);
   }
-  return !Logger::error_num();
+  // check if need to exit
+  auto err_num = Logger::error_num();
+  if (err_num) std::exit(err_num);
 }
 
-bool Compiler::RunPasses() {
+void Compiler::RunPasses() {
   // run passes on IR
   if (dump_pass_info_) pass_man_.ShowInfo(std::cerr);
   irb_.module().RunPasses(pass_man_);
   // check if need to dump IR
   auto err_num = Logger::error_num();
   if (!err_num && dump_yuir_) irb_.module().Dump(*os_);
-  return !err_num;
+  if (err_num) std::exit(err_num);
 }
 
 void Compiler::GenerateCode(CodeGen &gen) {

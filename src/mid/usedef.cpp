@@ -1,5 +1,7 @@
 #include "mid/usedef.h"
 
+#include <algorithm>
+
 using namespace mimic::mid;
 
 void IdManager::ResetId() {
@@ -34,21 +36,28 @@ std::optional<std::string_view> IdManager::GetName(const Value *v) const {
 }
 
 void Value::ReplaceBy(const SSAPtr &value) {
-  // copy an use list from current value
-  auto uses = uses_;
+  if (value.get() == this) return;
   // reroute all uses to new value
-  for (const auto &use : uses) {
-    use->set_value(value);
+  while (!uses_.empty()) {
+    uses_.front()->set_value(value);
   }
 }
 
-void User::RemoveNull() {
-  std::size_t len = 0;
-  for (std::size_t i = 0; i < uses_.size(); ++i) {
-    if (uses_[i].value()) {
-      uses_[len].set_value(uses_[i].value());
-      ++len;
-    }
+void Value::RemoveFromUser() {
+  // remove from all users
+  while (!uses_.empty()) {
+    uses_.front()->user()->RemoveValue(this);
   }
-  if (len < uses_.size()) Resize(len);
+}
+
+void User::RemoveValue(const SSAPtr &value) {
+  RemoveValue(value.get());
+}
+
+void User::RemoveValue(Value *value) {
+  uses_.erase(std::remove_if(uses_.begin(), uses_.end(),
+                             [&value](const Use &use) {
+                               return use.value().get() == value;
+                             }),
+              uses_.end());
 }

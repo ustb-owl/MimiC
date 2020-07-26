@@ -76,6 +76,8 @@ class Value {
   virtual void Dump(std::ostream &os, IdManager &idm) const = 0;
   // return true if current value is a constant
   virtual bool IsConst() const = 0;
+  // return true if current value is an undefined value
+  virtual bool IsUndef() const = 0;
   // get address value of current value
   virtual SSAPtr GetAddr() const { return nullptr; }
 
@@ -90,34 +92,27 @@ class Value {
   void RemoveUse(Use *use) { uses_.remove(use); }
   // replace current value by another value
   void ReplaceBy(const SSAPtr &value);
+  // remove current value from all users
+  void RemoveFromUser();
+
+  // setters
+  void set_logger(const front::LogPtr &logger) { logger_ = logger; }
+  void set_type(const define::TypePtr &type) {
+    type_ = type ? type->GetTrivialType() : nullptr;
+  }
+  void set_metadata(const std::any &metadata) { metadata_ = metadata; }
 
   // getters
   const front::LogPtr &logger() const { return logger_; }
   const define::TypePtr &type() const { return type_; }
-  const define::TypePtr &org_type() const { return org_type_; }
   const std::any &metadata() const { return metadata_; }
   const std::list<Use *> &uses() const { return uses_; }
-
-  // setters
-  void set_logger(const front::LogPtr &logger) { logger_ = logger; }
-  // set 'type' only
-  void set_type(const define::TypePtr &type) { type_ = type; }
-  // set 'org_type' only
-  void set_org_type(const define::TypePtr &org_type) {
-    org_type_ = org_type;
-  }
-  // set both 'type' and 'org_type'
-  void set_types(const define::TypePtr &type) {
-    type_ = type ? type->GetTrivialType() : nullptr;
-    org_type_ = type;
-  }
-  void set_metadata(const std::any &metadata) { metadata_ = metadata; }
 
  private:
   // pointer to logger
   front::LogPtr logger_;
   // trivial/orginal type of current value
-  define::TypePtr type_, org_type_;
+  define::TypePtr type_;
   // metadata
   std::any metadata_;
   // linked list of 'Use'
@@ -128,7 +123,9 @@ class Value {
 class Use {
  public:
   explicit Use(const SSAPtr &value, User *user)
-      : value_(value), user_(user) {}
+      : value_(value), user_(user) {
+    if (value_) value_->AddUse(this);
+  }
   // copy constructor
   Use(const Use &use) : value_(use.value_), user_(use.user_) {
     if (value_) value_->AddUse(this);
@@ -149,10 +146,9 @@ class Use {
   // copy assignment operator
   Use &operator=(const Use &use) {
     if (this != &use) {
-      value_ = use.value_;
-      user_ = use.user_;
       // update reference
-      if (value_) value_->AddUse(this);
+      set_value(use.value_);
+      user_ = use.user_;
     }
     return *this;
   }
@@ -160,13 +156,10 @@ class Use {
   // move assignment operator
   Use &operator=(Use &&use) noexcept {
     if (this != &use) {
-      value_ = std::move(use.value_);
-      user_ = use.user_;
       // update reference
-      if (value_) {
-        value_->RemoveUse(&use);
-        value_->AddUse(this);
-      }
+      if (use.value_) use.value_->RemoveUse(&use);
+      set_value(std::move(use.value_));
+      user_ = use.user_;
     }
     return *this;
   }
@@ -196,8 +189,10 @@ class User : public Value {
   void Reserve(std::size_t size) { uses_.reserve(size); }
   // resize use list
   void Resize(std::size_t size) { uses_.resize(size, Use(nullptr, this)); }
-  // remove null uses
-  void RemoveNull();
+  // remove uses with specific value
+  void RemoveValue(const SSAPtr &value);
+  // remove uses with specific value
+  void RemoveValue(Value *value);
   // clear all uses
   void Clear() { uses_.clear(); }
   // add new value to current user
