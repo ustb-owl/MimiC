@@ -1,6 +1,7 @@
 #ifndef BACK_ASM_ARCH_AARCH32_INSTGEN_H_
 #define BACK_ASM_ARCH_AARCH32_INSTGEN_H_
 
+#include <functional>
 #include <utility>
 #include <unordered_map>
 #include <vector>
@@ -45,15 +46,17 @@ class AArch32InstGen : public InstGenBase {
 
   // reset internal status
   void Reset();
+  // get stack slot allocator for register allocator
+  std::function<OprPtr()> GetSlotAllocator();
 
- private:
-  // get a register
-  const OprPtr &GetReg(AArch32Reg::RegName name) {
+  // get an architecture register
+  const OprPtr &GetReg(AArch32Reg::RegName name) const {
     auto it = regs_.find(name);
     assert(it != regs_.end());
     return it->second;
   }
 
+ private:
   // get an immediate number
   const OprPtr &GetImm(std::int32_t val) {
     auto it = imms_.find(val);
