@@ -23,7 +23,7 @@ using PassPtrList = std::list<PassPtr>;
 
 // create a new pass pointer
 template <typename T, typename... Args>
-inline PassPtr MakePass(Args &&... args) {
+inline std::unique_ptr<T> MakePass(Args &&... args) {
   return std::make_unique<T>(std::forward<Args>(args)...);
 }
 
