@@ -10,12 +10,13 @@
 #include <vector>
 
 #include "mid/module.h"
-#include "mid/pass.h"
-#include "mid/passman.h"
 #include "mid/ssa.h"
+#include "opt/pass.h"
+#include "opt/passman.h"
 
-using namespace yulang::mid;
-using namespace yulang::define;
+using namespace mimic::opt;
+using namespace mimic::mid;
+using namespace mimic::define;
 
 namespace {
 
@@ -139,8 +140,8 @@ class AlgebraicSimplification : public BlockPass {
       else if (right->IsConst()) {
         if (ssa.op() == BinarySSA::Operator::SDiv) {
           if (Is2Power(operand_[0])) {  // 处理2的幂
-            auto mod = MakeModule();
-            auto type = MakePrimType(Keyword::Int32, false);
+            auto mod = MakeModule(ssa.logger());
+            auto type = MakePrimType(PrimType::Type::Int32, false);
             SSAPtr rhs = mod.GetInt(Log2(operand_[0]), type);
             auto newBinarySSA = mod.CreateShr(left, rhs);
             finalSSA_ = newBinarySSA;
@@ -162,7 +163,6 @@ class AlgebraicSimplification : public BlockPass {
  private:
   bool needFold_, changed_;
   std::vector<int> operand_;
-  std::uint32_t result_;
   SSAPtr finalSSA_ = nullptr;
 
   inline bool Is2Power(int32_t num) { return (((num) & (num - 1)) == 0); }
@@ -170,4 +170,5 @@ class AlgebraicSimplification : public BlockPass {
 };
 }  // namespace
 
-REGISTER_PASS(AlgebraicSimplification, Algebraic_Simp, 1, false);
+REGISTER_PASS(AlgebraicSimplification, Algebraic_Simp, 0,
+              PassStage::PreOpt | PassStage::Opt | PassStage::PostOpt);
