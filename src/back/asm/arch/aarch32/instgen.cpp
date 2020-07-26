@@ -39,16 +39,52 @@ OprPtr AArch32InstGen::GenerateZeros(const TypePtr &type) {
     // 'GenerateOn(ConstArraySSA)' will handle
     return GetImm(0);
   }
-  else if (type->IsInteger() || type->IsPointer()) {
+  else if (!in_global_ && (type->IsInteger() || type->IsPointer())) {
     return GetImm(0);
   }
   else {
     // generate memory data
-    auto label = label_fact_.GetLabel();
-    auto mem = EnterMemData(label, LinkageTypes::Internal);
+    OprPtr label = nullptr;
+    if (!in_global_) label = label_fact_.GetLabel();
+    auto mem = !in_global_ ? EnterMemData(label, LinkageTypes::Internal)
+                           : xstl::Guard(nullptr);
     PushInst(OpCode::ZERO, std::make_shared<AArch32Int>(type->GetSize()));
     return label;
   }
+}
+
+void AArch32InstGen::LoadEffAddr(const OprPtr &dest_reg, const OprPtr &ptr,
+                                 const OprPtr &offset) {
+  // check if 'offset' is immediate zero
+  bool ofs_zero = offset->IsImm() &&
+                  !static_cast<AArch32Imm *>(offset.get())->val();
+  if (ptr->IsSlot()) {
+    // get base register
+    auto p = static_cast<AArch32Slot *>(ptr.get());
+    auto base = p->based_on_sp() ? GetReg(RegName::SP) :
+                                   GetReg(RegName::R11);
+    PushInst(OpCode::MOV, dest_reg, base);
+    // calculate stack offset
+    auto ofs = p->offset();
+    if (ofs) PushInst(OpCode::ADD, dest_reg, dest_reg, GetImm(ofs));
+  }
+  else {
+    // TODO: not fully implemented
+    assert(ptr->IsLabel() &&
+           "getting address of registers is not implemented");
+    // load label address
+    PushInst(OpCode::LDR, dest_reg, ptr);
+  }
+  // add offset to result if offset is not zero
+  if (!ofs_zero) PushInst(OpCode::ADD, dest_reg, dest_reg, offset);
+}
+
+void AArch32InstGen::GenerateMemCpy(const OprPtr &dest, const OprPtr &src,
+                                    std::size_t size) {
+  LoadEffAddr(GetReg(RegName::R0), dest, GetImm(0));
+  LoadEffAddr(GetReg(RegName::R1), src, GetImm(0));
+  PushInst(OpCode::MOV, GetReg(RegName::R2), GetImm(size));
+  PushInst(OpCode::BL, label_fact_.GetLabel("memcpy"));
 }
 
 void AArch32InstGen::DumpSeqs(std::ostream &os,
@@ -70,14 +106,32 @@ void AArch32InstGen::DumpSeqs(std::ostream &os,
 }
 
 OprPtr AArch32InstGen::GenerateOn(LoadSSA &ssa) {
-  auto dest = GetVReg(ssa), src = GetOpr(ssa.ptr());
-  if (IsSSA<AllocaSSA>(ssa.ptr())) {
-    // treat as move (before register allocation)
+  OprPtr dest, src = GetOpr(ssa.ptr());
+  const auto &type = ssa.type();
+  if (type->IsArray() || type->IsStruct()) {
+    assert(src->IsLabel() || src->IsSlot());
+    // generate 'memcpy'
+    auto size = ssa.type()->GetSize();
+    dest = AllocNextSlot(size);
+    GenerateMemCpy(dest, src, size);
+  }
+  else if (IsSSA<AllocaSSA>(ssa.ptr())) {
+    assert(src->IsReg());
+    // generate move
+    dest = vreg_fact_.GetReg();
     PushInst(OpCode::MOV, dest, src);
   }
   else {
-    auto base_ty = ssa.ptr()->type()->GetDerefedType();
-    auto opcode = base_ty->GetSize() == 1 ? OpCode::LDRB : OpCode::LDR;
+    assert(src->IsReg() || src->IsLabel());
+    // load address to register if source operand is a label
+    if (src->IsLabel()) {
+      auto temp = vreg_fact_.GetReg();
+      LoadEffAddr(temp, src, GetImm(0));
+      src = temp;
+    }
+    // generate memory load
+    dest = vreg_fact_.GetReg();
+    auto opcode = type->GetSize() == 1 ? OpCode::LDRB : OpCode::LDR;
     PushInst(opcode, dest, src);
   }
   return dest;
@@ -85,16 +139,33 @@ OprPtr AArch32InstGen::GenerateOn(LoadSSA &ssa) {
 
 OprPtr AArch32InstGen::GenerateOn(StoreSSA &ssa) {
   auto ptr = GetOpr(ssa.ptr()), val = GetOpr(ssa.value());
-  if (IsSSA<AllocaSSA>(ssa.ptr())) {
-    // treat as move (before register allocation)
+  const auto &type = ssa.value()->type();
+  if (type->IsArray() || type->IsStruct()) {
+    assert((ptr->IsLabel() || ptr->IsSlot()) &&
+           (val->IsLabel() || val->IsSlot()));
+    // generate 'memcpy'
+    auto size = type->GetSize();
+    GenerateMemCpy(ptr, val, size);
+  }
+  else if (IsSSA<AllocaSSA>(ssa.ptr())) {
+    assert(ptr->IsReg());
+    // generate move
     PushInst(OpCode::MOV, ptr, val);
   }
   else {
-    auto temp = GetVReg(*ssa.value());
-    PushInst(OpCode::MOV, temp, val);
-    auto base_ty = ssa.ptr()->type()->GetDerefedType();
-    auto opcode = base_ty->GetSize() == 1 ? OpCode::STRB : OpCode::STR;
-    PushInst(opcode, temp, ptr);
+    assert(ptr->IsReg() && (val->IsReg() || val->IsImm()));
+    // generate value register
+    OprPtr reg;
+    if (val->IsReg()) {
+      reg = val;
+    }
+    else {
+      reg = vreg_fact_.GetReg();
+      PushInst(OpCode::MOV, reg, val);
+    }
+    // generate memory store
+    auto opcode = type->GetSize() == 1 ? OpCode::STRB : OpCode::STR;
+    PushInst(opcode, reg, ptr);
   }
   return nullptr;
 }
@@ -102,7 +173,7 @@ OprPtr AArch32InstGen::GenerateOn(StoreSSA &ssa) {
 OprPtr AArch32InstGen::GenerateOn(AccessSSA &ssa) {
   using AccTy = AccessSSA::AccessType;
   auto ptr = GetOpr(ssa.ptr()), index = GetOpr(ssa.index());
-  auto dest = GetVReg(ssa);
+  auto dest = vreg_fact_.GetReg();
   // calculate index
   auto base_ty = ssa.ptr()->type()->GetDerefedType();
   if (base_ty->IsStruct()) {
@@ -142,14 +213,14 @@ OprPtr AArch32InstGen::GenerateOn(AccessSSA &ssa) {
     }
   }
   // get effective address
-  PushInst(OpCode::LEA, dest, ptr, index);
+  LoadEffAddr(dest, ptr, index);
   return dest;
 }
 
 OprPtr AArch32InstGen::GenerateOn(BinarySSA &ssa) {
   using Op = BinarySSA::Operator;
   auto lhs = GetOpr(ssa.lhs()), rhs = GetOpr(ssa.rhs());
-  auto dest = GetVReg(ssa);
+  auto dest = vreg_fact_.GetReg();
   // get opcode by operator
   OpCode opcode;
   switch (ssa.op()) {
@@ -212,7 +283,7 @@ OprPtr AArch32InstGen::GenerateOn(BinarySSA &ssa) {
 
 OprPtr AArch32InstGen::GenerateOn(UnarySSA &ssa) {
   using Op = UnarySSA::Operator;
-  auto opr = GetOpr(ssa.opr()), dest = GetVReg(ssa);
+  auto opr = GetOpr(ssa.opr()), dest = vreg_fact_.GetReg();
   switch (ssa.op()) {
     case Op::Neg: PushInst(OpCode::RSB, dest, opr, GetImm(0)); break;
     case Op::LogicNot: {
@@ -227,7 +298,7 @@ OprPtr AArch32InstGen::GenerateOn(UnarySSA &ssa) {
 }
 
 OprPtr AArch32InstGen::GenerateOn(CastSSA &ssa) {
-  auto dest = GetVReg(ssa), opr = GetOpr(ssa.opr());
+  auto dest = vreg_fact_.GetReg(), opr = GetOpr(ssa.opr());
   const auto &src_ty = ssa.opr()->type(), &dst_ty = ssa.type();
   if (src_ty->GetSize() < dst_ty->GetSize()) {
     assert(src_ty->GetSize() == 1 && dst_ty->GetSize() == 4);
@@ -252,6 +323,7 @@ OprPtr AArch32InstGen::GenerateOn(CastSSA &ssa) {
 OprPtr AArch32InstGen::GenerateOn(CallSSA &ssa) {
   // generate arguments
   for (std::size_t i = 1; i < ssa.size(); ++i) {
+    // generate destination
     OprPtr dest;
     switch (i) {
       case 1: dest = GetReg(RegName::R0); break;
@@ -260,13 +332,20 @@ OprPtr AArch32InstGen::GenerateOn(CallSSA &ssa) {
       case 4: dest = GetReg(RegName::R3); break;
       default: dest = GetSlot(true, (i - 5) * 4); break;
     }
-    PushInst(OpCode::MOV, dest, GetOpr(ssa[i].value()));
+    // put value to destination
+    auto val = GetOpr(ssa[i].value());
+    if (i <= 4) {
+      PushInst(OpCode::MOV, dest, val);
+    }
+    else {
+      PushInst(OpCode::STR, val, dest);
+    }
   }
   // generate branch
   PushInst(OpCode::BL, GetOpr(ssa.callee()));
   // generate result
   if (!ssa.type()->IsVoid()) {
-    auto dest = GetVReg(ssa);
+    auto dest = vreg_fact_.GetReg();
     PushInst(OpCode::MOV, dest, GetReg(RegName::R0));
     return dest;
   }
@@ -307,6 +386,22 @@ OprPtr AArch32InstGen::GenerateOn(FunctionSSA &ssa) {
   // enter a new function
   auto func = EnterFunction(label, GetLinkType(ssa.link()));
   ssa.set_metadata(label);
+  // generate arguments
+  args_.clear();
+  for (std::size_t i = 0; i < ssa.args().size(); ++i) {
+    OprPtr arg = vreg_fact_.GetReg(), src;
+    // get source of arguments
+    switch (i) {
+      case 0: src = GetReg(RegName::R0); break;
+      case 1: src = GetReg(RegName::R1); break;
+      case 2: src = GetReg(RegName::R2); break;
+      case 3: src = GetReg(RegName::R3); break;
+      default: src = GetSlot((i - 4) * 4); break;
+    }
+    // put argument to register
+    PushInst(i < 4 ? OpCode::MOV : OpCode::LDR, arg, src);
+    args_.push_back(std::move(arg));
+  }
   // generate label of blocks
   for (const auto &i : ssa) {
     i.value()->set_metadata(label_fact_.GetLabel());
@@ -319,16 +414,14 @@ OprPtr AArch32InstGen::GenerateOn(FunctionSSA &ssa) {
 
 OprPtr AArch32InstGen::GenerateOn(GlobalVarSSA &ssa) {
   auto label = label_fact_.GetLabel(ssa.name());
-  auto link = GetLinkType(ssa.link());
+  auto mem = EnterMemData(label, GetLinkType(ssa.link()));
   // generate initial value
   if (ssa.init()) {
-    global_label_ = label;
-    global_link_ = link;
+    ++in_global_;
     GetOpr(ssa.init());
-    global_label_ = nullptr;
+    --in_global_;
   }
   else {
-    auto mem = EnterMemData(label, link);
     // generate zeros
     auto size = ssa.type()->GetDerefedType()->GetSize();
     PushInst(OpCode::ZERO, std::make_shared<AArch32Int>(size));
@@ -337,8 +430,15 @@ OprPtr AArch32InstGen::GenerateOn(GlobalVarSSA &ssa) {
 }
 
 OprPtr AArch32InstGen::GenerateOn(AllocaSSA &ssa) {
-  // just allocate a virtual register
-  return GetVReg(ssa);
+  auto type = ssa.type()->GetDerefedType();
+  if (type->IsArray() || type->IsStruct()) {
+    // allocate a stack slot
+    return AllocNextSlot(type->GetSize());
+  }
+  else {
+    // allocate a virtual register
+    return vreg_fact_.GetReg();
+  }
 }
 
 OprPtr AArch32InstGen::GenerateOn(BlockSSA &ssa) {
@@ -351,23 +451,25 @@ OprPtr AArch32InstGen::GenerateOn(BlockSSA &ssa) {
 }
 
 OprPtr AArch32InstGen::GenerateOn(ArgRefSSA &ssa) {
-  switch (ssa.index()) {
-    case 0: return GetReg(RegName::R0);
-    case 1: return GetReg(RegName::R1);
-    case 2: return GetReg(RegName::R2);
-    case 3: return GetReg(RegName::R3);
-    default: return GetSlot((ssa.index() - 4) * 4);
-  }
+  return args_[ssa.index()];
 }
 
 OprPtr AArch32InstGen::GenerateOn(ConstIntSSA &ssa) {
-  return GetImm(ssa.value());
+  if (in_global_) {
+    auto opcode = ssa.type()->GetSize() == 1 ? OpCode::BYTE : OpCode::LONG;
+    PushInst(opcode, std::make_shared<AArch32Int>(ssa.value()));
+    return nullptr;
+  }
+  else {
+    return GetImm(ssa.value());
+  }
 }
 
 OprPtr AArch32InstGen::GenerateOn(ConstStrSSA &ssa) {
-  // TODO: maybe has bug when generating global strings
-  auto label = label_fact_.GetLabel();
-  auto mem = EnterMemData(label, LinkageTypes::Internal);
+  OprPtr label = nullptr;
+  if (!in_global_) label = label_fact_.GetLabel();
+  auto mem = !in_global_ ? EnterMemData(label, LinkageTypes::Internal)
+                         : xstl::Guard(nullptr);
   PushInst(OpCode::ASCIZ, std::make_shared<AArch32Str>(ssa.str()));
   return label;
 }
@@ -382,9 +484,10 @@ OprPtr AArch32InstGen::GenerateOn(ConstArraySSA &ssa) {
   auto guard = xstl::Guard([this] { --arr_depth_; });
   // generate label
   OprPtr label = nullptr;
-  if (arr_depth_ <= 1) label = label_fact_.GetLabel();
-  auto mem = arr_depth_ <= 1 ? EnterMemData(label, LinkageTypes::Internal)
-                             : xstl::Guard(nullptr);
+  bool new_data = !in_global_ && arr_depth_ <= 1;
+  if (new_data) label = label_fact_.GetLabel();
+  auto mem = new_data ? EnterMemData(label, LinkageTypes::Internal)
+                      : xstl::Guard(nullptr);
   // generate elements
   std::size_t zeros = 0;
   for (const auto &i : ssa) {
@@ -421,7 +524,7 @@ OprPtr AArch32InstGen::GenerateOn(ConstZeroSSA &ssa) {
 }
 
 OprPtr AArch32InstGen::GenerateOn(SelectSSA &ssa) {
-  auto dest = GetVReg(ssa), cond = GetOpr(ssa.cond());
+  auto dest = vreg_fact_.GetReg(), cond = GetOpr(ssa.cond());
   auto tv = GetOpr(ssa.true_val()), fv = GetOpr(ssa.false_val());
   PushInst(OpCode::MOV, dest, tv);
   PushInst(OpCode::CMP, cond, GetImm(0));
@@ -457,6 +560,8 @@ void AArch32InstGen::Reset() {
     regs_.insert({name, reg});
   }
   // reset other stuffs
-  global_label_ = nullptr;
+  args_.clear();
+  alloc_slots_ = 0;
+  in_global_ = 0;
   arr_depth_ = 0;
 }
