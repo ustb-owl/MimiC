@@ -94,7 +94,7 @@ OprPtr AArch32InstGen::GenerateOn(StoreSSA &ssa) {
     PushInst(OpCode::MOV, temp, val);
     auto base_ty = ssa.ptr()->type()->GetDerefedType();
     auto opcode = base_ty->GetSize() == 1 ? OpCode::STRB : OpCode::STR;
-    PushInst(opcode, ptr, temp);
+    PushInst(opcode, temp, ptr);
   }
   return nullptr;
 }
