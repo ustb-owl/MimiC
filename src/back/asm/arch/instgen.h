@@ -50,7 +50,7 @@ class InstGenBase {
 
   // run a machine level pass on all functions
   void RunPass(const PassPtr &pass) {
-    for (auto &&[_, info] : funcs_) pass->RunOn(info.insts);
+    for (auto &&[label, info] : funcs_) pass->RunOn(label, info.insts);
   }
 
   // setters
