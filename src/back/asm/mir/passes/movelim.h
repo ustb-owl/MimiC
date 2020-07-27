@@ -23,8 +23,14 @@ class MoveEliminatePass : public PassInterface {
             op  reg1, ...   ==>   op  reg2, ...
             mov reg2, reg1
           */
-          last->set_dest((*it)->dest());
-          it = insts.erase(it);
+          if (last->IsMove() && last->oprs()[0].value() == (*it)->dest()) {
+            it = insts.erase(--it);
+            it = insts.erase(it);
+          }
+          else {
+            last->set_dest((*it)->dest());
+            it = insts.erase(it);
+          }
           continue;
         }
         else if ((*it)->oprs()[0].value() == (*it)->dest()) {
