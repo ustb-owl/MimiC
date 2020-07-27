@@ -27,8 +27,7 @@ xstl::ArgParser GetArgp() {
   argp.AddArgument<string>("input", "input source file");
   argp.AddOption<bool>("help", "h", "show this message", false);
   argp.AddOption<bool>("version", "v", "show version info", false);
-  argp.AddOption<bool>("asm", "S", "dump ARM assembly",
-                       false);
+  argp.AddOption<bool>("asm", "S", "dump assembly", false);
   argp.AddOption<bool>("opt-2", "O2", "enable level-2 optimization",
                        false);
   argp.AddOption<string>("output", "o", "output file, default to stdout",
@@ -42,6 +41,8 @@ xstl::ArgParser GetArgp() {
   argp.AddOption<bool>("dump-ir", "di", "dump IR to output", false);
   argp.AddOption<string>("pass-stage", "ps",
                          "optimize until specific stage", "");
+  argp.AddOption<string>("target-arch", "ta",
+                         "specify target architecture", "aarch32");
   return argp;
 }
 
@@ -152,9 +153,10 @@ int main(int argc, const char *argv[]) {
   if (argp.GetValue<bool>("asm")) {
     // generate assembly
     asmgen::AsmCodeGen gen;
-    auto succ = gen.SetTargetArch("aarch32");
-    assert(succ);
-    static_cast<void>(succ);
+    if (!gen.SetTargetArch(argp.GetValue<string>("target-arch"))) {
+      Logger::LogRawError("invalid target architecture");
+      return 1;
+    }
     gen.set_opt_level(comp.opt_level());
     comp.GenerateCode(gen);
   }
