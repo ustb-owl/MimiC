@@ -20,11 +20,11 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
  public:
   LinearScanRegAllocPass() {}
 
-  void RunOn(InstPtrList &insts) override {
+  void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
     Reset();
     // perform allocation
     InitLiveIntervals(insts);
-    LinearScanAlloc();
+    LinearScanAlloc(func_label);
     // apply to virtual registers
     for (const auto &i : insts) {
       for (auto &&opr : i->oprs()) {
@@ -112,7 +112,7 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
   }
 
   // perform linear scan register allocation
-  void LinearScanAlloc() {
+  void LinearScanAlloc(const OprPtr &func_label) {
     IntervalStartMap start_map;
     IntervalEndMap active;
     // build up live interval map
@@ -127,7 +127,6 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
         auto reg = free_regs_.front();
         free_regs_.pop();
         vregs_[i.second] = reg;
-        MarkAsAllocated(reg);
         // add to active
         active.insert({i.first, i.second});
       }
@@ -141,7 +140,7 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
       }
       else {
         // need to spill
-        SpillAtInterval(active, i.first, i.second);
+        SpillAtInterval(active, i.first, i.second, func_label);
       }
     }
   }
@@ -164,7 +163,7 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
   }
 
   void SpillAtInterval(IntervalEndMap &active, const LiveInterval *i,
-                       const OprPtr &opr) {
+                       const OprPtr &opr, const OprPtr &func_label) {
     // get last element of active
     auto spill = --active.end();
     // check if can allocate register to var
@@ -172,7 +171,7 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
       // allocate register/slot of spilled value to i
       vregs_[opr] = vregs_[spill->second];
       // allocate a slot to spilled value
-      vregs_[spill->second] = AllocSlot();
+      vregs_[spill->second] = allocator().AllocateSlot(func_label);
       // remove spill from active
       active.erase(spill);
       // add i to active
@@ -180,7 +179,7 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
     }
     else {
       // just allocate a new slot
-      vregs_[opr] = AllocSlot();
+      vregs_[opr] = allocator().AllocateSlot(func_label);
     }
   }
 
