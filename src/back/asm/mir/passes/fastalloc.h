@@ -12,6 +12,8 @@ namespace mimic::back::asmgen {
 
 /*
   fast register allocation
+
+  TODO: this algorithm is wrong when processing loops
 */
 class FastRegAllocPass : public PassInterface {
  public:
@@ -24,8 +26,8 @@ class FastRegAllocPass : public PassInterface {
         // get virtual register info
         auto opr = use.value();
         if (!opr->IsVirtual()) continue;
-        auto it = active_vregs_.find(opr);
-        assert(it != active_vregs_.end());
+        auto it = allocated_vregs_.find(opr);
+        assert(it != allocated_vregs_.end());
         // replace with allocated operand
         use.set_value(it->second);
         if (!opr->use_count()) {
@@ -37,26 +39,32 @@ class FastRegAllocPass : public PassInterface {
             assert(it->second->IsSlot());
             unused_slots_.push(it->second);
           }
-          active_vregs_.erase(it);
         }
       }
       // check destination operand
       if (!i->dest() || !i->dest()->IsVirtual()) continue;
-      // allocate destination operand
       OprPtr opr;
-      if (!unused_regs_.empty()) {
-        opr = unused_regs_.front();
-        unused_regs_.pop();
-      }
-      else if (!unused_slots_.empty()) {
-        opr = unused_slots_.front();
-        unused_slots_.pop();
+      auto it = allocated_vregs_.find(i->dest());
+      if (it != allocated_vregs_.end()) {
+        // use allocated register
+        opr = it->second;
       }
       else {
-        opr = alloc_slot_();
+        // allocate destination operand
+        if (!unused_regs_.empty()) {
+          opr = unused_regs_.front();
+          unused_regs_.pop();
+        }
+        else if (!unused_slots_.empty()) {
+          opr = unused_slots_.front();
+          unused_slots_.pop();
+        }
+        else {
+          opr = alloc_slot_();
+        }
+        // mark virtual register as allocated
+        allocated_vregs_[i->dest()] = opr;
       }
-      // mark virtual register as active
-      active_vregs_[i->dest()] = opr;
       i->set_dest(opr);
     }
   }
@@ -72,8 +80,8 @@ class FastRegAllocPass : public PassInterface {
  private:
   // unused architecture regsters & retired stack slots
   std::queue<OprPtr> unused_regs_, unused_slots_;
-  // active virtual registers
-  std::unordered_map<OprPtr, OprPtr> active_vregs_;
+  // allocated virtual registers
+  std::unordered_map<OprPtr, OprPtr> allocated_vregs_;
   // stack slot allocator
   std::function<OprPtr()> alloc_slot_;
 };
