@@ -68,12 +68,14 @@ void AArch32InstGen::LoadEffAddr(const OprPtr &dest_reg, const OprPtr &ptr,
     auto ofs = p->offset();
     if (ofs) PushInst(OpCode::ADD, dest_reg, dest_reg, GetImm(ofs));
   }
-  else {
-    // TODO: not fully implemented
-    assert(ptr->IsLabel() &&
-           "getting address of registers is not implemented");
+  else if (ptr->IsLabel()) {
     // load label address
     PushInst(OpCode::LDR, dest_reg, ptr);
+  }
+  else {
+    assert(ptr->IsReg());
+    // just move address to destination
+    PushInst(OpCode::MOV, dest_reg, ptr);
   }
   // add offset to result if offset is not zero
   if (!ofs_zero) PushInst(OpCode::ADD, dest_reg, dest_reg, offset);
@@ -141,8 +143,8 @@ OprPtr AArch32InstGen::GenerateOn(StoreSSA &ssa) {
   auto ptr = GetOpr(ssa.ptr()), val = GetOpr(ssa.value());
   const auto &type = ssa.value()->type();
   if (type->IsArray() || type->IsStruct()) {
-    assert((ptr->IsLabel() || ptr->IsSlot()) &&
-           (val->IsLabel() || val->IsSlot()));
+    assert((ptr->IsLabel() || ptr->IsSlot() || ptr->IsVirtual()) &&
+           (val->IsLabel() || val->IsSlot() || ptr->IsVirtual()));
     // generate 'memcpy'
     auto size = type->GetSize();
     GenerateMemCpy(ptr, val, size);
@@ -153,19 +155,23 @@ OprPtr AArch32InstGen::GenerateOn(StoreSSA &ssa) {
     PushInst(OpCode::MOV, ptr, val);
   }
   else {
-    assert(ptr->IsReg() && (val->IsReg() || val->IsImm()));
-    // generate value register
-    OprPtr reg;
-    if (val->IsReg()) {
-      reg = val;
+    assert((ptr->IsReg() || ptr->IsLabel()) &&
+           (val->IsReg() || val->IsImm()));
+    // generate pointer register
+    auto ptr_reg = ptr;
+    if (ptr->IsLabel()) {
+      ptr_reg = vreg_fact_.GetReg();
+      PushInst(OpCode::LDR, ptr_reg, ptr);
     }
-    else {
-      reg = vreg_fact_.GetReg();
-      PushInst(OpCode::MOV, reg, val);
+    // generate value register
+    auto val_reg = val;
+    if (!val->IsReg()) {
+      val_reg = vreg_fact_.GetReg();
+      PushInst(OpCode::MOV, val_reg, val);
     }
     // generate memory store
     auto opcode = type->GetSize() == 1 ? OpCode::STRB : OpCode::STR;
-    PushInst(opcode, reg, ptr);
+    PushInst(opcode, val_reg, ptr_reg);
   }
   return nullptr;
 }
