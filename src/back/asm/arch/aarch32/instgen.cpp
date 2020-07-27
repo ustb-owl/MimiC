@@ -127,7 +127,7 @@ OprPtr AArch32InstGen::GenerateOn(LoadSSA &ssa) {
     assert(src->IsReg() || src->IsLabel());
     // load address to register if source operand is a label
     if (src->IsLabel()) {
-      auto temp = vreg_fact_.GetReg();
+      auto temp = GetReg(RegName::R0);
       LoadEffAddr(temp, src, GetImm(0));
       src = temp;
     }
@@ -160,13 +160,13 @@ OprPtr AArch32InstGen::GenerateOn(StoreSSA &ssa) {
     // generate pointer register
     auto ptr_reg = ptr;
     if (ptr->IsLabel()) {
-      ptr_reg = vreg_fact_.GetReg();
+      ptr_reg = GetReg(RegName::R0);
       PushInst(OpCode::LDR, ptr_reg, ptr);
     }
     // generate value register
     auto val_reg = val;
     if (!val->IsReg()) {
-      val_reg = vreg_fact_.GetReg();
+      val_reg = GetReg(RegName::R1);
       PushInst(OpCode::MOV, val_reg, val);
     }
     // generate memory store
@@ -208,7 +208,7 @@ OprPtr AArch32InstGen::GenerateOn(AccessSSA &ssa) {
     }
     else {
       assert(index->IsReg() && size);
-      auto temp = vreg_fact_.GetReg();
+      auto temp = GetReg(RegName::R0);
       if (!(size & (size - 1))) {
         // 'size' is not zero && is power of 2
         PushInst(OpCode::LSL, temp, index, GetImm(std::log2(size)));
@@ -228,11 +228,11 @@ OprPtr AArch32InstGen::GenerateOn(AccessSSA &ssa) {
 OprPtr AArch32InstGen::GenerateOn(BinarySSA &ssa) {
   using Op = BinarySSA::Operator;
   auto lhs = GetOpr(ssa.lhs()), rhs = GetOpr(ssa.rhs());
-  auto dest = vreg_fact_.GetReg();
+  auto dest = vreg_fact_.GetReg(), temp = GetReg(RegName::R0);
   // get opcode by operator
   OpCode opcode;
   switch (ssa.op()) {
-    // simple operation
+    // simple operations
     case Op::Add: opcode = OpCode::ADD; break;
     case Op::Sub: opcode = OpCode::SUB; break;
     case Op::Mul: opcode = OpCode::MUL; break;
@@ -244,17 +244,17 @@ OprPtr AArch32InstGen::GenerateOn(BinarySSA &ssa) {
     case Op::Shl: opcode = OpCode::LSL; break;
     case Op::LShr: opcode = OpCode::LSR; break;
     case Op::AShr: opcode = OpCode::ASR; break;
-    // complex operation
+    // complex operations
     case Op::URem: case Op::SRem: {
       auto opcode = ssa.op() == Op::URem ? OpCode::UDIV : OpCode::SDIV;
-      PushInst(opcode, dest, lhs, rhs);
-      PushInst(OpCode::MLS, dest, dest, rhs, lhs);
+      PushInst(opcode, temp, lhs, rhs);
+      PushInst(OpCode::MLS, dest, temp, rhs, lhs);
       return dest;
     }
     case Op::Equal: {
-      PushInst(OpCode::SUB, dest, lhs, rhs);
-      PushInst(OpCode::CLZ, dest, dest);
-      PushInst(OpCode::LSR, dest, dest, GetImm(5));
+      PushInst(OpCode::SUB, temp, lhs, rhs);
+      PushInst(OpCode::CLZ, temp, temp);
+      PushInst(OpCode::LSR, dest, temp, GetImm(5));
       return dest;
     }
     case Op::NotEq: {
@@ -295,8 +295,9 @@ OprPtr AArch32InstGen::GenerateOn(UnarySSA &ssa) {
   switch (ssa.op()) {
     case Op::Neg: PushInst(OpCode::RSB, dest, opr, GetImm(0)); break;
     case Op::LogicNot: {
-      PushInst(OpCode::CLZ, dest, opr);
-      PushInst(OpCode::LSR, dest, dest, GetImm(5));
+      auto temp = GetReg(RegName::R0);
+      PushInst(OpCode::CLZ, temp, opr);
+      PushInst(OpCode::LSR, dest, temp, GetImm(5));
       break;
     }
     case Op::Not: PushInst(OpCode::MVN, dest, opr); break;
