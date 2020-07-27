@@ -12,7 +12,7 @@ class MoveEliminatePass : public PassInterface {
  public:
   MoveEliminatePass() {}
 
-  void RunOn(InstPtrList &insts) override {
+  void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
     InstPtr last;
     for (auto it = insts.begin(); it != insts.end();) {
       if (last && (*it)->IsMove()) {

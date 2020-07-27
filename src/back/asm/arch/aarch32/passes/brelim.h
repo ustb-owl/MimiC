@@ -15,7 +15,7 @@ class BranchEliminationPass : public PassInterface {
  public:
   BranchEliminationPass() {}
 
-  void RunOn(InstPtrList &insts) override {
+  void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
     using OpCode = AArch32Inst::OpCode;
     // remove redundant branches
     InstPtr last;
