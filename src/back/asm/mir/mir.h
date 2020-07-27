@@ -97,6 +97,10 @@ class InstBase {
 
   // check if is a move instruction (for general purpose optimizations)
   virtual bool IsMove() const = 0;
+  // check if is a label definition (for general purpose optimizations)
+  virtual bool IsLabel() const = 0;
+  // check if is a call instruction (for register allocation)
+  virtual bool IsCall() const = 0;
   // dump instruction to output stream
   virtual void Dump(std::ostream &os) const = 0;
 

@@ -215,6 +215,8 @@ class AArch32Inst : public InstBase {
   bool IsMove() const override {
     return opcode_ == OpCode::MOV || opcode_ == OpCode::MOVW;
   }
+  bool IsLabel() const override { return opcode_ == OpCode::LABEL; }
+  bool IsCall() const override { return opcode_ == OpCode::BL; }
   void Dump(std::ostream &os) const override;
 
   // getters
