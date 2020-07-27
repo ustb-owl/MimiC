@@ -2,6 +2,7 @@
 #define MIMIC_BACK_ASM_MIR_PASSES_LINEARSCAN_H_
 
 #include <map>
+#include <vector>
 #include <queue>
 #include <unordered_map>
 #include <cstddef>
@@ -20,6 +21,7 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
   LinearScanRegAllocPass() {}
 
   void RunOn(InstPtrList &insts) override {
+    Reset();
     // perform allocation
     InitLiveIntervals(insts);
     LinearScanAlloc();
@@ -37,7 +39,7 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
   }
 
   void AddAvaliableReg(const OprPtr &reg) override {
-    free_regs_.push(reg);
+    avaliable_regs_.push_back(reg);
   }
 
  private:
@@ -66,6 +68,18 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
   };
   using IntervalEndMap =
       std::multimap<const LiveInterval *, OprPtr, LiveIntervalEndCmp>;
+
+  // reset for next run
+  void Reset() {
+    // clear free register/slot pool
+    while (!free_regs_.empty()) free_regs_.pop();
+    while (!free_slots_.empty()) free_slots_.pop();
+    // initialize free registers
+    for (const auto &i : avaliable_regs_) free_regs_.push(i);
+    // reset other stuffs
+    live_intervals_.clear();
+    vregs_.clear();
+  }
 
   // initialize live interval info
   void InitLiveIntervals(InstPtrList &insts) {
@@ -120,7 +134,7 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
       else if (!free_slots_.empty()) {
         // allocate a free slot
         auto slot = free_slots_.front();
-        free_regs_.pop();
+        free_slots_.pop();
         vregs_[i.second] = slot;
         // add to active
         active.insert({i.first, i.second});
@@ -176,6 +190,8 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
     return vregs_[vreg];
   }
 
+  // all avaliable registers
+  std::vector<OprPtr> avaliable_regs_;
   // free register/slot pool (queue)
   std::queue<OprPtr> free_regs_, free_slots_;
   // live intervals
