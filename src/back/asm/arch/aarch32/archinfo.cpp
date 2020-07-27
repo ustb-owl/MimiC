@@ -30,7 +30,7 @@ class AArch32ArchInfo : public ArchInfoBase {
       fast_alloc->AddAvaliableReg(
           inst_gen_.GetReg(static_cast<RegName>(i)));
     }
-    fast_alloc->set_alloc_slot(inst_gen_.GetSlotAllocator());
+    fast_alloc->set_slot_alloc(inst_gen_.GetSlotAllocator());
     list.push_back(std::move(fast_alloc));
     list.push_back(MakePass<MoveEliminatePass>());
     return list;
