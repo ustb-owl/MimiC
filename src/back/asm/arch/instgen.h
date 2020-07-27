@@ -117,6 +117,8 @@ class InstGenBase {
   const InstSeqMap &funcs() const { return funcs_; }
   // all generated memory data
   const InstSeqMap &mems() const { return mems_; }
+  // label of current instruction sequence
+  const OprPtr &cur_label() const { return *cur_label_; }
 
  private:
   xstl::Guard EnterInstSeq(InstSeqMap &seqs, const OprPtr &label,
@@ -124,13 +126,19 @@ class InstGenBase {
     auto [it, succ] = seqs.insert({label, {link}});
     assert(succ);
     static_cast<void>(succ);
+    auto last_label = cur_label_;
     auto last_seq = cur_seq_;
+    cur_label_ = &it->first;
     cur_seq_ = &it->second;
-    return xstl::Guard([this, last_seq] { cur_seq_ = last_seq; });
+    return xstl::Guard([this, last_label, last_seq] {
+      cur_label_ = last_label;
+      cur_seq_ = last_seq;
+    });
   }
 
   CodeGen *parent_;
   InstSeqMap funcs_, mems_;
+  const OprPtr *cur_label_;
   InstSeqInfo *cur_seq_;
 };
 
