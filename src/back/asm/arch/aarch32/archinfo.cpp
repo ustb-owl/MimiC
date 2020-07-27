@@ -34,7 +34,7 @@ class AArch32ArchInfo : public ArchInfoBase {
       reg_alloc->AddAvaliableReg(
           inst_gen_.GetReg(static_cast<RegName>(i)));
     }
-    reg_alloc->set_slot_alloc(inst_gen_.GetSlotAllocator());
+    reg_alloc->set_allocator(inst_gen_.GetSlotAllocator());
     list.push_back(std::move(reg_alloc));
     return list;
   }
