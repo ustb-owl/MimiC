@@ -53,7 +53,6 @@ class FastRegAllocPass : public RegAllocatorBase {
         // allocate destination operand
         if (!unused_regs_.empty()) {
           opr = unused_regs_.front();
-          MarkAsAllocated(opr);
           unused_regs_.pop();
         }
         else if (!unused_slots_.empty()) {
@@ -61,7 +60,7 @@ class FastRegAllocPass : public RegAllocatorBase {
           unused_slots_.pop();
         }
         else {
-          opr = AllocSlot();
+          opr = allocator().AllocateSlot(func_label);
         }
         // mark virtual register as allocated
         allocated_vregs_[i->dest()] = opr;
