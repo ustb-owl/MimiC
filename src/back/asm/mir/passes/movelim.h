@@ -33,9 +33,11 @@ class MoveEliminatePass : public PassInterface {
           }
           continue;
         }
-        else if ((*it)->oprs()[0].value() == (*it)->dest()) {
+        else if ((*it)->oprs()[0].value() == (*it)->dest() ||
+                 !(*it)->dest()->use_count()) {
           /*
-            mov reg1, reg1  ==>   <removed>
+            mov reg1, reg1      ==>   <removed>
+            mov <unused>, ...   ==>   <removed>
           */
           it = insts.erase(it);
           continue;
