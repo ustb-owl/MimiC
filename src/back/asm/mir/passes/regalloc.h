@@ -9,6 +9,22 @@
 
 namespace mimic::back::asmgen {
 
+// slot allocator
+class SlotAllocator {
+ public:
+  SlotAllocator() {}
+  SlotAllocator(std::function<OprPtr(const OprPtr &)> alloc_slot)
+      : alloc_slot_(alloc_slot) {}
+
+  // allocate a new stack slot
+  OprPtr AllocateSlot(const OprPtr &func_label) const {
+    return alloc_slot_(func_label);
+  }
+
+ private:
+  std::function<OprPtr(const OprPtr &)> alloc_slot_;
+};
+
 class RegAllocatorBase : public PassInterface {
  public:
   virtual ~RegAllocatorBase() = default;
@@ -18,27 +34,14 @@ class RegAllocatorBase : public PassInterface {
 
   // setters
   // specify stack slot allocator
-  void set_slot_alloc(std::function<OprPtr()> slot_alloc) {
-    slot_alloc_ = slot_alloc;
-  }
-
-  // getters
-  const std::unordered_set<OprPtr> &allocated_regs() const {
-    return allocated_regs_;
-  }
+  void set_allocator(SlotAllocator allocator) { allocator_ = allocator; }
 
  protected:
-  // allocate a new slot
-  OprPtr AllocSlot() const { return slot_alloc_(); }
-  // add allocated register to set
-  void MarkAsAllocated(const OprPtr &reg) {
-    assert(reg->IsReg());
-    allocated_regs_.insert(reg);
-  }
+  // getters
+  const SlotAllocator &allocator() const { return allocator_; }
 
  private:
-  std::function<OprPtr()> slot_alloc_;
-  std::unordered_set<OprPtr> allocated_regs_;
+  SlotAllocator allocator_;
 };
 
 }  // namespace mimic::back::asmgen
