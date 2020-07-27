@@ -109,7 +109,7 @@ void AArch32Inst::Dump(std::ostream &os) const {
         break;
       }
       case OpCode::STR: case OpCode::STRB: {
-        os << oprs()[1].value() << ", ";
+        os << oprs()[0].value() << ", ";
         DumpMemOpr(os, oprs()[1].value());
         break;
       }
