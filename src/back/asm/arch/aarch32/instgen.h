@@ -10,6 +10,7 @@
 
 #include "back/asm/arch/instgen.h"
 #include "back/asm/arch/aarch32/instdef.h"
+#include "back/asm/mir/passes/regalloc.h"
 #include "back/asm/mir/virtreg.h"
 #include "back/asm/mir/label.h"
 
@@ -46,8 +47,8 @@ class AArch32InstGen : public InstGenBase {
 
   // reset internal status
   void Reset();
-  // get stack slot allocator for register allocator
-  std::function<OprPtr()> GetSlotAllocator();
+  // get stack slot allocator for register allocation
+  SlotAllocator GetSlotAllocator();
 
   // get an architecture register
   const OprPtr &GetReg(AArch32Reg::RegName name) const {
@@ -90,9 +91,9 @@ class AArch32InstGen : public InstGenBase {
   }
 
   // allocate next in-frame stack slot
-  const OprPtr &AllocNextSlot(std::size_t size) {
-    alloc_slots_ += (size + 3) / 4 * 4;
-    return GetSlot(-static_cast<std::int32_t>(alloc_slots_));
+  const OprPtr &AllocNextSlot(const OprPtr &func_label, std::size_t size) {
+    std::int32_t ofs = alloc_slots_[func_label] += (size + 3) / 4 * 4;
+    return GetSlot(-ofs);
   }
 
   // push a new instruction to current function
@@ -122,7 +123,7 @@ class AArch32InstGen : public InstGenBase {
   // map for stack slots
   std::unordered_map<std::uint64_t, OprPtr> slots_;
   // allocated in-frame stack slots
-  std::size_t alloc_slots_;
+  std::unordered_map<OprPtr, std::size_t> alloc_slots_;
   // for creating virtual registers
   VirtRegFactory vreg_fact_;
   // for creating labels

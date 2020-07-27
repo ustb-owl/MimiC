@@ -114,7 +114,7 @@ OprPtr AArch32InstGen::GenerateOn(LoadSSA &ssa) {
     assert(src->IsLabel() || src->IsSlot());
     // generate 'memcpy'
     auto size = ssa.type()->GetSize();
-    dest = AllocNextSlot(size);
+    dest = AllocNextSlot(cur_label(), size);
     GenerateMemCpy(dest, src, size);
   }
   else if (IsSSA<AllocaSSA>(ssa.ptr())) {
@@ -442,7 +442,7 @@ OprPtr AArch32InstGen::GenerateOn(AllocaSSA &ssa) {
   auto type = ssa.type()->GetDerefedType();
   if (type->IsArray() || type->IsStruct()) {
     // allocate a stack slot
-    return AllocNextSlot(type->GetSize());
+    return AllocNextSlot(cur_label(), type->GetSize());
   }
   else {
     // allocate a virtual register
@@ -569,12 +569,14 @@ void AArch32InstGen::Reset() {
     regs_.insert({name, reg});
   }
   // reset other stuffs
+  alloc_slots_.clear();
   args_.clear();
-  alloc_slots_ = 0;
   in_global_ = 0;
   arr_depth_ = 0;
 }
 
-std::function<OprPtr()> AArch32InstGen::GetSlotAllocator() {
-  return [this] { return AllocNextSlot(4); };
+SlotAllocator AArch32InstGen::GetSlotAllocator() {
+  return SlotAllocator([this](const OprPtr &func_label) {
+    return AllocNextSlot(func_label, 4);
+  });
 }
