@@ -15,7 +15,7 @@ class PassInterface {
   virtual ~PassInterface() = default;
 
   // run on the specific function (instruction list)
-  virtual void RunOn(InstPtrList &insts) = 0;
+  virtual void RunOn(const OprPtr &func_label, InstPtrList &insts) = 0;
 };
 
 using PassPtr = std::unique_ptr<PassInterface>;
