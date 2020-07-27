@@ -19,7 +19,7 @@ class FastRegAllocPass : public RegAllocatorBase {
  public:
   FastRegAllocPass() {}
 
-  void RunOn(InstPtrList &insts) override {
+  void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
     for (const auto &i : insts) {
       // retire operands
       for (auto &&use : i->oprs()) {

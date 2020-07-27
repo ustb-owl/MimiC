@@ -11,7 +11,7 @@ class MovePropagationPass : public PassInterface {
  public:
   MovePropagationPass() {}
 
-  void RunOn(InstPtrList &insts) override {
+  void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
     Reset();
     // traverse all instructions
     for (const auto &i : insts) {
