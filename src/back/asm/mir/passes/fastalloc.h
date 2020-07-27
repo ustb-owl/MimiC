@@ -6,7 +6,7 @@
 #include <functional>
 #include <cassert>
 
-#include "back/asm/mir/pass.h"
+#include "back/asm/mir/passes/regalloc.h"
 
 namespace mimic::back::asmgen {
 
@@ -15,7 +15,7 @@ namespace mimic::back::asmgen {
 
   TODO: this algorithm is wrong when processing loops
 */
-class FastRegAllocPass : public PassInterface {
+class FastRegAllocPass : public RegAllocatorBase {
  public:
   FastRegAllocPass() {}
 
@@ -60,7 +60,7 @@ class FastRegAllocPass : public PassInterface {
           unused_slots_.pop();
         }
         else {
-          opr = alloc_slot_();
+          opr = AllocSlot();
         }
         // mark virtual register as allocated
         allocated_vregs_[i->dest()] = opr;
@@ -70,11 +70,8 @@ class FastRegAllocPass : public PassInterface {
   }
 
   // add avaliable architecture
-  void AddAvaliableReg(const OprPtr &reg) { unused_slots_.push(reg); }
-
-  // setters
-  void set_alloc_slot(std::function<OprPtr()> alloc_slot) {
-    alloc_slot_ = alloc_slot;
+  void AddAvaliableReg(const OprPtr &reg) override {
+    unused_slots_.push(reg);
   }
 
  private:
@@ -82,8 +79,6 @@ class FastRegAllocPass : public PassInterface {
   std::queue<OprPtr> unused_regs_, unused_slots_;
   // allocated virtual registers
   std::unordered_map<OprPtr, OprPtr> allocated_vregs_;
-  // stack slot allocator
-  std::function<OprPtr()> alloc_slot_;
 };
 
 }  // namespace mimic::back::asmgen
