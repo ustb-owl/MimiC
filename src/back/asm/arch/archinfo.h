@@ -4,7 +4,7 @@
 #include <memory>
 #include <string_view>
 #include <unordered_map>
-#include <type_traits>
+#include <cstddef>
 
 #include "back/asm/arch/instgen.h"
 #include "back/asm/mir/pass.h"
@@ -17,6 +17,8 @@ class ArchInfoBase {
  public:
   virtual ~ArchInfoBase() = default;
 
+  // return pointer size of current architecture
+  virtual std::size_t GetPtrSize() const = 0;
   // return instruction generator of current architecture
   virtual InstGenBase &GetInstGen() = 0;
   // return a list of required passes
