@@ -45,7 +45,7 @@ void Compiler::RunPasses() {
   // check if need to dump IR
   auto err_num = Logger::error_num();
   if (!err_num && dump_yuir_) irb_.module().Dump(*os_);
-  if (err_num) std::exit(err_num);
+  if (!pass_man_.is_stage_last() || err_num) std::exit(err_num);
 }
 
 void Compiler::GenerateCode(CodeGen &gen) {
