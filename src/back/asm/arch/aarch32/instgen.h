@@ -57,7 +57,6 @@ class AArch32InstGen : public InstGenBase {
     return it->second;
   }
 
- private:
   // get an immediate number
   const OprPtr &GetImm(std::int32_t val) {
     auto it = imms_.find(val);
@@ -71,6 +70,7 @@ class AArch32InstGen : public InstGenBase {
     }
   }
 
+ private:
   // get a stack slot
   const OprPtr &GetSlot(bool based_on_sp, std::int32_t offset) {
     auto index = (static_cast<std::uint64_t>(based_on_sp) << 32) | offset;
