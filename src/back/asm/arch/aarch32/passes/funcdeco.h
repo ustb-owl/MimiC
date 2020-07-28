@@ -97,11 +97,13 @@ class FuncDecoratePass : public PassInterface {
   void LogSlotInfo(const OprPtr &opr) {
     if (!opr->IsSlot()) return;
     auto slot = static_cast<AArch32Slot *>(opr.get());
-    if (slot->based_on_sp() && slot->offset() + 4 > preserved_slot_size_) {
-      preserved_slot_size_ = slot->offset() + 4;
+    if (slot->based_on_sp()) {
+      std::size_t ofs = slot->offset() + 4;
+      if (ofs > preserved_slot_size_) preserved_slot_size_ = ofs;
     }
-    else if (slot->offset() < 0 && -slot->offset() > slot_size_) {
-      slot_size_ = -slot->offset();
+    else if (slot->offset() < 0) {
+      std::size_t ofs = -slot->offset();
+      if (ofs > slot_size_) slot_size_ = ofs;
     }
     else if (slot->offset() >= 0) {
       poif_slots_.insert(slot);
