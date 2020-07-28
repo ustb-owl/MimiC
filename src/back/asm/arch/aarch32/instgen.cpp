@@ -317,8 +317,17 @@ OprPtr AArch32InstGen::GenerateOn(CastSSA &ssa) {
     PushInst(OpCode::AND, dest, opr, GetImm(255));
   }
   else {
-    // just generate a move
-    PushInst(OpCode::MOV, dest, opr);
+    // maybe pointer to pointer cast
+    if (opr->IsLabel() || opr->IsSlot()) {
+      assert(src_ty->IsPointer() && dst_ty->IsPointer());
+      // load address to dest
+      LoadEffAddr(dest, opr, GetImm(0));
+    }
+    else {
+      assert(opr->IsReg() || opr->IsImm());
+      // just generate a move
+      PushInst(OpCode::MOV, dest, opr);
+    }
   }
   return dest;
 }
