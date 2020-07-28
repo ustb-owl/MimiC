@@ -147,7 +147,7 @@ class AArch32Inst : public InstBase {
     // comparison/branch/jump
     CMP, BEQ, B, BL, BX,
     // data moving
-    MOV, MOVW, MOVT, MVN,
+    MOV, MOVT, MVN,
     MOVEQ, MOVWNE,
     MOVWLO, MOVWLT, MOVWLS, MOVWLE,
     MOVWHI, MOVWGT, MOVWHS, MOVWGE,
@@ -212,9 +212,7 @@ class AArch32Inst : public InstBase {
   // nop/...
   AArch32Inst(OpCode opcode) : opcode_(opcode) { set_dest(nullptr); }
 
-  bool IsMove() const override {
-    return opcode_ == OpCode::MOV || opcode_ == OpCode::MOVW;
-  }
+  bool IsMove() const override { return opcode_ == OpCode::MOV; }
   bool IsLabel() const override { return opcode_ == OpCode::LABEL; }
   bool IsCall() const override { return opcode_ == OpCode::BL; }
   void Dump(std::ostream &os) const override;
