@@ -95,11 +95,11 @@ class InstBase {
  public:
   virtual ~InstBase() = default;
 
-  // check if is a move instruction (for general purpose optimizations)
+  // check if is a move instruction
   virtual bool IsMove() const = 0;
-  // check if is a label definition (for general purpose optimizations)
+  // check if is a label definition
   virtual bool IsLabel() const = 0;
-  // check if is a call instruction (for register allocation)
+  // check if is a call instruction
   virtual bool IsCall() const = 0;
   // dump instruction to output stream
   virtual void Dump(std::ostream &os) const = 0;
