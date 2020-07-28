@@ -57,6 +57,7 @@ class PassManager {
 
   // getters
   std::size_t opt_level() const { return opt_level_; }
+  bool is_stage_last() const { return stage_ == kLastPassStage; }
 
  private:
   // get pass info list
