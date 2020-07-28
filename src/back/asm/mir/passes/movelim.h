@@ -34,7 +34,8 @@ class MoveEliminatePass : public PassInterface {
           continue;
         }
         else if ((*it)->oprs()[0].value() == (*it)->dest() ||
-                 !(*it)->dest()->use_count()) {
+                 ((*it)->dest()->IsVirtual() &&
+                  !(*it)->dest()->use_count())) {
           /*
             mov reg1, reg1      ==>   <removed>
             mov <unused>, ...   ==>   <removed>
