@@ -20,7 +20,7 @@ const char *kOpCodes[] = {
   "ldr", "ldrb", "str", "strb", "push", "pop",
   "add", "sub", "subs", "rsb", "mul", "mls", "sdiv", "udiv",
   "cmp", "beq", "b", "bl", "bx",
-  "mov", "movw", "movt", "mvn",
+  "mov", "movt", "mvn",
   "moveq", "movwne",
   "movwlo", "movwlt", "movwls", "movwle",
   "movwhi", "movwgt", "movwhs", "movwge",
