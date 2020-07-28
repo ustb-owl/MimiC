@@ -27,7 +27,7 @@ class ImmNormalizePass : public PassInterface {
         case OpCode::MOV: {
           if (!IsValidOpr16(inst->oprs()[0].value())) {
             InsertMove(insts, it, inst->oprs()[0].value(), inst->dest());
-            it = insts.erase(--it);
+            it = --insts.erase(it);
           }
           break;
         }
