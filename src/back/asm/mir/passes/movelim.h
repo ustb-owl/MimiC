@@ -15,9 +15,9 @@ class MoveEliminatePass : public PassInterface {
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
     InstPtr last;
     for (auto it = insts.begin(); it != insts.end();) {
-      if (last && (*it)->IsMove()) {
+      if ((*it)->IsMove()) {
         // check if current instruction needs to be removed
-        if ((*it)->oprs()[0].value() == last->dest() &&
+        if (last && (*it)->oprs()[0].value() == last->dest() &&
             last->dest()->use_count() == 1) {
           /*
             op  reg1, ...   ==>   op  reg2, ...
