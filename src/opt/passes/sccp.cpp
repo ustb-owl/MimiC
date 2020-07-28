@@ -476,7 +476,7 @@ void SparseCondConstPropagationPass::RunOn(BinarySSA &ssa) {
       }
       else {
         // X | -1 -> -1
-        if (**non_overdef == -1) {
+        if (**non_overdef == static_cast<std::uint32_t>(-1)) {
           return MarkConst(ssa_val, &ssa, non_overdef->value());
         }
       }
@@ -772,7 +772,7 @@ bool SparseCondConstPropagationPass::ResolvedUndefsIn(FunctionSSA *func) {
           }
         }
       }
-      else if (auto ssa = SSADynCast<UnarySSA>(i.get())) {
+      else if (IsSSA<UnarySSA>(i)) {
         // -undef, !undef, ~undef -> undef
         continue;
       }
@@ -802,7 +802,7 @@ bool SparseCondConstPropagationPass::ResolvedUndefsIn(FunctionSSA *func) {
         }
         return true;
       }
-      else if (auto ssa = SSADynCast<LoadSSA>(i.get())) {
+      else if (IsSSA<LoadSSA>(i)) {
         // A load here means one of two things:
         // 1. a load of undef from a global
         // 2. a load from an unknown pointer.
