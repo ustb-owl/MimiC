@@ -261,8 +261,15 @@ class SparseCondConstPropagationPass : public FunctionPass {
   // set as constant value if parameter is a constant
   LatticeVal &GetValue(const SSAPtr &val) {
     auto [it, succ] = values_.insert({val.get(), LatticeVal()});
-    if (succ && IsSSA<ConstIntSSA>(val)) {
-      it->second.setAsConst(val);
+    if (succ) {
+      if (IsSSA<ConstIntSSA>(val)) {
+        it->second.setAsConst(val);
+      }
+      else if (val->IsConst() &&
+               (val->type()->IsInteger() || val->type()->IsPointer())) {
+        // try to evaluate other inline constants
+        val->RunPass(*this);
+      }
     }
     return it->second;
   }
