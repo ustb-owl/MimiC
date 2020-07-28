@@ -60,12 +60,12 @@ class FuncDecoratePass : public PassInterface {
     // generate push/pop
     if (used_regs_) {
       ret_pos_ = ++insts.insert(ret_pos_, MakePop());
-      if (has_call_) insts.erase(ret_pos_);
+      if (has_call_) ret_pos_ = --insts.erase(ret_pos_);
       insts.insert(insts.begin(), MakePush());
     }
     if (neg_slot_size) {
       // generate instructions for stack pointer update
-      UpdateSP(insts, ++insts.begin(), neg_slot_size);
+      UpdateSP(insts, neg_slot_size);
       // update all positive-offset in-frame slots
       for (auto &&i : poif_slots_) {
         i->set_offset(i->offset() + add_pos_offset);
@@ -138,10 +138,10 @@ class FuncDecoratePass : public PassInterface {
     return inst;
   }
 
-  void UpdateSP(InstPtrList &insts, InstPtrList::iterator pos,
-                std::size_t size) {
+  void UpdateSP(InstPtrList &insts, std::size_t size) {
     const auto &r11 = gen_.GetReg(RegName::R11);
     const auto &sp = gen_.GetReg(RegName::SP);
+    auto pos = ++insts.begin();
     // generate 'mov'
     auto mov = std::make_shared<AArch32Inst>(OpCode::MOV, r11, sp);
     pos = ++insts.insert(pos, mov);
@@ -149,6 +149,9 @@ class FuncDecoratePass : public PassInterface {
     auto imm = gen_.GetImm(size);
     auto sub = std::make_shared<AArch32Inst>(OpCode::SUB, sp, sp, imm);
     insts.insert(pos, sub);
+    // generate restore instruction before function return
+    auto restore = std::make_shared<AArch32Inst>(OpCode::MOV, sp, r11);
+    ret_pos_ = ++insts.insert(ret_pos_, restore);
   }
 
   AArch32InstGen &gen_;
