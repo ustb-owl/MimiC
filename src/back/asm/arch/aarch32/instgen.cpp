@@ -163,15 +163,9 @@ OprPtr AArch32InstGen::GenerateOn(StoreSSA &ssa) {
       ptr_reg = GetReg(RegName::R0);
       PushInst(OpCode::LDR, ptr_reg, ptr);
     }
-    // generate value register
-    auto val_reg = val;
-    if (!val->IsReg()) {
-      val_reg = GetReg(RegName::R1);
-      PushInst(OpCode::MOV, val_reg, val);
-    }
     // generate memory store
     auto opcode = type->GetSize() == 1 ? OpCode::STRB : OpCode::STR;
-    PushInst(opcode, val_reg, ptr_reg);
+    PushInst(opcode, val, ptr_reg);
   }
   return nullptr;
 }
