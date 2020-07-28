@@ -59,8 +59,8 @@ class FuncDecoratePass : public PassInterface {
     auto neg_slot_size = preserved_slot_size_ + slot_size_;
     // generate push/pop
     if (used_regs_) {
-      ret_pos_ = ++insts.insert(ret_pos_, MakePop());
-      if (has_call_) ret_pos_ = --insts.erase(ret_pos_);
+      ret_pos_ = insts.insert(ret_pos_, MakePop());
+      if (has_call_) ret_pos_ = --insts.erase(++ret_pos_);
       insts.insert(insts.begin(), MakePush());
     }
     if (neg_slot_size) {
