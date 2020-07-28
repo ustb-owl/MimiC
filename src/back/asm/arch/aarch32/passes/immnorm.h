@@ -149,7 +149,7 @@ class ImmNormalizePass : public PassInterface {
   bool IsValidImm8m(std::uint32_t imm) {
     for (int i = 0; i < 16; ++i) {
       // perform circular shift 2i bits
-      auto cur = (i << 1) & 0b11111;
+      std::uint32_t cur = (i << 1) & 0b11111;
       cur = (imm << cur) | (imm >> ((-cur) & 0b11111));
       // check if is valid
       if (!(cur & ~0xff)) return true;
@@ -159,25 +159,25 @@ class ImmNormalizePass : public PassInterface {
 
   bool IsValidOpr8m(const OprPtr &opr) {
     if (!opr->IsImm()) return true;
-    auto imm = static_cast<AArch32Imm *>(opr.get())->val();
+    std::uint32_t imm = static_cast<AArch32Imm *>(opr.get())->val();
     return IsValidImm8m(imm);
   }
 
   bool IsValidOpr16(const OprPtr &opr) {
     if (!opr->IsImm()) return true;
-    auto imm = static_cast<AArch32Imm *>(opr.get())->val();
+    std::uint32_t imm = static_cast<AArch32Imm *>(opr.get())->val();
     return imm <= 0xffff || IsValidImm8m(imm);
   }
 
   bool IsValidOpr12(const OprPtr &opr) {
     if (!opr->IsImm()) return true;
-    auto imm = static_cast<AArch32Imm *>(opr.get())->val();
+    std::uint32_t imm = static_cast<AArch32Imm *>(opr.get())->val();
     return imm <= 0xfff || IsValidImm8m(imm);
   }
 
   bool IsValidOprSh(const OprPtr &opr) {
     if (!opr->IsImm()) return true;
-    auto imm = static_cast<AArch32Imm *>(opr.get())->val();
+    std::uint32_t imm = static_cast<AArch32Imm *>(opr.get())->val();
     return imm <= 0b11111;
   }
 
