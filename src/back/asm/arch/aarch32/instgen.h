@@ -70,13 +70,6 @@ class AArch32InstGen : public InstGenBase {
     }
   }
 
-  // getters
-  // size of all allocated negative-offset in-frame slots
-  const std::unordered_map<OprPtr, std::size_t> &alloc_slots() const {
-    return alloc_slots_;
-  }
-
- private:
   // get a stack slot
   const OprPtr &GetSlot(bool based_on_sp, std::int32_t offset) {
     auto index = (static_cast<std::uint64_t>(based_on_sp) << 32) | offset;
@@ -96,6 +89,13 @@ class AArch32InstGen : public InstGenBase {
     return GetSlot(false, offset);
   }
 
+  // getters
+  // size of all allocated negative-offset in-frame slots
+  const std::unordered_map<OprPtr, std::size_t> &alloc_slots() const {
+    return alloc_slots_;
+  }
+
+ private:
   // allocate next in-frame stack slot
   const OprPtr &AllocNextSlot(const OprPtr &func_label, std::size_t size) {
     std::int32_t ofs = alloc_slots_[func_label] += (size + 3) / 4 * 4;
