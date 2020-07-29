@@ -128,7 +128,7 @@ class ImmNormalizePass : public PassInterface {
 
   OprPtr SelectTempReg(std::uint32_t &reg_mask) {
     OprPtr temp;
-    for (int i = static_cast<int>(RegName::R0);
+    for (int i = static_cast<int>(RegName::R1);
          i <= static_cast<int>(RegName::R3); ++i) {
       if (!(reg_mask & (1 << i))) {
         reg_mask |= 1 << i;
