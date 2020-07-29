@@ -119,6 +119,12 @@ class AArch32InstGen : public InstGenBase {
   // generate 'memcpy'
   void GenerateMemCpy(const OprPtr &dest, const OprPtr &src,
                       std::size_t size);
+  // generate division
+  void GenerateDiv(const OprPtr &dest, const OprPtr &lhs, const OprPtr &rhs,
+                   bool is_signed);
+  // generate modulo
+  void GenerateMod(const OprPtr &dest, const OprPtr &lhs, const OprPtr &rhs,
+                   bool is_signed);
   // dump instruction sequences
   void DumpSeqs(std::ostream &os, const InstSeqMap &seqs) const;
 
