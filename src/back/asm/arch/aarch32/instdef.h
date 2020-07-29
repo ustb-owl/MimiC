@@ -150,7 +150,7 @@ class AArch32Inst : public InstBase {
     // comparison/branch/jump
     CMP, BEQ, B, BL, BX,
     // data moving
-    MOV, MOVT, MVN,
+    MOV, MOVW, MOVT, MVN,
     MOVEQ, MOVWNE,
     MOVWLO, MOVWLT, MOVWLS, MOVWLE,
     MOVWHI, MOVWGT, MOVWHS, MOVWGE,
