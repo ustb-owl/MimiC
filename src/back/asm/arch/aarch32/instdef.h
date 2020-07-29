@@ -127,6 +127,7 @@ class AArch32Slot : public OperandBase {
   void Dump(std::ostream &os) const override;
 
   // setters
+  void set_based_on_sp(bool based_on_sp) { based_on_sp_ = based_on_sp; }
   void set_offset(std::int32_t offset) { offset_ = offset; }
 
   // getters
