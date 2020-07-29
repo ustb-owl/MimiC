@@ -11,7 +11,9 @@
 namespace mimic::back::asmgen::aarch32 {
 
 /*
-  this pass will add loads/stores for spilled virtual registers
+  this pass will:
+  1.  apply the allocation results of virtual registers
+  2.  add loads/stores for spilled virtual registers
 */
 class SlotSpillingPass : public PassInterface {
  public:
@@ -19,31 +21,48 @@ class SlotSpillingPass : public PassInterface {
 
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
     for (auto it = insts.begin(); it != insts.end(); ++it) {
-      auto inst = static_cast<AArch32Inst *>(it->get());
+      auto inst = *it;
       // handle with source operands
-      auto reg_mask = GetRegMask(inst);
-      if (inst->opcode() != OpCode::LDR && inst->opcode() != OpCode::LDRB) {
-        if (inst->IsMove()) {
-          auto &opr = inst->oprs()[0];
-          auto reg = LoadOperand(insts, it, opr.value(), reg_mask);
-          if (reg) {
-            // remove current move, just use load
-            (*--it)->set_dest(inst->dest());
-            it = --insts.erase(++it);
-            inst = static_cast<AArch32Inst *>(it->get());
-          }
+      if (inst->IsMove() && inst->oprs()[0].value()->IsVirtual()) {
+        auto &opr = inst->oprs()[0];
+        const auto &alloc_to = GetAllocTo(opr.value());
+        if (alloc_to->IsSlot()) {
+          // insert load to dest and remove current move
+          InsertLoad(insts, it, alloc_to, inst->dest());
+          it = --insts.erase(it);
+          inst = *it;
         }
         else {
-          for (auto &&i : inst->oprs()) {
-            auto reg = LoadOperand(insts, it, i.value(), reg_mask);
-            if (reg) i.set_value(reg);
+          // just replace
+          opr.set_value(alloc_to);
+        }
+      }
+      else if (!inst->IsMove()) {
+        auto reg_mask = GetRegMask(inst);
+        for (auto &&i : inst->oprs()) {
+          if (!i.value()->IsVirtual()) continue;
+          const auto &alloc_to = GetAllocTo(i.value());
+          if (alloc_to->IsReg()) {
+            i.set_value(alloc_to);
+          }
+          else {
+            auto dest = SelectTempReg(reg_mask);
+            InsertLoad(insts, it, alloc_to, dest);
+            i.set_value(dest);
           }
         }
       }
       // handle with destination operands
-      if (inst->dest()) {
-        auto reg = StoreOperand(insts, it, inst->dest());
-        if (reg) inst->set_dest(reg);
+      if (inst->dest() && inst->dest()->IsVirtual()) {
+        const auto &alloc_to = GetAllocTo(inst->dest());
+        if (alloc_to->IsReg()) {
+          inst->set_dest(alloc_to);
+        }
+        else {
+          auto temp = gen_.GetReg(RegName::R1);
+          inst->set_dest(temp);
+          InsertStore(insts, it, alloc_to, temp);
+        }
       }
     }
   }
@@ -52,12 +71,11 @@ class SlotSpillingPass : public PassInterface {
   using OpCode = AArch32Inst::OpCode;
   using RegName = AArch32Reg::RegName;
 
-  std::uint32_t GetRegMask(InstBase *inst) {
+  std::uint32_t GetRegMask(const InstPtr &inst) {
     std::uint32_t mask = 0;
     for (const auto &i : inst->oprs()) {
       const auto &opr = i.value();
-      if (opr->IsReg()) {
-        assert(!opr->IsVirtual());
+      if (opr->IsReg() && !opr->IsVirtual()) {
         auto name = static_cast<AArch32Reg *>(opr.get())->name();
         mask |= 1 << static_cast<int>(name);
       }
@@ -65,10 +83,7 @@ class SlotSpillingPass : public PassInterface {
     return mask;
   }
 
-  OprPtr LoadOperand(InstPtrList &insts, InstPtrList::iterator &pos,
-                     const OprPtr &opr, std::uint32_t &reg_mask) {
-    if (!opr->IsSlot()) return nullptr;
-    // select temporary register
+  OprPtr SelectTempReg(std::uint32_t &reg_mask) {
     OprPtr temp;
     for (int i = static_cast<int>(RegName::R1);
          i <= static_cast<int>(RegName::R3); ++i) {
@@ -79,20 +94,26 @@ class SlotSpillingPass : public PassInterface {
       }
     }
     assert(temp);
-    // insert load
-    auto inst = std::make_shared<AArch32Inst>(OpCode::LDR, temp, opr);
-    pos = ++insts.insert(pos, inst);
     return temp;
   }
 
-  OprPtr StoreOperand(InstPtrList &insts, InstPtrList::iterator &pos,
-                      const OprPtr &dest) {
-    if (!dest->IsSlot()) return nullptr;
-    auto temp = gen_.GetReg(RegName::R1);
-    // insert store
-    auto inst = std::make_shared<AArch32Inst>(OpCode::STR, temp, dest);
+  // insert a load instruction before the specific position
+  void InsertLoad(InstPtrList &insts, InstPtrList::iterator &pos,
+                  const OprPtr &opr, const OprPtr &dest) {
+    auto inst = std::make_shared<AArch32Inst>(OpCode::LDR, dest, opr);
+    pos = ++insts.insert(pos, inst);
+  }
+
+  // insert a store instruction after the specific position
+  void InsertStore(InstPtrList &insts, InstPtrList::iterator &pos,
+                   const OprPtr &slot, const OprPtr &dest) {
+    auto inst = std::make_shared<AArch32Inst>(OpCode::STR, dest, slot);
     pos = insts.insert(++pos, inst);
-    return temp;
+  }
+
+  const OprPtr &GetAllocTo(const OprPtr &vreg) {
+    assert(vreg->IsVirtual());
+    return static_cast<VirtRegOperand *>(vreg.get())->alloc_to();
   }
 
   const AArch32InstGen &gen_;
