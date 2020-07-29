@@ -2,7 +2,7 @@
 #define MIMIC_BACK_ASM_ARCH_AARCH32_PASSES_FUNCDECO_H_
 
 #include <bitset>
-#include <unordered_set>
+#include <unordered_map>
 #include <cassert>
 
 #include "back/asm/mir/pass.h"
@@ -33,14 +33,14 @@ class FuncDecoratePass : public PassInterface {
       }
       else {
         if (i->dest()) LogPreservedReg(i->dest());
-        auto opcode = static_cast<AArch32Inst *>(i.get())->opcode();
-        if (opcode == OpCode::STR) {
-          LogSlotInfo(i->oprs()[1].value());
+        auto inst = static_cast<AArch32Inst *>(i.get());
+        if (inst->opcode() == OpCode::STR) {
+          LogSlotInfo(i->oprs()[1].value(), inst);
         }
-        else if (opcode == OpCode::LDR) {
-          LogSlotInfo(i->oprs()[0].value());
+        else if (inst->opcode() == OpCode::LDR) {
+          LogSlotInfo(i->oprs()[0].value(), inst);
         }
-        else if (opcode == OpCode::BX && i->oprs()[0].value()->IsReg()) {
+        else if (inst->opcode() == OpCode::BX && i->oprs()[0].value()->IsReg()) {
           const auto &reg = i->oprs()[0].value();
           auto name = static_cast<AArch32Reg *>(reg.get())->name();
           if (name == RegName::LR) ret_pos_ = it;
@@ -69,15 +69,17 @@ class FuncDecoratePass : public PassInterface {
     if (neg_slot_size) UpdateSP(insts, neg_slot_size);
     if (add_pos_offset) {
       // update all positive-offset in-frame slots
-      for (auto &&i : poif_slots_) {
-        i->set_offset(i->offset() + add_pos_offset);
+      for (const auto &[inst, slot] : poif_slots_) {
+        auto new_slot = gen_.GetSlot(slot->offset() + add_pos_offset);
+        inst->oprs()[inst->opcode() == OpCode::STR].set_value(new_slot);
       }
     }
     else {
       // convert all positive-offset in-frame slots to sp-based slots
-      for (auto &&i : poif_slots_) {
-        assert(!i->based_on_sp());
-        i->set_based_on_sp(true);
+      for (const auto &[inst, slot] : poif_slots_) {
+        assert(!slot->based_on_sp());
+        auto new_slot = gen_.GetSlot(true, slot->offset());
+        inst->oprs()[inst->opcode() == OpCode::STR].set_value(new_slot);
       }
     }
   }
@@ -102,7 +104,7 @@ class FuncDecoratePass : public PassInterface {
     if (name_i >= l && name_i <= u) used_regs_ |= 1 << name_i;
   }
 
-  void LogSlotInfo(const OprPtr &opr) {
+  void LogSlotInfo(const OprPtr &opr, AArch32Inst *inst) {
     if (!opr->IsSlot()) return;
     auto slot = static_cast<AArch32Slot *>(opr.get());
     if (slot->based_on_sp()) {
@@ -110,7 +112,7 @@ class FuncDecoratePass : public PassInterface {
       if (ofs > preserved_slot_size_) preserved_slot_size_ = ofs;
     }
     else if (slot->offset() >= 0) {
-      poif_slots_.insert(slot);
+      poif_slots_.insert({inst, slot});
     }
   }
 
@@ -165,8 +167,8 @@ class FuncDecoratePass : public PassInterface {
   bool has_call_;
   // preserved slots for arguments
   std::size_t preserved_slot_size_;
-  // all positive-offset in-frame slots
-  std::unordered_set<AArch32Slot *> poif_slots_;
+  // info of all positive-offset in-frame slots
+  std::unordered_map<AArch32Inst *, AArch32Slot *> poif_slots_;
   // position of return instruction
   InstPtrList::iterator ret_pos_;
 };
