@@ -14,6 +14,7 @@ namespace mimic::back::asmgen::aarch32 {
   this pass will:
   1.  insert move instructions to load immediate that out of range
   2.  convert instructions like 'add r0, #3, r0' to legal form
+  3.  convert 'ldr r0, =label' to move instructions
 */
 class ImmNormalizePass : public PassInterface {
  public:
@@ -89,6 +90,17 @@ class ImmNormalizePass : public PassInterface {
               cur.set_value(temp);
             }
           }
+          break;
+        }
+        // load instruction with label operand
+        case OpCode::LDR: {
+          const auto &opr = inst->oprs()[0].value();
+          if (!opr->IsLabel()) break;
+          // insert move instructions
+          it = ++insts.insert(it, MakeMoveW(inst->dest(), opr));
+          it = ++insts.insert(it, MakeMoveHi(inst->dest(), opr));
+          // remove current instruction
+          it = --insts.erase(it);
           break;
         }
         // other instructions, don't care
@@ -183,6 +195,10 @@ class ImmNormalizePass : public PassInterface {
 
   InstPtr MakeMove(const OprPtr &dest, const OprPtr &src) {
     return std::make_shared<AArch32Inst>(OpCode::MOV, dest, src);
+  }
+
+  InstPtr MakeMoveW(const OprPtr &dest, const OprPtr &src) {
+    return std::make_shared<AArch32Inst>(OpCode::MOVW, dest, src);
   }
 
   InstPtr MakeMoveHi(const OprPtr &dest, const OprPtr &src) {
