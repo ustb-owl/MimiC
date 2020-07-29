@@ -20,7 +20,7 @@ const char *kOpCodes[] = {
   "ldr", "ldrb", "str", "strb", "push", "pop",
   "add", "sub", "subs", "rsb", "mul", "mls", "sdiv", "udiv",
   "cmp", "beq", "b", "bl", "bx",
-  "mov", "movt", "mvn",
+  "mov", "movw", "movt", "mvn",
   "moveq", "movwne",
   "movwlo", "movwlt", "movwls", "movwle",
   "movwhi", "movwgt", "movwhs", "movwge",
@@ -111,6 +111,26 @@ void AArch32Inst::Dump(std::ostream &os) const {
       case OpCode::STR: case OpCode::STRB: {
         os << oprs()[0].value() << ", ";
         DumpMemOpr(os, oprs()[1].value());
+        break;
+      }
+      case OpCode::MOVW: {
+        os << dest() << ", ";
+        if (oprs()[0].value()->IsLabel()) {
+          os << "#:lower16:" << oprs()[0].value();
+        }
+        else {
+          os << oprs()[0].value();
+        }
+        break;
+      }
+      case OpCode::MOVT: {
+        os << dest() << ", ";
+        if (oprs()[0].value()->IsLabel()) {
+          os << "#:upper16:" << oprs()[0].value();
+        }
+        else {
+          os << oprs()[0].value();
+        }
         break;
       }
       default: {
