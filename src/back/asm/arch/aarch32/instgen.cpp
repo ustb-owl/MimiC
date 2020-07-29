@@ -66,7 +66,12 @@ void AArch32InstGen::LoadEffAddr(const OprPtr &dest_reg, const OprPtr &ptr,
     PushInst(OpCode::MOV, dest_reg, base);
     // calculate stack offset
     auto ofs = p->offset();
-    if (ofs) PushInst(OpCode::ADD, dest_reg, dest_reg, GetImm(ofs));
+    if (ofs > 0) {
+      PushInst(OpCode::ADD, dest_reg, dest_reg, GetImm(ofs));
+    }
+    else if (ofs < 0) {
+      PushInst(OpCode::SUB, dest_reg, dest_reg, GetImm(-ofs));
+    }
   }
   else if (ptr->IsLabel()) {
     // load label address
