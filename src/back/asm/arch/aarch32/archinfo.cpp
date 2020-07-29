@@ -4,6 +4,7 @@
 #include "back/asm/arch/aarch32/passes/brelim.h"
 #include "back/asm/mir/passes/movprop.h"
 #include "back/asm/mir/passes/movelim.h"
+#include "back/asm/mir/passes/fastalloc.h"
 #include "back/asm/mir/passes/linearscan.h"
 #include "back/asm/arch/aarch32/passes/slotspill.h"
 #include "back/asm/arch/aarch32/passes/funcdeco.h"
@@ -39,8 +40,15 @@ class AArch32ArchInfo : public ArchInfoBase {
  private:
   PassPtr GetRegAlloc(std::size_t opt_level) {
     using RegName = AArch32Reg::RegName;
+    // create register allocator
+    std::unique_ptr<RegAllocatorBase> reg_alloc;
+    if (opt_level) {
+      reg_alloc = MakePass<LinearScanRegAllocPass>();
+    }
+    else {
+      reg_alloc = MakePass<FastRegAllocPass>();
+    }
     // initialize register allocator
-    auto reg_alloc = MakePass<LinearScanRegAllocPass>();
     for (int i = static_cast<int>(RegName::R4);
          i <= static_cast<int>(RegName::R10); ++i) {
       reg_alloc->AddAvaliableReg(
