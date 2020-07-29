@@ -24,11 +24,13 @@ class FastRegAllocPass : public RegAllocatorBase {
     for (const auto &i : insts) {
       for (auto &&use : i->oprs()) {
         if (use.value()->IsVirtual()) {
-          use.set_value(Allocate(use.value(), func_label));
+          const auto &dest = Allocate(use.value(), func_label);
+          AllocateVRegTo(use.value(), dest);
         }
       }
       if (i->dest() && i->dest()->IsVirtual()) {
-        i->set_dest(Allocate(i->dest(), func_label));
+        const auto &dest = Allocate(i->dest(), func_label);
+        AllocateVRegTo(i->dest(), dest);
       }
     }
   }

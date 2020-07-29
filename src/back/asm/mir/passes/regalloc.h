@@ -6,6 +6,7 @@
 #include <cassert>
 
 #include "back/asm/mir/pass.h"
+#include "back/asm/mir/virtreg.h"
 
 namespace mimic::back::asmgen {
 
@@ -25,6 +26,11 @@ class SlotAllocator {
   std::function<OprPtr(const OprPtr &)> alloc_slot_;
 };
 
+// base class of all register allocators
+//
+// register allocator should scan all virtual registers
+// and update 'alloc_to' property of virtual registers
+// to specify where they should be allocated
 class RegAllocatorBase : public PassInterface {
  public:
   virtual ~RegAllocatorBase() = default;
@@ -37,6 +43,13 @@ class RegAllocatorBase : public PassInterface {
   void set_allocator(SlotAllocator allocator) { allocator_ = allocator; }
 
  protected:
+  // specify 'alloc_to' property of the specific
+  void AllocateVRegTo(const OprPtr &vreg, const OprPtr &dest) {
+    assert(vreg->IsVirtual() &&
+           ((dest->IsReg() && !dest->IsVirtual()) || dest->IsSlot()));
+    static_cast<VirtRegOperand *>(vreg.get())->set_alloc_to(dest);
+  }
+
   // getters
   const SlotAllocator &allocator() const { return allocator_; }
 
