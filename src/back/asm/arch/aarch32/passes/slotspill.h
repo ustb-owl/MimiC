@@ -85,12 +85,20 @@ class SlotSpillingPass : public PassInterface {
 
   OprPtr SelectTempReg(std::uint32_t &reg_mask) {
     OprPtr temp;
-    for (int i = static_cast<int>(RegName::R2);
-         i <= static_cast<int>(RegName::R3); ++i) {
-      if (!(reg_mask & (1 << i))) {
-        reg_mask |= 1 << i;
-        temp = gen_.GetReg(static_cast<RegName>(i));
-        break;
+    // try to use 'r12' first
+    if (!(reg_mask & (1 << static_cast<int>(RegName::R12)))) {
+      reg_mask |= 1 << static_cast<int>(RegName::R12);
+      temp = gen_.GetReg(RegName::R12);
+    }
+    else {
+      // select other scratch registers
+      for (int i = static_cast<int>(RegName::R2);
+          i <= static_cast<int>(RegName::R3); ++i) {
+        if (!(reg_mask & (1 << i))) {
+          reg_mask |= 1 << i;
+          temp = gen_.GetReg(static_cast<RegName>(i));
+          break;
+        }
       }
     }
     assert(temp);
@@ -134,7 +142,7 @@ class SlotSpillingPass : public PassInterface {
     InstPtr inst;
     if (-sl->offset() >= 4096) {
       // calculate address of slot first
-      auto temp = gen_.GetReg(RegName::R3);
+      auto temp = gen_.GetReg(RegName::R12);
       auto r11 = gen_.GetReg(RegName::R11);
       auto ofs = gen_.GetImm(-sl->offset());
       inst = std::make_shared<AArch32Inst>(OpCode::SUB, temp, r11, ofs);
