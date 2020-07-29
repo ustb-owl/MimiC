@@ -276,14 +276,17 @@ OprPtr AArch32InstGen::GenerateOn(BinarySSA &ssa) {
       return dest;
     }
     case Op::NotEq: {
-      PushInst(OpCode::SUBS, dest, lhs, rhs);
-      PushInst(OpCode::MOVWNE, dest, GetImm(1));
+      auto temp = GetReg(RegName::R0);
+      PushInst(OpCode::SUBS, temp, lhs, rhs);
+      PushInst(OpCode::MOVWNE, temp, GetImm(1));
+      PushInst(OpCode::MOV, dest, temp);
       return dest;
     }
     case Op::ULess: case Op::SLess: case Op::ULessEq: case Op::SLessEq:
     case Op::UGreat: case Op::SGreat: case Op::UGreatEq:
     case Op::SGreatEq: {
-      PushInst(OpCode::MOV, dest, GetImm(0));
+      auto temp = GetReg(RegName::R0);
+      PushInst(OpCode::MOV, temp, GetImm(0));
       PushInst(OpCode::CMP, lhs, rhs);
       OpCode opcode;
       switch (ssa.op()) {
@@ -297,7 +300,8 @@ OprPtr AArch32InstGen::GenerateOn(BinarySSA &ssa) {
         case Op::SGreatEq: opcode = OpCode::MOVWGE; break;
         default: assert(false);
       }
-      PushInst(opcode, dest, GetImm(1));
+      PushInst(opcode, temp, GetImm(1));
+      PushInst(OpCode::MOV, dest, temp);
       return dest;
     }
     default: assert(false);
@@ -562,9 +566,12 @@ OprPtr AArch32InstGen::GenerateOn(ConstZeroSSA &ssa) {
 OprPtr AArch32InstGen::GenerateOn(SelectSSA &ssa) {
   auto dest = vreg_fact_.GetReg(), cond = GetOpr(ssa.cond());
   auto tv = GetOpr(ssa.true_val()), fv = GetOpr(ssa.false_val());
-  PushInst(OpCode::MOV, dest, tv);
+  auto t0 = GetReg(RegName::R0), t1 = GetReg(RegName::R1);
+  PushInst(OpCode::MOV, t0, tv);
+  PushInst(OpCode::MOV, t1, fv);
   PushInst(OpCode::CMP, cond, GetImm(0));
-  PushInst(OpCode::MOVEQ, dest, fv);
+  PushInst(OpCode::MOVEQ, t0, t1);
+  PushInst(OpCode::MOV, dest, t0);
   return dest;
 }
 
