@@ -70,8 +70,7 @@ void AArch32InstGen::LoadEffAddr(const OprPtr &dest_reg, const OprPtr &ptr,
   }
   else if (ptr->IsLabel()) {
     // load label address
-    PushInst(OpCode::MOVW, dest_reg, ptr);
-    PushInst(OpCode::MOVT, dest_reg, ptr);
+    PushInst(OpCode::LDR, dest_reg, ptr);
   }
   else {
     assert(ptr->IsReg());
