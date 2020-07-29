@@ -113,12 +113,20 @@ class ImmNormalizePass : public PassInterface {
 
   OprPtr SelectTempReg(std::uint32_t &reg_mask) {
     OprPtr temp;
-    for (int i = static_cast<int>(RegName::R2);
-         i <= static_cast<int>(RegName::R3); ++i) {
-      if (!(reg_mask & (1 << i))) {
-        reg_mask |= 1 << i;
-        temp = gen_.GetReg(static_cast<RegName>(i));
-        break;
+    // try to use 'r12' first
+    if (!(reg_mask & (1 << static_cast<int>(RegName::R12)))) {
+      reg_mask |= 1 << static_cast<int>(RegName::R12);
+      temp = gen_.GetReg(RegName::R12);
+    }
+    else {
+      // select other scratch registers
+      for (int i = static_cast<int>(RegName::R2);
+          i <= static_cast<int>(RegName::R3); ++i) {
+        if (!(reg_mask & (1 << i))) {
+          reg_mask |= 1 << i;
+          temp = gen_.GetReg(static_cast<RegName>(i));
+          break;
+        }
       }
     }
     assert(temp);
