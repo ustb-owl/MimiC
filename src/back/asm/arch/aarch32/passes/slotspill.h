@@ -59,7 +59,7 @@ class SlotSpillingPass : public PassInterface {
           inst->set_dest(alloc_to);
         }
         else {
-          auto temp = gen_.GetReg(RegName::R1);
+          auto temp = gen_.GetReg(RegName::R2);
           inst->set_dest(temp);
           InsertStore(insts, it, alloc_to, temp);
         }
@@ -85,7 +85,7 @@ class SlotSpillingPass : public PassInterface {
 
   OprPtr SelectTempReg(std::uint32_t &reg_mask) {
     OprPtr temp;
-    for (int i = static_cast<int>(RegName::R1);
+    for (int i = static_cast<int>(RegName::R2);
          i <= static_cast<int>(RegName::R3); ++i) {
       if (!(reg_mask & (1 << i))) {
         reg_mask |= 1 << i;
