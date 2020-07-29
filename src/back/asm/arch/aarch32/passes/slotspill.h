@@ -23,9 +23,21 @@ class SlotSpillingPass : public PassInterface {
       // handle with source operands
       auto reg_mask = GetRegMask(inst);
       if (inst->opcode() != OpCode::LDR && inst->opcode() != OpCode::LDRB) {
-        for (auto &&i : inst->oprs()) {
-          auto reg = LoadOperand(insts, it, i.value(), reg_mask);
-          if (reg) i.set_value(reg);
+        if (inst->IsMove()) {
+          auto &opr = inst->oprs()[0];
+          auto reg = LoadOperand(insts, it, opr.value(), reg_mask);
+          if (reg) {
+            // remove current move, just use load
+            (*--it)->set_dest(inst->dest());
+            it = --insts.erase(++it);
+            inst = static_cast<AArch32Inst *>(it->get());
+          }
+        }
+        else {
+          for (auto &&i : inst->oprs()) {
+            auto reg = LoadOperand(insts, it, i.value(), reg_mask);
+            if (reg) i.set_value(reg);
+          }
         }
       }
       // handle with destination operands
@@ -58,7 +70,7 @@ class SlotSpillingPass : public PassInterface {
     if (!opr->IsSlot()) return nullptr;
     // select temporary register
     OprPtr temp;
-    for (int i = static_cast<int>(RegName::R0);
+    for (int i = static_cast<int>(RegName::R1);
          i <= static_cast<int>(RegName::R3); ++i) {
       if (!(reg_mask & (1 << i))) {
         reg_mask |= 1 << i;
@@ -76,7 +88,7 @@ class SlotSpillingPass : public PassInterface {
   OprPtr StoreOperand(InstPtrList &insts, InstPtrList::iterator &pos,
                       const OprPtr &dest) {
     if (!dest->IsSlot()) return nullptr;
-    auto temp = gen_.GetReg(RegName::R0);
+    auto temp = gen_.GetReg(RegName::R1);
     // insert store
     auto inst = std::make_shared<AArch32Inst>(OpCode::STR, temp, dest);
     pos = insts.insert(++pos, inst);
