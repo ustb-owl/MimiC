@@ -29,11 +29,11 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
     for (const auto &i : insts) {
       for (auto &&opr : i->oprs()) {
         if (opr.value()->IsVirtual()) {
-          opr.set_value(GetAllocatedOpr(opr.value()));
+          AllocateVRegTo(opr.value(), GetAllocatedOpr(opr.value()));
         }
       }
       if (i->dest() && i->dest()->IsVirtual()) {
-        i->set_dest(GetAllocatedOpr(i->dest()));
+        AllocateVRegTo(i->dest(), GetAllocatedOpr(i->dest()));
       }
     }
   }
