@@ -110,9 +110,10 @@ class SlotSpillingPass : public PassInterface {
       // calculate address of slot first
       auto r11 = gen_.GetReg(RegName::R11);
       auto ofs = gen_.GetImm(-sl->offset());
-      inst = std::make_shared<AArch32Inst>(OpCode::SUB, dest, r11, ofs);
+      auto temp = dest->IsVirtual() ? gen_.GetReg(RegName::R2) : dest;
+      inst = std::make_shared<AArch32Inst>(OpCode::SUB, temp, r11, ofs);
       pos = ++insts.insert(pos, inst);
-      inst = std::make_shared<AArch32Inst>(OpCode::LDR, dest, dest);
+      inst = std::make_shared<AArch32Inst>(OpCode::LDR, dest, temp);
     }
     else {
       inst = std::make_shared<AArch32Inst>(OpCode::LDR, dest, slot);
