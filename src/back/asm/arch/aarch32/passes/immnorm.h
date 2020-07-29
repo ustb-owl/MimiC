@@ -45,22 +45,8 @@ class ImmNormalizePass : public PassInterface {
           }
           break;
         }
-        // instructions with <imm8m> & <imm12> field
-        case OpCode::ADD: case OpCode::SUB: {
-          auto mask = GetRegMask(inst);
-          for (std::size_t i = 0; i < inst->oprs().size(); ++i) {
-            auto &cur = inst->oprs()[i];
-            if ((i < inst->oprs().size() - 1 && cur.value()->IsImm()) ||
-                (i == inst->oprs().size() - 1 &&
-                 !IsValidOpr12(cur.value()))) {
-              auto temp = SelectTempReg(mask);
-              InsertMove(insts, it, cur.value(), temp);
-              cur.set_value(temp);
-            }
-          }
-          break;
-        }
         // instructions with only <imm8m> field
+        case OpCode::ADD: case OpCode::SUB:
         case OpCode::SUBS: case OpCode::RSB: case OpCode::CMP:
         case OpCode::AND: case OpCode::ORR: case OpCode::EOR: {
           auto mask = GetRegMask(inst);
@@ -178,12 +164,6 @@ class ImmNormalizePass : public PassInterface {
     if (!opr->IsImm()) return true;
     std::uint32_t imm = static_cast<AArch32Imm *>(opr.get())->val();
     return imm <= 0xffff || IsValidImm8m(imm);
-  }
-
-  bool IsValidOpr12(const OprPtr &opr) {
-    if (!opr->IsImm()) return true;
-    std::uint32_t imm = static_cast<AArch32Imm *>(opr.get())->val();
-    return imm <= 0xfff || IsValidImm8m(imm);
   }
 
   bool IsValidOprSh(const OprPtr &opr) {
