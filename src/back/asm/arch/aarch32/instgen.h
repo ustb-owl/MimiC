@@ -71,9 +71,9 @@ class AArch32InstGen : public InstGenBase {
   }
 
   // getters
-  // all allocated slots
-  const std::unordered_map<std::uint64_t, OprPtr> &slots() const {
-    return slots_;
+  // size of all allocated negative-offset in-frame slots
+  const std::unordered_map<OprPtr, std::size_t> &alloc_slots() const {
+    return alloc_slots_;
   }
 
  private:

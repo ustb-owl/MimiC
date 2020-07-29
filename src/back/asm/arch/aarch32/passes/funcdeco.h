@@ -34,35 +34,40 @@ class FuncDecoratePass : public PassInterface {
       else {
         if (i->dest()) LogPreservedReg(i->dest());
         auto opcode = static_cast<AArch32Inst *>(i.get())->opcode();
-        if (opcode == OpCode::BX && i->oprs()[0].value()->IsReg()) {
+        if (opcode == OpCode::STR) {
+          LogSlotInfo(i->oprs()[1].value());
+        }
+        else if (opcode == OpCode::LDR) {
+          LogSlotInfo(i->oprs()[0].value());
+        }
+        else if (opcode == OpCode::BX && i->oprs()[0].value()->IsReg()) {
           const auto &reg = i->oprs()[0].value();
           auto name = static_cast<AArch32Reg *>(reg.get())->name();
           if (name == RegName::LR) ret_pos_ = it;
         }
       }
     }
-    for (const auto &[_, slot] : gen_.slots()) {
-      LogSlotInfo(slot);
-    }
     // if there are function calls, 'lr' should be preserved
     if (has_call_) used_regs_ |= 1 << static_cast<int>(RegName::LR);
     // if there are any stack slots, 'r11' should be preserved
-    if (preserved_slot_size_ || slot_size_) {
+    auto it = gen_.alloc_slots().find(func_label);
+    auto slot_size = it != gen_.alloc_slots().end() ? it->second : 0;
+    if (preserved_slot_size_ || slot_size) {
       used_regs_ |= 1 << static_cast<int>(RegName::R11);
     }
     // calculate additional offset of positive-offset in-frame slot
     std::int32_t add_pos_offset = GetUsedRegCount() * 4;
     // get total size of negative-offset slots
-    auto neg_slot_size = preserved_slot_size_ + slot_size_;
+    auto neg_slot_size = preserved_slot_size_ + slot_size;
     // generate push/pop
     if (used_regs_) {
       ret_pos_ = insts.insert(ret_pos_, MakePop());
       if (has_call_) ret_pos_ = --insts.erase(++ret_pos_);
       insts.insert(insts.begin(), MakePush());
     }
-    if (neg_slot_size) {
-      // generate instructions for stack pointer update
-      UpdateSP(insts, neg_slot_size);
+    // generate instructions for stack pointer update
+    if (neg_slot_size) UpdateSP(insts, neg_slot_size);
+    if (add_pos_offset) {
       // update all positive-offset in-frame slots
       for (auto &&i : poif_slots_) {
         i->set_offset(i->offset() + add_pos_offset);
@@ -85,7 +90,6 @@ class FuncDecoratePass : public PassInterface {
     used_regs_ = 0;
     has_call_ = false;
     preserved_slot_size_ = 0;
-    slot_size_ = 0;
     poif_slots_.clear();
   }
 
@@ -99,15 +103,11 @@ class FuncDecoratePass : public PassInterface {
   }
 
   void LogSlotInfo(const OprPtr &opr) {
-    assert(opr->IsSlot());
+    if (!opr->IsSlot()) return;
     auto slot = static_cast<AArch32Slot *>(opr.get());
     if (slot->based_on_sp()) {
       std::size_t ofs = slot->offset() + 4;
       if (ofs > preserved_slot_size_) preserved_slot_size_ = ofs;
-    }
-    else if (slot->offset() < 0) {
-      std::size_t ofs = -slot->offset();
-      if (ofs > slot_size_) slot_size_ = ofs;
     }
     else if (slot->offset() >= 0) {
       poif_slots_.insert(slot);
@@ -165,8 +165,6 @@ class FuncDecoratePass : public PassInterface {
   bool has_call_;
   // preserved slots for arguments
   std::size_t preserved_slot_size_;
-  // in-frame slot size
-  std::size_t slot_size_;
   // all positive-offset in-frame slots
   std::unordered_set<AArch32Slot *> poif_slots_;
   // position of return instruction
