@@ -18,7 +18,7 @@ const char *kRegNames[] = {
 
 const char *kOpCodes[] = {
   "ldr", "ldrb", "str", "strb", "push", "pop",
-  "add", "sub", "subs", "rsb", "mul", "mls", "sdiv", "udiv",
+  "add", "sub", "subs", "rsb", "mul",
   "cmp", "beq", "b", "bl", "bx",
   "mov", "movw", "movt", "mvn",
   "moveq", "movwne",
