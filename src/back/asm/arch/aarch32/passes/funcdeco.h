@@ -34,18 +34,15 @@ class FuncDecoratePass : public PassInterface {
       else {
         if (i->dest()) LogPreservedReg(i->dest());
         auto opcode = static_cast<AArch32Inst *>(i.get())->opcode();
-        if (opcode == OpCode::STR) {
-          LogSlotInfo(i->oprs()[1].value());
-        }
-        else if (opcode == OpCode::LDR) {
-          LogSlotInfo(i->oprs()[0].value());
-        }
-        else if (opcode == OpCode::BX && i->oprs()[0].value()->IsReg()) {
+        if (opcode == OpCode::BX && i->oprs()[0].value()->IsReg()) {
           const auto &reg = i->oprs()[0].value();
           auto name = static_cast<AArch32Reg *>(reg.get())->name();
           if (name == RegName::LR) ret_pos_ = it;
         }
       }
+    }
+    for (const auto &[_, slot] : gen_.slots()) {
+      LogSlotInfo(slot);
     }
     // if there are function calls, 'lr' should be preserved
     if (has_call_) used_regs_ |= 1 << static_cast<int>(RegName::LR);
@@ -69,6 +66,13 @@ class FuncDecoratePass : public PassInterface {
       // update all positive-offset in-frame slots
       for (auto &&i : poif_slots_) {
         i->set_offset(i->offset() + add_pos_offset);
+      }
+    }
+    else {
+      // convert all positive-offset in-frame slots to sp-based slots
+      for (auto &&i : poif_slots_) {
+        assert(!i->based_on_sp());
+        i->set_based_on_sp(true);
       }
     }
   }
@@ -95,7 +99,7 @@ class FuncDecoratePass : public PassInterface {
   }
 
   void LogSlotInfo(const OprPtr &opr) {
-    if (!opr->IsSlot()) return;
+    assert(opr->IsSlot());
     auto slot = static_cast<AArch32Slot *>(opr.get());
     if (slot->based_on_sp()) {
       std::size_t ofs = slot->offset() + 4;
@@ -163,7 +167,7 @@ class FuncDecoratePass : public PassInterface {
   std::size_t preserved_slot_size_;
   // in-frame slot size
   std::size_t slot_size_;
-  // instructions that used positive-offset in-frame slot
+  // all positive-offset in-frame slots
   std::unordered_set<AArch32Slot *> poif_slots_;
   // position of return instruction
   InstPtrList::iterator ret_pos_;
