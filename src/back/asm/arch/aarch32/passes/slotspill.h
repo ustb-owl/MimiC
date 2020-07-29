@@ -17,7 +17,7 @@ namespace mimic::back::asmgen::aarch32 {
 */
 class SlotSpillingPass : public PassInterface {
  public:
-  SlotSpillingPass(const AArch32InstGen &gen) : gen_(gen) {}
+  SlotSpillingPass(AArch32InstGen &gen) : gen_(gen) {}
 
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
     for (auto it = insts.begin(); it != insts.end(); ++it) {
@@ -99,15 +99,50 @@ class SlotSpillingPass : public PassInterface {
 
   // insert a load instruction before the specific position
   void InsertLoad(InstPtrList &insts, InstPtrList::iterator &pos,
-                  const OprPtr &opr, const OprPtr &dest) {
-    auto inst = std::make_shared<AArch32Inst>(OpCode::LDR, dest, opr);
+                  const OprPtr &slot, const OprPtr &dest) {
+    // get slot info
+    assert(slot->IsSlot() && dest->IsReg());
+    auto sl = static_cast<AArch32Slot *>(slot.get());
+    assert(!sl->based_on_sp() && sl->offset() < 0);
+    // generate load
+    InstPtr inst;
+    if (-sl->offset() >= 4096) {
+      // calculate address of slot first
+      auto r11 = gen_.GetReg(RegName::R11);
+      auto ofs = gen_.GetImm(-sl->offset());
+      inst = std::make_shared<AArch32Inst>(OpCode::SUB, dest, r11, ofs);
+      pos = ++insts.insert(pos, inst);
+      inst = std::make_shared<AArch32Inst>(OpCode::LDR, dest, dest);
+    }
+    else {
+      inst = std::make_shared<AArch32Inst>(OpCode::LDR, dest, slot);
+    }
     pos = ++insts.insert(pos, inst);
   }
 
   // insert a store instruction after the specific position
   void InsertStore(InstPtrList &insts, InstPtrList::iterator &pos,
                    const OprPtr &slot, const OprPtr &dest) {
-    auto inst = std::make_shared<AArch32Inst>(OpCode::STR, dest, slot);
+    // get slot info
+    // TODO: do not hard code the argument 'dest'
+    assert(slot->IsSlot() && dest->IsReg() &&
+           static_cast<AArch32Reg *>(dest.get())->name() == RegName::R2);
+    auto sl = static_cast<AArch32Slot *>(slot.get());
+    assert(!sl->based_on_sp() && sl->offset() < 0);
+    // generate store
+    InstPtr inst;
+    if (-sl->offset() >= 4096) {
+      // calculate address of slot first
+      auto temp = gen_.GetReg(RegName::R3);
+      auto r11 = gen_.GetReg(RegName::R11);
+      auto ofs = gen_.GetImm(-sl->offset());
+      inst = std::make_shared<AArch32Inst>(OpCode::SUB, temp, r11, ofs);
+      pos = insts.insert(++pos, inst);
+      inst = std::make_shared<AArch32Inst>(OpCode::STR, dest, temp);
+    }
+    else {
+      inst = std::make_shared<AArch32Inst>(OpCode::STR, dest, slot);
+    }
     pos = insts.insert(++pos, inst);
   }
 
@@ -116,7 +151,7 @@ class SlotSpillingPass : public PassInterface {
     return static_cast<VirtRegOperand *>(vreg.get())->alloc_to();
   }
 
-  const AArch32InstGen &gen_;
+  AArch32InstGen &gen_;
 };
 
 }  // namespace mimic::back::asmgen::aarch32
