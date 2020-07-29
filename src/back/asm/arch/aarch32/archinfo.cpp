@@ -28,8 +28,10 @@ class AArch32ArchInfo : public ArchInfoBase {
   PassPtrList GetPassList(std::size_t opt_level) override {
     PassPtrList list;
     list.push_back(MakePass<BranchEliminationPass>());
-    list.push_back(MakePass<MovePropagationPass>());
-    list.push_back(MakePass<MoveEliminatePass>());
+    if (opt_level) {
+      list.push_back(MakePass<MovePropagationPass>());
+      list.push_back(MakePass<MoveEliminatePass>());
+    }
     list.push_back(GetRegAlloc(opt_level));
     list.push_back(MakePass<SlotSpillingPass>(inst_gen_));
     list.push_back(MakePass<FuncDecoratePass>(inst_gen_));
