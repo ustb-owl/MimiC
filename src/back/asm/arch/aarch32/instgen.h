@@ -70,6 +70,12 @@ class AArch32InstGen : public InstGenBase {
     }
   }
 
+  // getters
+  // all allocated slots
+  const std::unordered_map<std::uint64_t, OprPtr> &slots() const {
+    return slots_;
+  }
+
  private:
   // get a stack slot
   const OprPtr &GetSlot(bool based_on_sp, std::int32_t offset) {
@@ -122,7 +128,7 @@ class AArch32InstGen : public InstGenBase {
   std::unordered_map<std::int32_t, OprPtr> imms_;
   // map for stack slots
   std::unordered_map<std::uint64_t, OprPtr> slots_;
-  // allocated in-frame stack slots
+  // size of allocated in-frame stack slots (per function)
   std::unordered_map<OprPtr, std::size_t> alloc_slots_;
   // for creating virtual registers
   VirtRegFactory vreg_fact_;
