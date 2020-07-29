@@ -19,11 +19,16 @@ class VirtRegOperand : public OperandBase {
     os << "vreg[" << id_ << ']';
   }
 
+  // setters
+  void set_alloc_to(const OprPtr &alloc_to) { alloc_to_ = alloc_to; }
+
   // getters
   std::uint32_t id() const { return id_; }
+  const OprPtr &alloc_to() const { return alloc_to_; }
 
  private:
   std::uint32_t id_;
+  OprPtr alloc_to_;
 };
 
 // virtual register factory
