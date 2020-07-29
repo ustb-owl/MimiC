@@ -472,8 +472,14 @@ OprPtr AArch32InstGen::GenerateOn(GlobalVarSSA &ssa) {
 OprPtr AArch32InstGen::GenerateOn(AllocaSSA &ssa) {
   auto type = ssa.type()->GetDerefedType();
   if (type->IsArray() || type->IsStruct()) {
-    // allocate a stack slot
-    return AllocNextSlot(cur_label(), type->GetSize());
+    if (type->GetSize() < 512) {
+      // allocate a stack slot
+      return AllocNextSlot(cur_label(), type->GetSize());
+    }
+    else {
+      // too large to put on stack, allocate a global variable
+      return GenerateZeros(type);
+    }
   }
   else {
     // allocate a virtual register
