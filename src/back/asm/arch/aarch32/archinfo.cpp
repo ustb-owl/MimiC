@@ -4,6 +4,7 @@
 #include "back/asm/arch/aarch32/passes/brelim.h"
 #include "back/asm/mir/passes/movprop.h"
 #include "back/asm/mir/passes/movelim.h"
+#include "back/asm/arch/aarch32/passes/liveness.h"
 #include "back/asm/mir/passes/fastalloc.h"
 #include "back/asm/mir/passes/linearscan.h"
 #include "back/asm/arch/aarch32/passes/slotspill.h"
@@ -32,7 +33,7 @@ class AArch32ArchInfo : public ArchInfoBase {
       list.push_back(MakePass<MovePropagationPass>());
       list.push_back(MakePass<MoveEliminatePass>());
     }
-    list.push_back(GetRegAlloc(opt_level));
+    InitRegAlloc(opt_level, list);
     list.push_back(MakePass<SlotSpillingPass>(inst_gen_));
     list.push_back(MakePass<FuncDecoratePass>(inst_gen_));
     list.push_back(MakePass<ImmNormalizePass>(inst_gen_));
@@ -40,12 +41,16 @@ class AArch32ArchInfo : public ArchInfoBase {
   }
 
  private:
-  PassPtr GetRegAlloc(std::size_t opt_level) {
+  void InitRegAlloc(std::size_t opt_level, PassPtrList &list) {
     using RegName = AArch32Reg::RegName;
     // create register allocator
     std::unique_ptr<RegAllocatorBase> reg_alloc;
     if (opt_level) {
-      reg_alloc = MakePass<LinearScanRegAllocPass>();
+      auto lsra = MakePass<LinearScanRegAllocPass>();
+      auto la = MakePass<LivenessAnalysisPass>();
+      lsra->set_func_live_intervals(&la->func_live_intervals());
+      list.push_back(std::move(la));
+      reg_alloc = std::move(lsra);
     }
     else {
       reg_alloc = MakePass<FastRegAllocPass>();
@@ -57,7 +62,7 @@ class AArch32ArchInfo : public ArchInfoBase {
           inst_gen_.GetReg(static_cast<RegName>(i)));
     }
     reg_alloc->set_allocator(inst_gen_.GetSlotAllocator());
-    return reg_alloc;
+    list.push_back(std::move(reg_alloc));
   }
 
   AArch32InstGen inst_gen_;
