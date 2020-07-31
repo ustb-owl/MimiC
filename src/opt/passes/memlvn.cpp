@@ -50,6 +50,10 @@ class TrivialAllocaHelperPass : public HelperPass {
     is_triv_ = false;
   }
 
+  void RunOn(CastSSA &ssa) override {
+    is_triv_ = false;
+  }
+
   void RunOn(StoreSSA &ssa) override {
     is_store_ = true;
   }

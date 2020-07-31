@@ -44,6 +44,10 @@ class GetPromAllocaHelperPass : public HelperPass {
     is_prom_ = false;
   }
 
+  void RunOn(CastSSA &ssa) override {
+    is_prom_ = false;
+  }
+
  private:
   bool is_prom_;
   std::unordered_set<Value *> prom_allocas_;
