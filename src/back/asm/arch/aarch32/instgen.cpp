@@ -94,25 +94,6 @@ void AArch32InstGen::GenerateMemCpy(const OprPtr &dest, const OprPtr &src,
   PushInst(OpCode::BL, label_fact_.GetLabel("memcpy"));
 }
 
-void AArch32InstGen::GenerateDiv(const OprPtr &dest, const OprPtr &lhs,
-                                 const OprPtr &rhs, bool is_signed) {
-  PushInst(OpCode::MOV, GetReg(RegName::R0), lhs);
-  PushInst(OpCode::MOV, GetReg(RegName::R1), rhs);
-  PushInst(OpCode::BL, label_fact_.GetLabel(is_signed ? "__aeabi_idiv"
-                                                      : "__aeabi_uidiv"));
-  PushInst(OpCode::MOV, dest, GetReg(RegName::R0));
-}
-
-void AArch32InstGen::GenerateMod(const OprPtr &dest, const OprPtr &lhs,
-                                 const OprPtr &rhs, bool is_signed) {
-  PushInst(OpCode::MOV, GetReg(RegName::R0), lhs);
-  PushInst(OpCode::MOV, GetReg(RegName::R1), rhs);
-  PushInst(OpCode::BL,
-           label_fact_.GetLabel(is_signed ? "__aeabi_idivmod"
-                                          : "__aeabi_uidivmod"));
-  PushInst(OpCode::MOV, dest, GetReg(RegName::R1));
-}
-
 void AArch32InstGen::DumpSeqs(std::ostream &os,
                               const InstSeqMap &seqs) const {
   for (const auto &[label, info] : seqs) {
@@ -254,6 +235,8 @@ OprPtr AArch32InstGen::GenerateOn(BinarySSA &ssa) {
     case Op::Add: opcode = OpCode::ADD; break;
     case Op::Sub: opcode = OpCode::SUB; break;
     case Op::Mul: opcode = OpCode::MUL; break;
+    case Op::UDiv: opcode = OpCode::UDIV; break;
+    case Op::SDiv: opcode = OpCode::SDIV; break;
     case Op::And: opcode = OpCode::AND; break;
     case Op::Or: opcode = OpCode::ORR; break;
     case Op::Xor: opcode = OpCode::EOR; break;
@@ -261,12 +244,10 @@ OprPtr AArch32InstGen::GenerateOn(BinarySSA &ssa) {
     case Op::LShr: opcode = OpCode::LSR; break;
     case Op::AShr: opcode = OpCode::ASR; break;
     // complex operations
-    case Op::UDiv: case Op::SDiv: {
-      GenerateDiv(dest, lhs, rhs, ssa.op() == Op::SDiv);
-      return dest;
-    }
     case Op::URem: case Op::SRem: {
-      GenerateMod(dest, lhs, rhs, ssa.op() == Op::SRem);
+      auto opcode = ssa.op() == Op::URem ? OpCode::UDIV : OpCode::SDIV;
+      PushInst(opcode, temp, lhs, rhs);
+      PushInst(OpCode::MLS, dest, temp, rhs, lhs);
       return dest;
     }
     case Op::Equal: {
