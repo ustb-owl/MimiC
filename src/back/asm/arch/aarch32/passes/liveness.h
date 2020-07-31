@@ -300,16 +300,21 @@ class LivenessAnalysisPass : public PassInterface {
     std::size_t pos = 0;
     for (const auto &bid : order_) {
       const auto &bb = bbs_[bid];
-      for (const auto &vreg : bb.var_kill) {
-        LogLiveInterval(live_intervals, vreg, pos);
+      // traverse all instructions
+      for (const auto &i : bb.insts) {
+        for (const auto &opr : i->oprs()) {
+          if (!opr.value()->IsVirtual()) continue;
+          LogLiveInterval(live_intervals, opr.value(), pos);
+        }
+        if (i->dest() && i->dest()->IsVirtual()) {
+          LogLiveInterval(live_intervals, i->dest(), pos);
+        }
+        ++pos;
       }
-      for (const auto &vreg : bb.ue_var) {
-        LogLiveInterval(live_intervals, vreg, pos);
-      }
+      // log virtual registers in 'live out' set
       for (const auto &vreg : bb.live_out) {
         LogLiveInterval(live_intervals, vreg, pos);
       }
-      ++pos;
     }
   }
 
