@@ -22,12 +22,10 @@ class MovePropagationPass : public PassInterface {
         if (it != defs_.end()) opr.set_value(it->second);
       }
       // update definition map
-      if (i->IsMove()) {
-        AddDef(i->dest(), i->oprs()[0].value());
-      }
-      else if (i->dest()) {
+      if (i->dest()) {
         RemoveDef(i->dest());
         RemoveUsedByDef(i->dest());
+        if (i->IsMove()) AddDef(i->dest(), i->oprs()[0].value());
       }
     }
   }
@@ -65,7 +63,6 @@ class MovePropagationPass : public PassInterface {
   }
 
   void AddDef(const OprPtr &dest, const OprPtr &val) {
-    RemoveDef(dest);
     defs_.insert({dest, val});
     uses_.insert({val, dest});
   }
