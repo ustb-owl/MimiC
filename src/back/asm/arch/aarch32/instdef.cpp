@@ -18,7 +18,7 @@ const char *kRegNames[] = {
 
 const char *kOpCodes[] = {
   "ldr", "ldrb", "str", "strb", "push", "pop",
-  "add", "sub", "subs", "rsb", "mul",
+  "add", "sub", "subs", "rsb", "mul", "mls", "sdiv", "udiv",
   "cmp", "beq", "b", "bl", "bx",
   "mov", "movw", "movt", "mvn",
   "moveq", "movwne",
@@ -95,6 +95,29 @@ void AArch32Inst::Dump(std::ostream &os) const {
   using OpCode = AArch32Inst::OpCode;
   if (opcode_ == OpCode::LABEL) {
     os << oprs()[0].value() << ':';
+  }
+  else if (opcode_ == OpCode::SDIV || opcode_ == OpCode::UDIV) {
+    // NOTE: a dirty hack for ARMv7-A assembler on ARMv8 architecture
+    assert(dest() && oprs().size() == 2);
+    os << '\t';
+    if (dest()->IsReg() && !dest()->IsVirtual() &&
+        oprs()[0].value()->IsReg() && !oprs()[0].value()->IsVirtual() &&
+        oprs()[1].value()->IsReg() && !oprs()[1].value()->IsVirtual()) {
+      // dump binary
+      auto rd = static_cast<AArch32Reg *>(dest().get());
+      auto rn = static_cast<AArch32Reg *>(oprs()[0].value().get());
+      auto rm = static_cast<AArch32Reg *>(oprs()[1].value().get());
+      std::uint32_t w = opcode_ == OpCode::SDIV ? 0xe710f010 : 0xe730f010;
+      auto d = static_cast<std::uint32_t>(rd->name());
+      auto n = static_cast<std::uint32_t>(rn->name());
+      auto m = static_cast<std::uint32_t>(rm->name());
+      w = w | (d << 16) | (m << 8) | (n << 0);
+      os << ".word\t0x" << std::hex << w << std::dec;
+    }
+    else {
+      // just dump
+      os << opcode_ << '\t' << dest() << ", " << oprs();
+    }
   }
   else {
     os << '\t' << opcode_ << '\t';
