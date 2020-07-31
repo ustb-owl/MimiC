@@ -433,7 +433,7 @@ void CCodeGen::GenerateOn(ConstZeroSSA &ssa) {
   }
   else if (type->IsArray()) {
     // generate value
-    if (in_global_var_) {
+    if (in_global_var_ || arr_depth_) {
       SetVal(ssa, "{}");
     }
     else {
