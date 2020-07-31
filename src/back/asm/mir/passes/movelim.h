@@ -18,7 +18,7 @@ class MoveEliminatePass : public PassInterface {
       if ((*it)->IsMove()) {
         // check if current instruction needs to be removed
         if (last && (*it)->oprs()[0].value() == last->dest() &&
-            last->dest()->use_count() == 1) {
+            last->dest()->IsVirtual() && last->dest()->use_count() == 1) {
           /*
             op  reg1, ...   ==>   op  reg2, ...
             mov reg2, reg1
