@@ -23,9 +23,14 @@ class MovePropagationPass : public PassInterface {
       }
       // update definition map
       if (i->dest()) {
-        RemoveDef(i->dest());
-        RemoveUsedByDef(i->dest());
-        if (i->IsMove()) AddDef(i->dest(), i->oprs()[0].value());
+        const auto &dest = i->dest();
+        RemoveDef(dest);
+        RemoveUsedByDef(dest);
+        if (i->IsMove()) {
+          const auto &opr = i->oprs()[0].value();
+          // handle virtual registers only
+          if (dest->IsVirtual() && opr->IsVirtual()) AddDef(dest, opr);
+        }
       }
     }
   }
