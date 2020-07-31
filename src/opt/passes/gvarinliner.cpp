@@ -12,6 +12,13 @@ using namespace mimic::opt;
 namespace {
 
 /*
+  parameters of pass
+*/
+// size threshold of global variable
+constexpr std::size_t kThresholdSize = 512;
+
+
+/*
   this pass will inline global variables
   that has only been used in one function
 */
@@ -42,11 +49,12 @@ class GlobalVariableInliner : public FunctionPass {
     // handle all target global variables
     bool changed = false;
     for (const auto &[gvar, use_count] : gvar_counter_) {
-      if (gvar->uses().size() == use_count) {
+      auto type = gvar->type()->GetDerefedType();
+      if (gvar->uses().size() == use_count &&
+          type->GetSize() < kThresholdSize) {
         if (!changed) changed = true;
         // create alloca
         auto mod = MakeModule(gvar->logger(), entry, insts.begin());
-        auto type = gvar->type()->GetDerefedType();
         auto alloca = mod.CreateAlloca(type);
         // create initializer
         mod.SetInsertPoint(entry, pos);
@@ -75,6 +83,10 @@ class GlobalVariableInliner : public FunctionPass {
 
   void RunOn(AccessSSA &ssa) override {
     LogGlobalVar(ssa.ptr());
+  }
+
+  void RunOn(CastSSA &ssa) override {
+    LogGlobalVar(ssa.opr());
   }
 
  private:
