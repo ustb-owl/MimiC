@@ -59,7 +59,7 @@ class SlotSpillingPass : public PassInterface {
           inst->set_dest(alloc_to);
         }
         else {
-          auto temp = gen_.GetReg(RegName::R2);
+          auto temp = gen_.GetReg(RegName::R12);
           inst->set_dest(temp);
           InsertStore(insts, it, alloc_to, temp);
         }
@@ -135,14 +135,14 @@ class SlotSpillingPass : public PassInterface {
     // get slot info
     // TODO: do not hard code the argument 'dest'
     assert(slot->IsSlot() && dest->IsReg() &&
-           static_cast<AArch32Reg *>(dest.get())->name() == RegName::R2);
+           static_cast<AArch32Reg *>(dest.get())->name() == RegName::R12);
     auto sl = static_cast<AArch32Slot *>(slot.get());
     assert(!sl->based_on_sp() && sl->offset() < 0);
     // generate store
     InstPtr inst;
     if (-sl->offset() >= 4096) {
       // calculate address of slot first
-      auto temp = gen_.GetReg(RegName::R12);
+      auto temp = gen_.GetReg(RegName::R3);
       auto r11 = gen_.GetReg(RegName::R11);
       auto ofs = gen_.GetImm(-sl->offset());
       inst = std::make_shared<AArch32Inst>(OpCode::SUB, temp, r11, ofs);
