@@ -18,12 +18,21 @@ namespace mimic::back::asmgen {
 */
 class LinearScanRegAllocPass : public RegAllocatorBase {
  public:
+  // live interval information
+  struct LiveInterval {
+    std::size_t start_pos;
+    std::size_t end_pos;
+  };
+  // live intervals in function
+  using LiveIntervals = std::unordered_map<OprPtr, LiveInterval>;
+  // live intervals of all functions
+  using FuncLiveIntervals = std::unordered_map<OprPtr, LiveIntervals>;
+
   LinearScanRegAllocPass() {}
 
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
     Reset();
     // perform allocation
-    InitLiveIntervals(insts);
     LinearScanAlloc(func_label);
     // apply to virtual registers
     for (const auto &i : insts) {
@@ -42,13 +51,13 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
     avaliable_regs_.push_back(reg);
   }
 
- private:
-  // live interval information
-  struct LiveInterval {
-    std::size_t start_pos;
-    std::size_t end_pos;
-  };
+  // setter
+  void set_func_live_intervals(
+      const FuncLiveIntervals *func_live_intervals) {
+    func_live_intervals_ = func_live_intervals;
+  }
 
+ private:
   // map of live intervals in order of increasing start position
   struct LiveIntervalStartCmp {
     bool operator()(const LiveInterval *lhs,
@@ -77,38 +86,7 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
     // initialize free registers
     for (const auto &i : avaliable_regs_) free_regs_.push(i);
     // reset other stuffs
-    live_intervals_.clear();
     vregs_.clear();
-  }
-
-  // initialize live interval info
-  void InitLiveIntervals(InstPtrList &insts) {
-    std::size_t pos = 0;
-    live_intervals_.clear();
-    // traverse all instructions
-    for (const auto &i : insts) {
-      if (i->dest()) LogLiveInterval(i->dest(), pos);
-      for (const auto &opr : i->oprs()) {
-        LogLiveInterval(opr.value(), pos);
-      }
-      ++pos;
-    }
-  }
-
-  // log position info of the specific value
-  void LogLiveInterval(const OprPtr &opr, std::size_t cur_pos) {
-    if (!opr->IsVirtual()) return;
-    // get live interval info
-    auto it = live_intervals_.find(opr);
-    if (it != live_intervals_.end()) {
-      auto &info = it->second;
-      // update end position
-      info.end_pos = cur_pos;
-    }
-    else {
-      // add new live interval info
-      live_intervals_.insert({opr, {cur_pos, cur_pos}});
-    }
   }
 
   // perform linear scan register allocation
@@ -116,7 +94,9 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
     IntervalStartMap start_map;
     IntervalEndMap active;
     // build up live interval map
-    for (const auto &i : live_intervals_) {
+    auto it = func_live_intervals_->find(func_label);
+    assert(it != func_live_intervals_->end());
+    for (const auto &i : it->second) {
       start_map.insert({&i.second, i.first});
     }
     // perform allocation
@@ -193,8 +173,8 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
   std::vector<OprPtr> avaliable_regs_;
   // free register/slot pool (queue)
   std::queue<OprPtr> free_regs_, free_slots_;
-  // live intervals
-  std::unordered_map<OprPtr, LiveInterval> live_intervals_;
+  // reference of live intervals
+  const FuncLiveIntervals *func_live_intervals_;
   // allocated registers/slots of all virtual registers
   std::unordered_map<OprPtr, OprPtr> vregs_;
 };
