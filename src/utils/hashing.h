@@ -5,15 +5,31 @@
 #include <utility>
 
 namespace mimic::utils {
-
+namespace __impl {
 inline void HashCombine(std::size_t &seed) {}
 
-// helper function for hash combining
 template <typename T, typename... Rest>
 inline void HashCombine(std::size_t &seed, const T &v, Rest &&... rest) {
   std::hash<T> hasher;
   seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
   HashCombine(seed, std::forward<Rest>(rest)...);
+}
+}  // namespace __impl
+
+// helper function for hash combining
+template <typename... Values>
+inline std::size_t HashCombine(Values &&... v) {
+  std::size_t seed = 0;
+  __impl::HashCombine(seed, std::forward<Values>(v)...);
+  return seed;
+}
+
+// helper function for hash combining a sequence of values
+template <typename Iter>
+inline std::size_t HashCombineRange(Iter first, Iter last) {
+  std::size_t seed = 0;
+  for (auto it = first; it != last; ++it) __impl::HashCombine(seed, *it);
+  return seed;
 }
 
 }  // namespace mimic::utils
@@ -24,9 +40,7 @@ namespace std {
 template <typename T0, typename T1>
 struct hash<std::pair<T0, T1>> {
   inline std::size_t operator()(const std::pair<T0, T1> &val) const {
-    std::size_t seed = 0;
-    mimic::utils::HashCombine(seed, val.first, val.second);
-    return seed;
+    return mimic::utils::HashCombine(val.first, val.second);
   }
 };
 
