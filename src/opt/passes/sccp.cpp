@@ -1,7 +1,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
-#include <functional>
 #include <queue>
 #include <list>
 #include <cstddef>
@@ -12,35 +11,10 @@
 #include "opt/passes/helper/cast.h"
 #include "opt/passes/helper/inst.h"
 #include "mid/module.h"
+#include "utils/hashing.h"
 
 using namespace mimic::mid;
 using namespace mimic::opt;
-
-namespace {
-
-// helper function for hash combining
-template <typename T>
-inline void HashCombine(std::size_t &seed, const T &v) {
-  std::hash<T> hasher;
-  seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-}
-
-}  // namespace
-
-namespace std {
-
-// hasher for std::pair
-template <typename T0, typename T1>
-struct hash<std::pair<T0, T1>> {
-  inline std::size_t operator()(const std::pair<T0, T1> &val) const {
-    std::size_t seed = 0;
-    HashCombine(seed, val.first);
-    HashCombine(seed, val.second);
-    return seed;
-  }
-};
-
-}  // namespace std
 
 namespace {
 
