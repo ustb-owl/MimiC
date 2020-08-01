@@ -60,6 +60,25 @@ class BFSTraverseHelperPass : public HelperPass {
   std::queue<mid::BlockSSA *> queue_;
 };
 
+// traverse blocks in reverse post order
+class RPOTraverseHelperPass : public HelperPass {
+ public:
+  RPOTraverseHelperPass(mid::BlockSSA *entry) { TraverseRPO(entry); }
+
+  void RunOn(mid::BranchSSA &ssa) override;
+  void RunOn(mid::JumpSSA &ssa) override;
+
+  // iterator method
+  auto begin() const { return rpo_.begin(); }
+  auto end() const { return rpo_.end(); }
+
+ private:
+  void TraverseRPO(mid::BlockSSA *cur);
+
+  std::list<mid::BlockSSA *> rpo_;
+  std::unordered_set<mid::BlockSSA *> visited_;
+};
+
 }  // namespace __impl
 
 // traverse blocks in BFS order
@@ -72,6 +91,18 @@ inline __impl::BFSTraverseHelperPass BFSTraverse(mid::BlockSSA &entry) {
 inline __impl::BFSTraverseHelperPass BFSTraverse(
     const mid::BlockPtr &entry) {
   return __impl::BFSTraverseHelperPass(entry.get());
+}
+
+// traverse blocks in reverse post order
+inline __impl::RPOTraverseHelperPass RPOTraverse(mid::BlockSSA *entry) {
+  return __impl::RPOTraverseHelperPass(entry);
+}
+inline __impl::RPOTraverseHelperPass RPOTraverse(mid::BlockSSA &entry) {
+  return __impl::RPOTraverseHelperPass(&entry);
+}
+inline __impl::RPOTraverseHelperPass RPOTraverse(
+    const mid::BlockPtr &entry) {
+  return __impl::RPOTraverseHelperPass(entry.get());
 }
 
 }  // namespace mimic::opt
