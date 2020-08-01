@@ -341,6 +341,7 @@ class GlobalVarSSA : public User {
 
   // setters
   void set_link(LinkageTypes link) { link_ = link; }
+  void set_is_var(bool is_var) { is_var_ = is_var; }
 
   // getters
   LinkageTypes link() const { return link_; }
