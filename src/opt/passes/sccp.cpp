@@ -265,10 +265,16 @@ class SparseCondConstPropagationPass : public FunctionPass {
       if (IsSSA<ConstIntSSA>(val)) {
         it->second.setAsConst(val);
       }
-      else if (val->IsConst() &&
-               (val->type()->IsInteger() || val->type()->IsPointer())) {
-        // try to evaluate other inline constants
-        val->RunPass(*this);
+      else if (val->type()->IsInteger() || val->type()->IsPointer()) {
+        if (IsSSA<ConstZeroSSA>(val)) {
+          // replace with a constant integer
+          auto zero = MakeModule(val->logger()).GetInt(0, val->type());
+          it->second.setAsConst(zero);
+        }
+        else if (val->IsConst()) {
+          // try to evaluate other inline constants
+          val->RunPass(*this);
+        }
       }
     }
     return it->second;
