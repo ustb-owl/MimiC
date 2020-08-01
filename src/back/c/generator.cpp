@@ -220,6 +220,7 @@ void CCodeGen::GenerateOn(AccessSSA &ssa) {
   else {
     assert(ssa.acc_type() == AccType::Element);
     auto base_ty = ssa.ptr()->type()->GetDerefedType();
+    code_ << '(' << GetTypeName(ssa.type()) << ')';
     if (base_ty->IsArray()) {
       // array
       code_ << "&(*" << ptr << ")[" << index << ']';
@@ -227,8 +228,7 @@ void CCodeGen::GenerateOn(AccessSSA &ssa) {
     else {
       // structure
       assert(base_ty->IsStruct());
-      code_ << '(' << GetTypeName(ssa.type());
-      code_ << ")((unsigned char*)" << ptr << " + ";
+      code_ << "((unsigned char*)" << ptr << " + ";
       assert(ssa.index()->IsConst());
       // calculate offset
       std::size_t idx = std::stoul(index), offset = 0;
