@@ -15,7 +15,7 @@ namespace {
   parameters of pass
 */
 // size threshold of global array
-constexpr std::size_t kThresholdSize = 1024 * 1024 * 4;
+constexpr std::size_t kThresholdSize = 128;
 
 
 /*
