@@ -14,22 +14,22 @@ namespace {
 /*
   parameters of pass
 */
-// size threshold of global variable
+// size threshold of global array
 constexpr std::size_t kThresholdSize = 1024 * 1024 * 4;
 
 
 /*
-  this pass will inline global variables
+  this pass will inline global arrays
   that has only been used in 'main' function
 */
-class GlobalVariableInliner : public FunctionPass {
+class GlobalArrayInliner : public FunctionPass {
  public:
-  GlobalVariableInliner() {}
+  GlobalArrayInliner() {}
 
   bool RunOnFunction(const UserPtr &func) override {
     auto func_ptr = SSACast<FunctionSSA>(func.get());
     if (func_ptr->name() != "main") return false;
-    // scan for all uses of global variables
+    // scan for all uses of global arrays
     for (const auto &i : *func) {
       auto block = SSACast<BlockSSA>(i.value().get());
       for (const auto &inst : block->insts()) {
@@ -48,7 +48,7 @@ class GlobalVariableInliner : public FunctionPass {
         break;
       }
     }
-    // handle all target global variables
+    // handle all target global arrays
     bool changed = false;
     for (const auto &[gvar, use_count] : gvar_counter_) {
       auto type = gvar->type()->GetDerefedType();
@@ -94,15 +94,18 @@ class GlobalVariableInliner : public FunctionPass {
  private:
   void LogGlobalVar(const SSAPtr &val) {
     if (auto gvar = SSADynCast<GlobalVarSSA>(val.get())) {
-      gvar_counter_[gvar] += 1;
+      // handle array only
+      if (gvar->type()->GetDerefedType()->IsArray()) {
+        gvar_counter_[gvar] += 1;
+      }
     }
   }
 
-  // use counter of global variables
+  // use counter of global arrays
   std::unordered_map<GlobalVarSSA *, std::size_t> gvar_counter_;
 };
 
 }  // namespace
 
 // register current pass
-REGISTER_PASS(GlobalVariableInliner, gvar_inliner, 2, PassStage::Opt);
+REGISTER_PASS(GlobalArrayInliner, arr_inliner, 2, PassStage::Opt);
