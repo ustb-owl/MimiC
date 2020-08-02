@@ -85,6 +85,7 @@ struct ExprHasher {
 };
 
 // hold the mapping between values and numbers
+// reference: LLVM
 class ValueTable : HelperPass {
  public:
   ValueTable() { Reset(); }
@@ -97,7 +98,7 @@ class ValueTable : HelperPass {
   }
 
   std::uint32_t LookupOrAdd(Value *val);
-  std::uint32_t Lookup(Value *val);
+  std::uint32_t Lookup(Value *val, bool verify);
   void Add(Value *val, std::uint32_t num);
 
   void RunOn(AccessSSA &ssa) override;
@@ -132,8 +133,6 @@ class ValueTable : HelperPass {
 /*
   perform global value numbering
   a naive implementation, similar to mem2reg
-
-  reference: LLVM
 */
 class GlobalValueNumberingPass : public FunctionPass {
  public:
@@ -152,8 +151,9 @@ class GlobalValueNumberingPass : public FunctionPass {
     ProcessPhi();
     // release all resources
     values_.Reset();
-    local_defs_.clear();
-    global_defs_.clear();
+    val_defs_.clear();
+    ptr_defs_.clear();
+    global_vals_.clear();
     tracked_ptrs_.clear();
     assert(created_phis_.empty());
     return changed_;
@@ -171,7 +171,7 @@ class GlobalValueNumberingPass : public FunctionPass {
         remove_flag = ProcessStore(&ssa, store);
       }
       else {
-        remove_flag = ProcessValue(*it);
+        remove_flag = ProcessValue(&ssa, *it);
       }
       // check if need to remove
       if (remove_flag) {
@@ -185,35 +185,47 @@ class GlobalValueNumberingPass : public FunctionPass {
   }
 
  private:
+  using LocalDefs =
+      std::unordered_map<BlockSSA *,
+                         std::unordered_map<std::uint32_t, SSAPtr>>;
+
+  struct InstInfo {
+    Value *val;
+    BlockSSA *parent;
+  };
+
   struct PhiInfo {
     // phi node
     SSAPtr phi;
     // block where phi node located
     BlockSSA *block;
-    // load instruction that caused this phi node
-    LoadSSA *load;
+    // instruction that caused this phi node
+    InstInfo inst;
   };
 
   bool ProcessLoad(BlockSSA *block, LoadSSA *load);
   bool ProcessStore(BlockSSA *block, StoreSSA *store);
-  bool ProcessValue(const SSAPtr &value);
+  bool ProcessValue(BlockSSA *block, const SSAPtr &value);
   void ProcessPhi();
 
-  SSAPtr ReadValue(BlockSSA *block, std::uint32_t ptr_num, LoadSSA *load);
-  SSAPtr ReadValueRecursive(BlockSSA *block, std::uint32_t ptr_num,
-                            LoadSSA *load);
-  void AddPhiOperands(const SSAPtr &phi, BlockSSA *block, LoadSSA *load);
-  bool IsTrivialPhi(PhiSSA *phi, SSAPtr &repl);
+  void WriteValue(LocalDefs &defs, BlockSSA *block, std::uint32_t num,
+                  const SSAPtr &val);
+  SSAPtr ReadValue(LocalDefs &defs, BlockSSA *block, std::uint32_t num,
+                   InstInfo inst);
+  SSAPtr ReadValueRecursive(LocalDefs &defs, BlockSSA *block,
+                            std::uint32_t num, InstInfo inst);
+  bool ReplaceWith(Value *val, const SSAPtr &repl);
+  void AddPhiOperands(const SSAPtr &phi, BlockSSA *block, InstInfo inst);
+  bool IsTrivialPhi(PhiSSA *phi);
 
   bool changed_;
   // value table
   ValueTable values_;
-  // local definitions (for load & store)
-  std::unordered_map<BlockSSA *, std::unordered_map<std::uint32_t, SSAPtr>>
-      local_defs_;
-  // global definitions (for other values)
-  std::unordered_map<std::uint32_t, SSAPtr> global_defs_;
-  // value number of tracked pointers (for load & store)
+  // local definitions for values & load/store instructions
+  LocalDefs val_defs_, ptr_defs_;
+  // number of handled values
+  std::unordered_set<std::uint32_t> global_vals_;
+  // value number of tracked pointers
   // only pointers of local variables will be tracked
   std::unordered_set<std::uint32_t> tracked_ptrs_;
   // all created phi nodes
@@ -294,8 +306,12 @@ std::uint32_t ValueTable::LookupOrAdd(Value *val) {
 
 // lookup the value number of the specific value
 // returns zero if the value does not exist
-std::uint32_t ValueTable::Lookup(Value *val) {
+std::uint32_t ValueTable::Lookup(Value *val, bool verify) {
   auto it = values_.find(val);
+  if (verify) {
+    assert(it != values_.end());
+    return it->second;
+  }
   return it != values_.end() ? it->second : 0;
 }
 
@@ -330,7 +346,7 @@ void ValueTable::RunOn(PhiSSA &ssa) {
 void ValueTable::RunOn(PhiOperandSSA &ssa) {
   Expression expr(Expression::OpCode::PhiOpr, ssa.type());
   // add value of current operand
-  if (!Lookup(ssa.value().get())) {
+  if (!Lookup(ssa.value().get(), false)) {
     // ignore back edges
     Add(ssa.value().get(), next_number_);
     expr.oprs().push_back(next_number_++);
@@ -442,14 +458,8 @@ bool GlobalValueNumberingPass::ProcessLoad(BlockSSA *block,
   // skip untracked pointers
   if (!tracked_ptrs_.count(ptr_num)) return false;
   // update local definitions
-  auto val = ReadValue(block, ptr_num, load);
-  if (!IsSSA<PhiSSA>(val)) {
-    load->ReplaceBy(val);
-    return true;
-  }
-  else {
-    return false;
-  }
+  auto val = ReadValue(ptr_defs_, block, ptr_num, {load, block});
+  return ReplaceWith(load, val);
 }
 
 // handle with store instructions
@@ -460,13 +470,14 @@ bool GlobalValueNumberingPass::ProcessStore(BlockSSA *block,
   // skip untracked pointers
   if (!tracked_ptrs_.count(ptr_num)) return false;
   // update local definition of pointer
-  local_defs_[block][ptr_num] = store->value();
+  WriteValue(ptr_defs_, block, ptr_num, store->value());
   return false;
 }
 
 // handle with other instructions
 // returns true if current value has already been replaced
-bool GlobalValueNumberingPass::ProcessValue(const SSAPtr &value) {
+bool GlobalValueNumberingPass::ProcessValue(BlockSSA *block,
+                                            const SSAPtr &value) {
   // skip 'value' if it does not yield a value
   if (!value->type()) return false;
   auto num = values_.LookupOrAdd(value.get());
@@ -487,17 +498,14 @@ bool GlobalValueNumberingPass::ProcessValue(const SSAPtr &value) {
       if (tracked_ptrs_.count(ptr_num)) tracked_ptrs_.insert(num);
     }
   }
-  // update global definitions
-  auto it = global_defs_.find(num);
-  if (it != global_defs_.end()) {
-    // replace with global value
-    value->ReplaceBy(it->second);
-    return true;
+  // update local definitions
+  if (global_vals_.insert(num).second) {
+    WriteValue(val_defs_, block, num, value);
+    return false;
   }
   else {
-    // add to global definitions
-    global_defs_.insert({num, value});
-    return false;
+    auto val = ReadValue(val_defs_, block, num, {value.get(), block});
+    return ReplaceWith(value.get(), val);
   }
 }
 
@@ -517,13 +525,9 @@ void GlobalValueNumberingPass::ProcessPhi() {
     changed = false;
     for (auto it = phis.begin(); it != phis.end();) {
       auto phi = SSACast<PhiSSA>(it->phi.get());
-      SSAPtr repl;
-      if (IsTrivialPhi(phi, repl)) {
-        // trivial phi node, replace phi with new value
-        if (repl) it->phi->ReplaceBy(repl);
-        // then remove it
-        it = phis.erase(it);
+      if (IsTrivialPhi(phi)) {
         changed = true;
+        it = phis.erase(it);
       }
       else {
         ++it;
@@ -532,61 +536,89 @@ void GlobalValueNumberingPass::ProcessPhi() {
   }
   // place all remaining phi nodes into the block where they are
   for (const auto &pi : phis) {
-    pi.load->ReplaceBy(pi.phi);
-    pi.block->insts().remove_if(
-        [&pi](const SSAPtr &i) { return i.get() == pi.load; });
+    pi.inst.val->ReplaceBy(pi.phi);
+    pi.inst.parent->insts().remove_if(
+        [&pi](const SSAPtr &i) { return i.get() == pi.inst.val; });
     pi.block->insts().push_front(pi.phi);
     if (!changed_) changed_ = true;
   }
 }
 
-SSAPtr GlobalValueNumberingPass::ReadValue(BlockSSA *block,
-                                           std::uint32_t ptr_num,
-                                           LoadSSA *load) {
-  const auto &defs = local_defs_[block];
-  auto it = defs.find(ptr_num);
-  if (it != defs.end()) {
+void GlobalValueNumberingPass::WriteValue(LocalDefs &defs, BlockSSA *block,
+                                          std::uint32_t num,
+                                          const SSAPtr &val) {
+  defs[block][num] = val;
+}
+
+SSAPtr GlobalValueNumberingPass::ReadValue(LocalDefs &defs, BlockSSA *block,
+                                           std::uint32_t num,
+                                           InstInfo inst) {
+  const auto &d = defs[block];
+  auto it = d.find(num);
+  if (it != d.end()) {
     return it->second;
   }
   else {
-    return ReadValueRecursive(block, ptr_num, load);
+    return ReadValueRecursive(defs, block, num, inst);
   }
 }
 
-SSAPtr GlobalValueNumberingPass::ReadValueRecursive(BlockSSA *block,
-                                                    std::uint32_t ptr_num,
-                                                    LoadSSA *load) {
+SSAPtr GlobalValueNumberingPass::ReadValueRecursive(LocalDefs &defs,
+                                                    BlockSSA *block,
+                                                    std::uint32_t num,
+                                                    InstInfo inst) {
   SSAPtr val;
   if (block->size() == 1) {
     // block only has one predecessor, no phi needed
     auto pred = SSACast<BlockSSA>((*block)[0].value().get());
-    val = ReadValue(pred, ptr_num, load);
+    val = ReadValue(defs, pred, num, inst);
   }
   else {
     // create an empty phi node
     auto phi = std::make_shared<PhiSSA>(SSAPtrList());
-    phi->set_type(load->type());
-    phi->set_logger(load->logger());
+    phi->set_type(inst.val->type());
+    phi->set_logger(inst.val->logger());
     // remember it
-    created_phis_.push({phi, block, load});
+    created_phis_.push({phi, block, inst});
     val = phi;
   }
   // update local definition
-  local_defs_[block][ptr_num] = val;
+  WriteValue(defs, block, num, val);
   return val;
+}
+
+bool GlobalValueNumberingPass::ReplaceWith(Value *val,
+                                           const SSAPtr &repl) {
+  if (!IsSSA<PhiSSA>(repl)) {
+    val->ReplaceBy(repl);
+    return true;
+  }
+  else {
+    return false;
+  }
 }
 
 void GlobalValueNumberingPass::AddPhiOperands(const SSAPtr &phi,
                                               BlockSSA *block,
-                                              LoadSSA *load) {
+                                              InstInfo inst) {
   auto phi_ptr = SSACast<PhiSSA>(phi.get());
   phi_ptr->Reserve(block->size());
   // determine operands from predecessors
   for (const auto &i : *block) {
+    // get number of value
+    std::uint32_t num;
+    LocalDefs *defs;
+    if (auto load = SSADynCast<LoadSSA>(inst.val)) {
+      num = values_.Lookup(load->ptr().get(), true);
+      defs = &ptr_defs_;
+    }
+    else {
+      num = values_.Lookup(inst.val, true);
+      defs = &val_defs_;
+    }
     // read value
     auto pred = SSACast<BlockSSA>(i.value());
-    auto ptr_num = values_.LookupOrAdd(load->ptr().get());
-    auto val = ReadValue(pred.get(), ptr_num, load);
+    auto val = ReadValue(*defs, pred.get(), num, inst);
     assert(val->type()->IsIdentical(phi_ptr->type()));
     // create phi operand
     auto mod = MakeModule(phi_ptr->logger());
@@ -594,17 +626,22 @@ void GlobalValueNumberingPass::AddPhiOperands(const SSAPtr &phi,
   }
 }
 
-bool GlobalValueNumberingPass::IsTrivialPhi(PhiSSA *phi, SSAPtr &repl) {
+bool GlobalValueNumberingPass::IsTrivialPhi(PhiSSA *phi) {
+  SSAPtr same;
   // scan all operands
   for (const auto &i : *phi) {
     auto op_ptr = SSACast<PhiOperandSSA>(i.value().get());
     const auto &op = op_ptr->value();
-    // unique value or self-reference
-    if (op == repl || op.get() == phi) continue;
+    // unique value, undefined value or self-reference
+    if (op == same || op->IsUndef() || op.get() == phi) continue;
     // the phi node merges at least two values, not trivial
-    if (repl) return false;
+    if (same) return false;
     // remember current operand
-    repl = op;
+    same = op;
   }
+  // unreachable or in the start block
+  if (!same) same = MakeModule(phi->logger()).GetUndef(phi->type());
+  // reroute all uses of phi node to 'same'
+  phi->ReplaceBy(same);
   return true;
 }
