@@ -23,7 +23,9 @@ constexpr std::size_t kCalleeInstThreshold = 1 << 8;
 // threshold of caller's instruction count
 constexpr std::size_t kCallerInstThreshold = 1 << 14;
 // threshold of recursive function's instruction count
-constexpr std::size_t kRecFuncInstThreshold = 1 << 9;
+constexpr std::size_t kRecFuncInstThreshold = 1 << 8;
+// threshold of recursive function's inline count
+constexpr std::size_t kRecFuncInlineCountThreshold = 3;
 
 
 // pointer to function
@@ -63,10 +65,22 @@ class BlockSplitterHelperPass : public HelperPass {
 
  private:
   void ReplacePred(BlockSSA *block) {
+    // update predecessor reference of block
     for (auto &&i : *block) {
       if (i.value().get() == cur_) {
         i.set_value(blk_);
-        return;
+        break;
+      }
+    }
+    // update phi node in block
+    for (const auto &i : block->insts()) {
+      auto phi = SSADynCast<PhiSSA>(i.get());
+      if (!phi) continue;
+      for (const auto &opr : *phi) {
+        auto opr_ptr = SSACast<PhiOperandSSA>(opr.value().get());
+        if (opr_ptr->block().get() == cur_) {
+          opr_ptr->set_block(blk_);
+        }
       }
     }
   }
@@ -97,6 +111,7 @@ class InlineHelperPass : public HelperPass {
     // create a new block
     auto mod = MakeModule(ssa.logger());
     auto block = CopyFromValue(ssa, cur_func_, ssa.name());
+    block->Resize(ssa.size());
     CopyOperand(block, ssa);
     cur_func_->AddValue(block);
     // remember block
@@ -154,7 +169,7 @@ class InlineHelperPass : public HelperPass {
   }
 
   void RunOn(CallSSA &ssa) override {
-    auto call = CopyFromValue(ssa, nullptr, SSAPtrList(ssa.size()));
+    auto call = CopyFromValue(ssa, nullptr, SSAPtrList(ssa.size() - 1));
     CopyOperand(call, ssa);
   }
 
@@ -324,10 +339,14 @@ class FunctionInliningPass : public FunctionPass {
   void UpdateFuncInfo(FunctionSSA *func);
   const FuncInfo &GetFuncInfo(FunctionSSA *func);
   bool CanInline(FunctionSSA *cur, CallSSA *call);
+  void IncreaseInlineCount(CallSSA *call);
   bool ScanBlock(const FuncPtr &func, const BlockPtr &block);
 
   // function information
   std::unordered_map<FunctionSSA *, FuncInfo> func_info_;
+  // inline counter
+  // NOTE: the data will not be cleared between pass
+  std::unordered_map<FunctionSSA *, std::size_t> inline_count_;
 };
 
 }  // namespace
@@ -375,19 +394,32 @@ bool FunctionInliningPass::CanInline(FunctionSSA *cur, CallSSA *call) {
   const auto &cur_info = GetFuncInfo(cur);
   const auto &target_info = GetFuncInfo(target);
   // do not inline if is calling another recursive function
-  if (cur != target && target_info.is_recursive) return false;
+  // do not inline another function if current is recursive
+  if (cur != target &&
+      (cur_info.is_recursive || target_info.is_recursive)) {
+    return false;
+  }
   // inline functions that has only been called once anyway
   if (cur != target && target->uses().size() == 1) return true;
   // check if satisfied the instruction count threshold
   if (target_info.is_recursive) {
     // recursive unrolling
-    if (target_info.inst_count > kRecFuncInstThreshold) return false;
+    if (inline_count_[target] >= kRecFuncInlineCountThreshold ||
+        target_info.inst_count > kRecFuncInstThreshold) {
+      return false;
+    }
   }
   else if (target_info.inst_count > kCalleeInstThreshold ||
            cur_info.inst_count > kCallerInstThreshold) {
     return false;
   }
   return true;
+}
+
+// increase inline counter of call instruction's target function
+void FunctionInliningPass::IncreaseInlineCount(CallSSA *call) {
+  auto target = SSACast<FunctionSSA>(call->callee().get());
+  ++inline_count_[target];
 }
 
 // scan and perform function inlining, returns true if inlined
@@ -397,12 +429,12 @@ bool FunctionInliningPass::ScanBlock(const FuncPtr &func,
   for (auto it = insts.begin(); it != insts.end(); ++it) {
     auto call = SSADynCast<CallSSA>(*it);
     if (call && CanInline(func.get(), call.get())) {
-      // split current block
-      BlockSplitterHelperPass splitter;
-      splitter.SplitBlock(block.get(), it);
       // copy target function
       InlineHelperPass inliner;
       inliner.CopyTarget(func, call.get());
+      // split current block
+      BlockSplitterHelperPass splitter;
+      splitter.SplitBlock(block.get(), it);
       // create new terminators
       auto mod = MakeModule(block->logger(), block);
       mod.CreateJump(inliner.entry());
@@ -412,6 +444,7 @@ bool FunctionInliningPass::ScanBlock(const FuncPtr &func,
       if (!call->uses().empty()) call->ReplaceBy(inliner.ret_val());
       // update function info of current function
       UpdateFuncInfo(func.get());
+      IncreaseInlineCount(call.get());
       return true;
     }
   }
