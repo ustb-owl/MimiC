@@ -665,7 +665,8 @@ void SparseCondConstPropagationPass::RunOn(PhiSSA &ssa) {
       continue;
     }
     // two conflicted constants, mark as overdefined
-    if (SSACast<ConstIntSSA>(opr_val.get())->value() != *lv) {
+    if ((IsSSA<ConstZeroSSA>(opr_val) && *lv) ||
+        (SSACast<ConstIntSSA>(opr_val.get())->value() != *lv)) {
       return MarkOverdefined(&ssa);
     }
   }
