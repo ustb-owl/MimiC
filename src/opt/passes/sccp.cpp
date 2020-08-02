@@ -550,11 +550,11 @@ void SparseCondConstPropagationPass::RunOn(UnarySSA &ssa) {
 
 void SparseCondConstPropagationPass::RunOn(CastSSA &ssa) {
   const auto &lv = GetValue(ssa.opr());
-  if (lv.is_overdefined()) {
-    // inherit overdefinedness of operand
-    MarkOverdefined(&ssa);
-  }
-  else if (lv) {
+  // inherit overdefinedness of operand
+  if (lv.is_overdefined()) return MarkOverdefined(&ssa);
+  // mark access from global variables as overdefined
+  if (IsSSA<GlobalVarSSA>(ssa.opr())) return MarkOverdefined(&ssa);
+  if (lv) {
     // fold constant
     auto val = *lv;
     const auto &type = ssa.type();
