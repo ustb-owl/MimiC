@@ -168,6 +168,8 @@ void CCodeGen::Reset() {
   defed_types_.clear();
   type_.str("");
   type_.clear();
+  global_alloca_.str("");
+  global_alloca_.clear();
   code_.str("");
   code_.clear();
   in_global_var_ = false;
@@ -352,10 +354,20 @@ void CCodeGen::GenerateOn(GlobalVarSSA &ssa) {
 }
 
 void CCodeGen::GenerateOn(AllocaSSA &ssa) {
-  auto type = ssa.type()->GetDerefedType();
   auto var = GetNewVar(kVarPrefix);
-  code_ << kIndent << GetTypeName(type) << ' ' << var;
-  GenEnd(ssa);
+  if (ssa.type()->GetDerefedType()->GetSize() < 512) {
+    auto type = ssa.type()->GetDerefedType();
+    code_ << kIndent << GetTypeName(type) << ' ' << var;
+    GenEnd(ssa);
+  }
+  else {
+    // to large to put in function, generate as a global variable
+    auto type = ssa.type()->GetDerefedType();
+    global_alloca_ << GetTypeName(type) << ' ' << var;
+    global_alloca_ << "; // ";
+    global_alloca_ << ssa.logger()->line_pos() << ':';
+    global_alloca_ << ssa.logger()->col_pos() << std::endl;
+  }
   SetVal(ssa, '&' + var);
 }
 
@@ -465,5 +477,6 @@ void CCodeGen::GenerateOn(UndefSSA &ssa) {
 void CCodeGen::Dump(std::ostream &os) const {
   os << "#include <string.h>" << std::endl << std::endl;
   os << type_.str() << std::endl;
+  os << global_alloca_.str() << std::endl;
   os << code_.str() << std::endl;
 }
