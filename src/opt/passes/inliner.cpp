@@ -114,8 +114,6 @@ class InlineHelperPass : public HelperPass {
     block->Resize(ssa.size());
     CopyOperand(block, ssa);
     cur_func_->AddValue(block);
-    // remember block
-    blocks_.push_back(block);
     if (!entry_) entry_ = block;
     // copy all instructions
     for (const auto &i : ssa.insts()) {
@@ -234,7 +232,6 @@ class InlineHelperPass : public HelperPass {
   }
 
   // getters
-  const std::list<BlockPtr> &blocks() const { return blocks_; }
   const BlockPtr &entry() const { return entry_; }
   const BlockPtr &exit() const { return exit_; }
   const SSAPtr &ret_val() const { return ret_val_; }
@@ -278,8 +275,6 @@ class InlineHelperPass : public HelperPass {
     }
   }
 
-  // copied blocks
-  std::list<BlockPtr> blocks_;
   // pointer to copied entry block & exit block
   BlockPtr entry_, exit_;
   // return value of current function
@@ -345,7 +340,7 @@ class FunctionInliningPass : public FunctionPass {
   // function information
   std::unordered_map<FunctionSSA *, FuncInfo> func_info_;
   // inline counter
-  // NOTE: the data will not be cleared between pass
+  // NOTE: the data will not be cleared between pass calls
   std::unordered_map<FunctionSSA *, std::size_t> inline_count_;
 };
 
