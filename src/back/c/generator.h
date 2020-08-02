@@ -71,7 +71,7 @@ class CCodeGen : public CodeGenInterface {
   // structures/arrays that have already been defined
   std::vector<TypeInfo> defed_types_;
   // output stream for generated code
-  std::ostringstream type_, global_alloca_, code_;
+  std::ostringstream decl_, code_;
   // set if is in global variable definition
   bool in_global_var_;
   // depth of 'ConstArraySSA'

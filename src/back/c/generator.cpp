@@ -140,8 +140,8 @@ const std::string &CCodeGen::DefineStruct(const TypePtr &type) {
   auto name = type->GetTypeId() + std::to_string(counter_++);
   defed_types_.push_back({type, name});
   // generate type definition
-  type_ << "typedef unsigned char " << name;
-  type_ << '[' << type->GetSize() << "];" << std::endl;
+  decl_ << "typedef unsigned char " << name;
+  decl_ << '[' << type->GetSize() << "];" << std::endl;
   return defed_types_.back().second;
 }
 
@@ -158,18 +158,16 @@ const std::string &CCodeGen::DefineArray(const TypePtr &type) {
   oss << '_' << type->GetLength();
   defed_types_.push_back({type, oss.str()});
   // generate type definition
-  type_ << "typedef " << base_name << ' ' << oss.str();
-  type_ << '[' << type->GetLength() << "];" << std::endl;
+  decl_ << "typedef " << base_name << ' ' << oss.str();
+  decl_ << '[' << type->GetLength() << "];" << std::endl;
   return defed_types_.back().second;
 }
 
 void CCodeGen::Reset() {
   counter_ = 0;
   defed_types_.clear();
-  type_.str("");
-  type_.clear();
-  global_alloca_.str("");
-  global_alloca_.clear();
+  decl_.str("");
+  decl_.clear();
   code_.str("");
   code_.clear();
   in_global_var_ = false;
@@ -361,12 +359,12 @@ void CCodeGen::GenerateOn(AllocaSSA &ssa) {
     GenEnd(ssa);
   }
   else {
-    // to large to put in function, generate as a global variable
+    // to large to put in function, generate as a global declaration
     auto type = ssa.type()->GetDerefedType();
-    global_alloca_ << GetTypeName(type) << ' ' << var;
-    global_alloca_ << "; // ";
-    global_alloca_ << ssa.logger()->line_pos() << ':';
-    global_alloca_ << ssa.logger()->col_pos() << std::endl;
+    decl_ << GetTypeName(type) << ' ' << var;
+    decl_ << "; // ";
+    decl_ << ssa.logger()->line_pos() << ':';
+    decl_ << ssa.logger()->col_pos() << std::endl;
   }
   SetVal(ssa, '&' + var);
 }
@@ -476,7 +474,6 @@ void CCodeGen::GenerateOn(UndefSSA &ssa) {
 
 void CCodeGen::Dump(std::ostream &os) const {
   os << "#include <string.h>" << std::endl << std::endl;
-  os << type_.str() << std::endl;
-  os << global_alloca_.str() << std::endl;
+  os << decl_.str() << std::endl;
   os << code_.str() << std::endl;
 }
