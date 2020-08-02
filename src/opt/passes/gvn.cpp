@@ -150,6 +150,7 @@ class GlobalValueNumberingPass : public FunctionPass {
     values_.Reset();
     local_defs_.clear();
     global_defs_.clear();
+    assert(created_phis_.empty());
     return changed_;
   }
 
@@ -467,10 +468,7 @@ void GlobalValueNumberingPass::ProcessPhi() {
       SSAPtr repl;
       if (IsTrivialPhi(phi, repl)) {
         // trivial phi node, replace phi with new value
-        if (repl) {
-          it->phi->ReplaceBy(repl);
-          if (!changed_) changed_ = true;
-        }
+        if (repl) it->phi->ReplaceBy(repl);
         // then remove it
         it = phis.erase(it);
         changed = true;
