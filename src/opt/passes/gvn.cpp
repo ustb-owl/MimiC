@@ -1,6 +1,7 @@
 #include <vector>
 #include <unordered_map>
 #include <optional>
+#include <unordered_set>
 #include <queue>
 #include <algorithm>
 #include <list>
@@ -96,6 +97,8 @@ class ValueTable : HelperPass {
   }
 
   std::uint32_t LookupOrAdd(Value *val);
+  std::uint32_t Lookup(Value *val);
+  void Add(Value *val, std::uint32_t num);
 
   void RunOn(AccessSSA &ssa) override;
   void RunOn(CastSSA &ssa) override;
@@ -137,10 +140,11 @@ class GlobalValueNumberingPass : public FunctionPass {
   GlobalValueNumberingPass() {}
 
   bool RunOnFunction(const UserPtr &func) override {
-    if (func->empty()) return false;
+    auto func_ptr = SSACast<FunctionSSA>(func.get());
+    if (func_ptr->is_decl()) return false;
     changed_ = false;
     // traverse all blocks in RPO
-    auto entry = SSACast<BlockSSA>((*func)[0].value());
+    auto entry = SSACast<BlockSSA>(func_ptr->entry().get());
     for (const auto &i : RPOTraverse(entry)) {
       i->RunPass(*this);
     }
@@ -150,6 +154,7 @@ class GlobalValueNumberingPass : public FunctionPass {
     values_.Reset();
     local_defs_.clear();
     global_defs_.clear();
+    tracked_ptrs_.clear();
     assert(created_phis_.empty());
     return changed_;
   }
@@ -159,8 +164,8 @@ class GlobalValueNumberingPass : public FunctionPass {
     auto &insts = ssa.insts();
     for (auto it = insts.begin(); it != insts.end();) {
       bool remove_flag = false;
-      if (IsSSA<LoadSSA>(it->get())) {
-        remove_flag = ProcessLoad(&ssa, it);
+      if (auto load = SSADynCast<LoadSSA>(it->get())) {
+        remove_flag = ProcessLoad(&ssa, load);
       }
       else if (auto store = SSADynCast<StoreSSA>(it->get())) {
         remove_flag = ProcessStore(&ssa, store);
@@ -185,21 +190,19 @@ class GlobalValueNumberingPass : public FunctionPass {
     SSAPtr phi;
     // block where phi node located
     BlockSSA *block;
-    // position of load instruction that caused this phi node
-    SSAPtrList::iterator pos;
+    // load instruction that caused this phi node
+    LoadSSA *load;
   };
 
-  bool ProcessLoad(BlockSSA *block, SSAPtrList::iterator pos);
+  bool ProcessLoad(BlockSSA *block, LoadSSA *load);
   bool ProcessStore(BlockSSA *block, StoreSSA *store);
   bool ProcessValue(const SSAPtr &value);
   void ProcessPhi();
 
-  SSAPtr ReadValue(BlockSSA *block, std::uint32_t ptr_num,
-                   SSAPtrList::iterator pos);
+  SSAPtr ReadValue(BlockSSA *block, std::uint32_t ptr_num, LoadSSA *load);
   SSAPtr ReadValueRecursive(BlockSSA *block, std::uint32_t ptr_num,
-                            SSAPtrList::iterator pos);
-  void AddPhiOperands(const SSAPtr &phi, BlockSSA *block,
-                      SSAPtrList::iterator pos);
+                            LoadSSA *load);
+  void AddPhiOperands(const SSAPtr &phi, BlockSSA *block, LoadSSA *load);
   bool IsTrivialPhi(PhiSSA *phi, SSAPtr &repl);
 
   bool changed_;
@@ -210,6 +213,9 @@ class GlobalValueNumberingPass : public FunctionPass {
       local_defs_;
   // global definitions (for other values)
   std::unordered_map<std::uint32_t, SSAPtr> global_defs_;
+  // value number of tracked pointers (for load & store)
+  // only pointers of local variables will be tracked
+  std::unordered_set<std::uint32_t> tracked_ptrs_;
   // all created phi nodes
   std::queue<PhiInfo> created_phis_;
 };
@@ -286,6 +292,19 @@ std::uint32_t ValueTable::LookupOrAdd(Value *val) {
   }
 }
 
+// lookup the value number of the specific value
+// returns zero if the value does not exist
+std::uint32_t ValueTable::Lookup(Value *val) {
+  auto it = values_.find(val);
+  return it != values_.end() ? it->second : 0;
+}
+
+// assign the specific value number to value
+void ValueTable::Add(Value *val, std::uint32_t num) {
+  assert(num);
+  values_.insert({val, num});
+}
+
 void ValueTable::RunOn(AccessSSA &ssa) {
   using AccTy = AccessSSA::AccessType;
   using OpCode = Expression::OpCode;
@@ -309,7 +328,18 @@ void ValueTable::RunOn(PhiSSA &ssa) {
 }
 
 void ValueTable::RunOn(PhiOperandSSA &ssa) {
-  auto expr = CreateExpr(&ssa, Expression::OpCode::PhiOpr);
+  Expression expr(Expression::OpCode::PhiOpr, ssa.type());
+  // add value of current operand
+  if (!Lookup(ssa.value().get())) {
+    // ignore back edges
+    Add(ssa.value().get(), next_number_);
+    expr.oprs().push_back(next_number_++);
+  }
+  else {
+    expr.oprs().push_back(LookupOrAdd(ssa.value().get()));
+  }
+  // add block of current operand
+  expr.oprs().push_back(LookupOrAdd(ssa.block().get()));
   gen_num_ = LookupOrAdd(expr);
 }
 
@@ -407,12 +437,12 @@ void ValueTable::RunOn(ConstZeroSSA &ssa) {
 // handle with load instructions
 // returns true if current value has already been replaced
 bool GlobalValueNumberingPass::ProcessLoad(BlockSSA *block,
-                                           SSAPtrList::iterator pos) {
-  // check if pointer is newly defined
-  auto load = SSACast<LoadSSA>(pos->get());
+                                           LoadSSA *load) {
   auto ptr_num = values_.LookupOrAdd(load->ptr().get());
+  // skip untracked pointers
+  if (!tracked_ptrs_.count(ptr_num)) return false;
   // update local definitions
-  auto val = ReadValue(block, ptr_num, pos);
+  auto val = ReadValue(block, ptr_num, load);
   if (!IsSSA<PhiSSA>(val)) {
     load->ReplaceBy(val);
     return true;
@@ -426,8 +456,10 @@ bool GlobalValueNumberingPass::ProcessLoad(BlockSSA *block,
 // returns true if current value has already been replaced
 bool GlobalValueNumberingPass::ProcessStore(BlockSSA *block,
                                             StoreSSA *store) {
-  // update local definition of pointer
   auto ptr_num = values_.LookupOrAdd(store->ptr().get());
+  // skip untracked pointers
+  if (!tracked_ptrs_.count(ptr_num)) return false;
+  // update local definition of pointer
   local_defs_[block][ptr_num] = store->value();
   return false;
 }
@@ -435,7 +467,27 @@ bool GlobalValueNumberingPass::ProcessStore(BlockSSA *block,
 // handle with other instructions
 // returns true if current value has already been replaced
 bool GlobalValueNumberingPass::ProcessValue(const SSAPtr &value) {
+  // skip 'value' if it does not yield a value
+  if (!value->type()) return false;
   auto num = values_.LookupOrAdd(value.get());
+  // check if pointer can be tracked
+  if (value->type()->IsPointer()) {
+    if (IsSSA<AllocaSSA>(value)) {
+      // track alloca instructions only
+      tracked_ptrs_.insert(num);
+    }
+    else if (auto acc = SSADynCast<AccessSSA>(value.get())) {
+      // track access if it's base pointer is tracked
+      auto ptr_num = values_.LookupOrAdd(acc->ptr().get());
+      if (tracked_ptrs_.count(ptr_num)) tracked_ptrs_.insert(num);
+    }
+    else if (auto cast = SSADynCast<CastSSA>(value.get())) {
+      // track pointer cast if it's operand is tracked
+      auto ptr_num = values_.LookupOrAdd(cast->opr().get());
+      if (tracked_ptrs_.count(ptr_num)) tracked_ptrs_.insert(num);
+    }
+  }
+  // update global definitions
   auto it = global_defs_.find(num);
   if (it != global_defs_.end()) {
     // replace with global value
@@ -454,8 +506,8 @@ void GlobalValueNumberingPass::ProcessPhi() {
   std::list<PhiInfo> phis;
   // try to add operands for all created phi nodes
   while (!created_phis_.empty()) {
-    const auto &[phi, block, pos] = created_phis_.front();
-    AddPhiOperands(phi, block, pos);
+    const auto &[phi, block, load] = created_phis_.front();
+    AddPhiOperands(phi, block, load);
     phis.push_back(created_phis_.front());
     created_phis_.pop();
   }
@@ -472,49 +524,51 @@ void GlobalValueNumberingPass::ProcessPhi() {
         // then remove it
         it = phis.erase(it);
         changed = true;
-        continue;
       }
-      ++it;
+      else {
+        ++it;
+      }
     }
   }
   // place all remaining phi nodes into the block where they are
-  for (const auto &[phi, block, pos] : phis) {
-    (*pos)->ReplaceBy(phi);
-    block->insts().erase(pos);
-    block->insts().push_front(phi);
+  for (const auto &pi : phis) {
+    pi.load->ReplaceBy(pi.phi);
+    pi.block->insts().remove_if(
+        [&pi](const SSAPtr &i) { return i.get() == pi.load; });
+    pi.block->insts().push_front(pi.phi);
     if (!changed_) changed_ = true;
   }
 }
 
 SSAPtr GlobalValueNumberingPass::ReadValue(BlockSSA *block,
                                            std::uint32_t ptr_num,
-                                           SSAPtrList::iterator pos) {
+                                           LoadSSA *load) {
   const auto &defs = local_defs_[block];
   auto it = defs.find(ptr_num);
   if (it != defs.end()) {
     return it->second;
   }
   else {
-    return ReadValueRecursive(block, ptr_num, pos);
+    return ReadValueRecursive(block, ptr_num, load);
   }
 }
 
-SSAPtr GlobalValueNumberingPass::ReadValueRecursive(
-    BlockSSA *block, std::uint32_t ptr_num, SSAPtrList::iterator pos) {
+SSAPtr GlobalValueNumberingPass::ReadValueRecursive(BlockSSA *block,
+                                                    std::uint32_t ptr_num,
+                                                    LoadSSA *load) {
   SSAPtr val;
   if (block->size() == 1) {
     // block only has one predecessor, no phi needed
     auto pred = SSACast<BlockSSA>((*block)[0].value().get());
-    val = ReadValue(pred, ptr_num, pos);
+    val = ReadValue(pred, ptr_num, load);
   }
   else {
     // create an empty phi node
-    auto load = SSACast<LoadSSA>(pos->get());
     auto phi = std::make_shared<PhiSSA>(SSAPtrList());
     phi->set_type(load->type());
     phi->set_logger(load->logger());
     // remember it
-    created_phis_.push({phi, block, pos});
+    created_phis_.push({phi, block, load});
     val = phi;
   }
   // update local definition
@@ -524,16 +578,15 @@ SSAPtr GlobalValueNumberingPass::ReadValueRecursive(
 
 void GlobalValueNumberingPass::AddPhiOperands(const SSAPtr &phi,
                                               BlockSSA *block,
-                                              SSAPtrList::iterator pos) {
+                                              LoadSSA *load) {
   auto phi_ptr = SSACast<PhiSSA>(phi.get());
   phi_ptr->Reserve(block->size());
   // determine operands from predecessors
   for (const auto &i : *block) {
     // read value
     auto pred = SSACast<BlockSSA>(i.value());
-    auto load = SSACast<LoadSSA>(pos->get());
     auto ptr_num = values_.LookupOrAdd(load->ptr().get());
-    auto val = ReadValue(pred.get(), ptr_num, pos);
+    auto val = ReadValue(pred.get(), ptr_num, load);
     assert(val->type()->IsIdentical(phi_ptr->type()));
     // create phi operand
     auto mod = MakeModule(phi_ptr->logger());
