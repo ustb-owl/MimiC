@@ -1,4 +1,4 @@
-/* Author : dyf
+/*
    TODO: a / a => 1
    TODO: a and a => a && a or a => a
    TODO: a - a => 0
@@ -29,7 +29,7 @@ namespace {
 
 class AlgebraicSimplification : public BlockPass {
  public:
-  AlgebraicSimplification() {}
+  AlgebraicSimplification() = default;
 
   bool RunOnBlock(const BlockPtr &block) override {
     changed_ = needFold_ = false;
@@ -170,5 +170,5 @@ class AlgebraicSimplification : public BlockPass {
 };
 }  // namespace
 
-REGISTER_PASS(AlgebraicSimplification, Algebraic_Simp, 0,
+REGISTER_PASS(AlgebraicSimplification, aÎlgebraic_Simp, 0,
               PassStage::PreOpt | PassStage::Opt | PassStage::PostOpt);
