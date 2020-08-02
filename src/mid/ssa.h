@@ -40,7 +40,7 @@ class LoadSSA : public User {
   }
 
   void Dump(std::ostream &os, IdManager &idm) const override;
-  SSAPtr GetAddr() const override { return addr_; }
+  SSAPtr GetAddr() const override { return addr_.lock(); }
   bool IsConst() const override { return false; }
   bool IsUndef() const override { return ptr()->IsUndef(); }
 
@@ -51,7 +51,7 @@ class LoadSSA : public User {
   DECL_GETTER_SETTER(ptr, 0);
 
  private:
-  SSAPtr addr_;
+  SSARef addr_;
 };
 
 // store to allocation
