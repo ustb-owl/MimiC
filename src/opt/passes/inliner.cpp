@@ -123,10 +123,10 @@ class InlineHelperPass : public HelperPass {
         cur_entry_->insts().push_front(inst);
       }
       else if (auto ret = SSADynCast<ReturnSSA>(inst.get())) {
+        assert(!exit_ && !ret_val_);
         // return instruction, mark current block as exit block
         exit_ = block;
         // get return value
-        assert(!ret_val_);
         ret_val_ = ret->value();
       }
       else {
