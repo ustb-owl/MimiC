@@ -489,8 +489,11 @@ bool GlobalValueNumberingPass::ProcessValue(BlockSSA *block,
     }
     else if (auto acc = SSADynCast<AccessSSA>(value.get())) {
       // track access if it's base pointer is tracked
+      // and index is not a phi node
       auto ptr_num = values_.LookupOrAdd(acc->ptr().get());
-      if (tracked_ptrs_.count(ptr_num)) tracked_ptrs_.insert(num);
+      if (tracked_ptrs_.count(ptr_num) && !IsSSA<PhiSSA>(acc->index())) {
+        tracked_ptrs_.insert(num);
+      }
     }
     else if (auto cast = SSADynCast<CastSSA>(value.get())) {
       // track pointer cast if it's operand is tracked
