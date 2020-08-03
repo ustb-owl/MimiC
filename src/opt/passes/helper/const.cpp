@@ -10,6 +10,8 @@ using namespace mimic::define;
 using namespace mimic::opt;
 
 ConstantHelper::ConstIntPtr ConstantHelper::Fold(const SSAPtr &val) {
+  if (!val) return nullptr;
+  // check if is constant int/ptr
   const auto &type = val->type();
   if (!val->IsConst() || !(type->IsInteger() || type->IsPointer())) {
     return nullptr;
