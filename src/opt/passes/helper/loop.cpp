@@ -88,6 +88,7 @@ BlockPtr PreheaderCreator::CreatePreheader(const LoopInfo &loop) {
   assert(!loop.entry->uses().empty());
   const auto &entry_ptr = loop.entry->uses().front()->value();
   auto jump = std::make_shared<JumpSSA>(entry_ptr);
+  jump->set_logger(loop.entry->logger());
   preheader_->insts().push_back(std::move(jump));
   // reroute phi nodes in loop header
   ReroutePhi(loop);
