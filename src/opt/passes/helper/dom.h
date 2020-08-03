@@ -5,7 +5,6 @@
 #include <cstddef>
 #include <cassert>
 
-#include "opt/pass.h"
 #include "utils/bitvec.h"
 
 namespace mimic::opt {
@@ -15,6 +14,11 @@ class DominanceChecker {
   DominanceChecker(mid::FunctionSSA *func) {
     assert(!func->is_decl());
     SolveDominance(func);
+  }
+
+  // check if block is dead
+  bool IsDeadBlock(mid::BlockSSA *block) const {
+    return block_id_.count(block);
   }
 
   // check if block 'b1' dominates block 'b2'
