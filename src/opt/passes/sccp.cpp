@@ -9,6 +9,7 @@
 #include "opt/pass.h"
 #include "opt/passman.h"
 #include "opt/passes/helper/cast.h"
+#include "opt/passes/helper/const.h"
 #include "opt/passes/helper/inst.h"
 #include "mid/module.h"
 #include "utils/hashing.h"
@@ -237,19 +238,8 @@ class SparseCondConstPropagationPass : public FunctionPass {
   LatticeVal &GetValue(const SSAPtr &val) {
     auto [it, succ] = values_.insert({val.get(), LatticeVal()});
     if (succ) {
-      if (IsSSA<ConstIntSSA>(val)) {
-        it->second.setAsConst(val);
-      }
-      else if (val->type()->IsInteger() || val->type()->IsPointer()) {
-        if (IsSSA<ConstZeroSSA>(val)) {
-          // replace with a constant integer
-          auto zero = MakeModule(val->logger()).GetInt(0, val->type());
-          it->second.setAsConst(zero);
-        }
-        else if (val->IsConst()) {
-          // try to evaluate other inline constants
-          val->RunPass(*this);
-        }
+      if (auto cint = ConstantHelper::Fold(val)) {
+        it->second.setAsConst(cint);
       }
     }
     return it->second;
@@ -456,38 +446,8 @@ void SparseCondConstPropagationPass::RunOn(BinarySSA &ssa) {
   if (ssa_val.is_overdefined()) return;
   // fold if is constant
   if (lhs && rhs) {
-    auto lv = *lhs, rv = *rhs;
-    auto slv = static_cast<std::int32_t>(lv);
-    auto srv = static_cast<std::int32_t>(rv);
-    std::uint32_t val;
-    switch (ssa.op()) {
-      case Op::Add: val = lv + rv; break;
-      case Op::Sub: val = lv - rv; break;
-      case Op::Mul: val = lv * rv; break;
-      case Op::UDiv: val = lv / rv; break;
-      case Op::SDiv: val = slv / srv; break;
-      case Op::URem: val = lv % rv; break;
-      case Op::SRem: val = slv % srv; break;
-      case Op::Equal: val = lv == rv; break;
-      case Op::NotEq: val = lv != rv; break;
-      case Op::ULess: val = lv < rv; break;
-      case Op::SLess: val = slv < srv; break;
-      case Op::ULessEq: val = lv <= rv; break;
-      case Op::SLessEq: val = slv <= srv; break;
-      case Op::UGreat: val = lv > rv; break;
-      case Op::SGreat: val = slv > srv; break;
-      case Op::UGreatEq: val = lv >= rv; break;
-      case Op::SGreatEq: val = slv >= srv; break;
-      case Op::And: val = lv & rv; break;
-      case Op::Or: val = lv | rv; break;
-      case Op::Xor: val = lv ^ rv; break;
-      case Op::Shl: val = lv << rv; break;
-      case Op::LShr: val = lv >> rv; break;
-      case Op::AShr: val = slv >> rv; break;
-      default: assert(false);
-    }
-    auto mod = MakeModule(ssa.logger());
-    return MarkConst(ssa_val, &ssa, mod.GetInt(val, ssa.type()));
+    auto cint = ConstantHelper::Fold(ssa.op(), lhs.value(), rhs.value());
+    return MarkConst(ssa_val, &ssa, cint);
   }
   // if something is undef, wait for it to resolve
   if (!lhs.is_overdefined() && !rhs.is_overdefined()) return;
@@ -527,21 +487,13 @@ void SparseCondConstPropagationPass::RunOn(BinarySSA &ssa) {
 }
 
 void SparseCondConstPropagationPass::RunOn(UnarySSA &ssa) {
-  using Op = UnarySSA::Operator;
   const auto &opr = GetValue(ssa.opr());
   auto &ssa_val = values_[&ssa];
   if (ssa_val.is_overdefined()) return;
   // fold if is constant
   if (opr) {
-    auto val = *opr;
-    switch (ssa.op()) {
-      case Op::Neg: val = -val; break;
-      case Op::LogicNot: val = !val; break;
-      case Op::Not: val = ~val; break;
-      default: assert(false);
-    }
-    auto mod = MakeModule(ssa.logger());
-    return MarkConst(ssa_val, &ssa, mod.GetInt(val, ssa.type()));
+    auto cint = ConstantHelper::Fold(ssa.op(), opr.value());
+    return MarkConst(ssa_val, &ssa, cint);
   }
   // if something is undef, wait for it to resolve
   if (!opr.is_overdefined()) return;
@@ -555,27 +507,7 @@ void SparseCondConstPropagationPass::RunOn(CastSSA &ssa) {
   // mark access from global variables as overdefined
   if (IsSSA<GlobalVarSSA>(ssa.opr())) return MarkOverdefined(&ssa);
   if (lv) {
-    // fold constant
-    auto val = *lv;
-    const auto &type = ssa.type();
-    assert(type->IsInteger() || type->IsPointer());
-    if (type->GetSize() == 1) {
-      // i8/u8
-      val = type->IsUnsigned() ? static_cast<std::uint8_t>(val)
-                               : static_cast<std::int8_t>(val);
-    }
-    else if (type->GetSize() == 4) {
-      // i32/u32/ptrs
-      val = type->IsUnsigned() || type->IsPointer()
-                ? static_cast<std::uint32_t>(val)
-                : static_cast<std::int32_t>(val);
-    }
-    else {
-      assert(false);
-    }
-    // propagate the value
-    auto mod = MakeModule(ssa.logger());
-    MarkConst(&ssa, mod.GetInt(val, type));
+    MarkConst(&ssa, ConstantHelper::Fold(lv.value(), ssa.type()));
   }
 }
 
