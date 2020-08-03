@@ -5,6 +5,7 @@
 #include <list>
 
 #include "mid/ssa.h"
+#include "opt/passes/helper/dom.h"
 
 namespace mimic::opt {
 
@@ -18,17 +19,25 @@ class LoopDetector {
     mid::BlockSSA *tail;
     // all blocks of loop (containing entry and tail)
     std::unordered_set<mid::BlockSSA *> body;
+    // exit blocks
+    std::unordered_set<mid::BlockSSA *> exit;
   };
 
   using LoopInfoList = std::list<LoopInfo>;
 
-  LoopDetector(mid::FunctionSSA *func) { ScanOn(func); }
+  LoopDetector(mid::FunctionSSA *func) {
+    DominanceChecker dom(func);
+    ScanOn(dom, func);
+  }
+  LoopDetector(DominanceChecker &dom, mid::FunctionSSA *func) {
+    ScanOn(dom, func);
+  }
 
   // getters
   const LoopInfoList &loops() const { return loops_; }
 
  private:
-  void ScanOn(mid::FunctionSSA *func);
+  void ScanOn(DominanceChecker &dom, mid::FunctionSSA *func);
   void ScanNaturalLoop(mid::BlockSSA *be_tail, mid::BlockSSA *be_head);
 
   // all detected loops

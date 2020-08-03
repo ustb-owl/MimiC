@@ -1,16 +1,14 @@
 #include "opt/passes/helper/loop.h"
 
 #include <stack>
+#include <cassert>
 
-#include "opt/passes/helper/dom.h"
 #include "opt/passes/helper/cast.h"
 
 using namespace mimic::mid;
 using namespace mimic::opt;
 
-void LoopDetector::ScanOn(FunctionSSA *func) {
-  // get dominance
-  DominanceChecker dom(func);
+void LoopDetector::ScanOn(DominanceChecker &dom, FunctionSSA *func) {
   // scan for back edges
   for (const auto &i : *func) {
     auto block = SSACast<BlockSSA>(i.value().get());
@@ -46,6 +44,17 @@ void LoopDetector::ScanNaturalLoop(BlockSSA *be_tail, BlockSSA *be_head) {
       auto pred = SSACast<BlockSSA>(p.value().get());
       if (info.body.insert(pred).second) {
         blocks.push(pred);
+      }
+    }
+  }
+  // scan for exit blocks
+  for (const auto &i : info.body) {
+    assert(!i->insts().empty());
+    if (auto branch = SSADynCast<BranchSSA>(i->insts().back())) {
+      auto tb = SSACast<BlockSSA>(branch->true_block().get());
+      auto fb = SSACast<BlockSSA>(branch->false_block().get());
+      if (!info.body.count(tb) || !info.body.count(fb)) {
+        info.exit.insert(i);
       }
     }
   }
