@@ -103,6 +103,7 @@ void PreheaderCreator::ReroutePhi(const LoopInfo &loop) {
           auto opr_ptr = SSACast<PhiOperandSSA>(opr.value().get());
           if (opr_ptr->block().get() != loop.tail) {
             opr_ptr->set_block(preheader_);
+            break;
           }
         }
       }
