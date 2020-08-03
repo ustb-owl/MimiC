@@ -4,27 +4,30 @@
 #include <unordered_set>
 #include <list>
 
-#include "mid/ssa.h"
+#include "opt/pass.h"
 #include "opt/passes/helper/dom.h"
 
 namespace mimic::opt {
 
+// information of loop
+struct LoopInfo {
+  // entry block (head of back edge)
+  mid::BlockSSA *entry;
+  // tail block (tail of back edge)
+  mid::BlockSSA *tail;
+  // all blocks of loop (containing entry and tail)
+  std::unordered_set<mid::BlockSSA *> body;
+  // exit blocks
+  std::unordered_set<mid::BlockSSA *> exit;
+};
+
+// list of loop information
+using LoopInfoList = std::list<LoopInfo>;
+
+
+// detecte all loops in function
 class LoopDetector {
  public:
-  // information of loop
-  struct LoopInfo {
-    // entry block (head of back edge)
-    mid::BlockSSA *entry;
-    // tail block (tail of back edge)
-    mid::BlockSSA *tail;
-    // all blocks of loop (containing entry and tail)
-    std::unordered_set<mid::BlockSSA *> body;
-    // exit blocks
-    std::unordered_set<mid::BlockSSA *> exit;
-  };
-
-  using LoopInfoList = std::list<LoopInfo>;
-
   LoopDetector(mid::FunctionSSA *func) {
     DominanceChecker dom(func);
     ScanOn(dom, func);
@@ -42,6 +45,22 @@ class LoopDetector {
 
   // all detected loops
   LoopInfoList loops_;
+};
+
+
+// create preheader block for specific loop
+class PreheaderCreator : public HelperPass {
+ public:
+  mid::BlockPtr CreatePreheader(const LoopInfo &loop);
+
+  void RunOn(mid::BranchSSA &ssa) override;
+  void RunOn(mid::JumpSSA &ssa) override;
+
+ private:
+  void ReroutePhi(const LoopInfo &loop);
+
+  mid::BlockPtr preheader_;
+  mid::BlockSSA *loop_entry_;
 };
 
 }  // namespace mimic::opt
