@@ -17,6 +17,10 @@ class ParentScanner : public HelperPass {
 
   // get parent block of specific value
   mid::BlockSSA *GetParent(mid::Value *val);
+  // update parent of value
+  void UpdateParent(mid::Value *val, mid::BlockSSA *parent) {
+    parent_map_[val] = parent;
+  }
 
  private:
   std::unordered_map<mid::Value *, mid::BlockSSA *> parent_map_;
