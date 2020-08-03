@@ -4,6 +4,8 @@
 #include <unordered_set>
 #include <list>
 
+#include "mid/ssa.h"
+
 namespace mimic::opt {
 
 class LoopDetector {

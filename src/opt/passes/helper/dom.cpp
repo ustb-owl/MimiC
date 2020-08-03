@@ -1,7 +1,5 @@
 #include "opt/passes/helper/dom.h"
 
-#include <algorithm>
-
 #include "opt/passes/helper/cast.h"
 #include "opt/passes/helper/blkiter.h"
 
@@ -20,9 +18,10 @@ void DominanceChecker::SolveDominance(FunctionSSA *func) {
   // initialize dominance set
   dom_[entry].Resize(cur_id);
   dom_[entry].Set(0);
-  BitVec bv(cur_id);
-  bv.Fill(1);
-  for (auto it = begin; it != end; ++it) dom_[*it] = bv;
+  for (auto it = begin; it != end; ++it) {
+    dom_[*it].Resize(cur_id);
+    dom_[*it].Fill(1);
+  }
   // run solver
   bool changed = true;
   while (changed) {
@@ -32,6 +31,7 @@ void DominanceChecker::SolveDominance(FunctionSSA *func) {
       temp.Fill(1);
       for (const auto &pred : **it) {
         auto pred_ptr = SSACast<BlockSSA>(pred.value().get());
+        if (IsDeadBlock(pred_ptr)) continue;
         temp &= dom_[pred_ptr];
       }
       BitVec self_set(cur_id);

@@ -19,7 +19,7 @@ void LoopDetector::ScanOn(FunctionSSA *func) {
     // check all incoming edges (pred -> block)
     for (const auto &p : *block) {
       auto pred = SSACast<BlockSSA>(p.value().get());
-      if (dom.IsDominate(block, pred)) {
+      if (!dom.IsDeadBlock(pred) && dom.IsDominate(block, pred)) {
         // back edge found
         ScanNaturalLoop(pred, block);
       }

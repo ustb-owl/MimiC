@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cassert>
 
+#include "mid/ssa.h"
 #include "utils/bitvec.h"
 
 namespace mimic::opt {
@@ -18,7 +19,7 @@ class DominanceChecker {
 
   // check if block is dead
   bool IsDeadBlock(mid::BlockSSA *block) const {
-    return block_id_.count(block);
+    return !block_id_.count(block);
   }
 
   // check if block 'b1' dominates block 'b2'
