@@ -773,10 +773,11 @@ UserPtr InstCombinePass::RunOnSub(BinarySSA &ssa) {
           (bin->lhs() == lhs || bin->rhs() == lhs)) {
         auto other_op = bin->lhs() == lhs ? bin->rhs() : bin->lhs();
         auto new_not = mod.CreateNot(other_op);
+        InsertNewInstBefore(new_not, cur_);
         return mod.CreateAnd(lhs, new_not);
       }
       // X - X * C -> X * (1 - C)
-      if (DynCastFoldableMul(bin->rhs()) == lhs) {
+      if (DynCastFoldableMul(rhs) == lhs) {
         auto c = ConstantHelper::Fold(SSACast<BinarySSA>(rhs.get())->rhs());
         auto ncp1 = mod.GetInt(1 - c->value(), ssa.type());
         return mod.CreateMul(lhs, ncp1);
