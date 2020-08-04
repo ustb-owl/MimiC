@@ -407,7 +407,8 @@ inline void SwapOperands(BinarySSA *bin) {
 // highest order bit set.
 inline bool IsSignBit(const ConstantHelper::ConstIntPtr &c) {
   auto num_bits = c->type()->GetSize() * 8;
-  return (c->value() & ~(-1 << num_bits)) == (1 << (num_bits - 1));
+  return (c->value() & ~(-1 << num_bits)) ==
+         (static_cast<std::uint32_t>(1) << (num_bits - 1));
 }
 
 // check if integer value is min value
@@ -443,7 +444,7 @@ inline bool IsMaxValue(const ConstantHelper::ConstIntPtr &c) {
   }
   else {
     assert(c->type()->GetSize() == 4);
-    return c->type()->IsUnsigned() ? c->value() == -1
+    return c->type()->IsUnsigned() ? c->value() == 0xffffffff
                                    : c->value() == 0x7fffffff;
   }
 }
@@ -755,7 +756,7 @@ UserPtr InstCombinePass::RunOnSub(BinarySSA &ssa) {
   if (auto v = DynCastNeg(rhs)) return mod.CreateAdd(lhs, v);
   // -1 - A -> ~A
   if (auto cint = ConstantHelper::Fold(lhs)) {
-    if (cint->value() == -1) return mod.CreateNot(rhs);
+    if (cint->value() == 0xffffffff) return mod.CreateNot(rhs);
   }
   if (auto bin = SSADynCast<BinarySSA>(rhs.get())) {
     if (bin->uses().size() == 1) {
@@ -813,7 +814,7 @@ UserPtr InstCombinePass::RunOnMul(BinarySSA &ssa) {
     // X * 1 -> X
     if (cint->value() == 1) return ReplaceInstUsesWith(cur_, lhs);
     // X * -1 = -X
-    if (cint->value() == -1) return mod.CreateNeg(lhs);
+    if (cint->value() == 0xffffffff) return mod.CreateNeg(lhs);
     // X * (2 ** C) -> X << C
     if (auto c = Log2(cint->value())) {
       return mod.CreateShl(lhs, mod.GetInt(c, ssa.type()));
@@ -880,7 +881,7 @@ UserPtr InstCombinePass::RunOnAnd(BinarySSA &ssa) {
   }
   if (crhs) {
     // X & -1 -> X
-    if (crhs->value() == -1) return ReplaceInstUsesWith(cur_, lhs);
+    if (crhs->value() == 0xffffffff) return ReplaceInstUsesWith(cur_, lhs);
     // optimize a variety of (X op C1) & C2 combinations
     if (auto bin = SSADynCast<BinarySSA>(lhs.get())) {
       if (auto cint = ConstantHelper::Fold(bin->rhs())) {
@@ -921,7 +922,7 @@ UserPtr InstCombinePass::RunOnOr(BinarySSA &ssa) {
   }
   if (crhs) {
     // X | -1 -> -1
-    if (crhs->value() == -1) return ReplaceInstUsesWith(cur_, crhs);
+    if (crhs->value() == 0xffffffff) return ReplaceInstUsesWith(cur_, crhs);
     if (auto bin = SSADynCast<BinarySSA>(lhs.get())) {
       // (X & C1) | C2 -> (X | C2) & (C1 | C2)
       if (bin->op() == BinarySSA::Operator::And && IsOnlyUse(lhs)) {
@@ -1261,7 +1262,9 @@ UserPtr InstCombinePass::RunOnShift(BinarySSA &ssa) {
   // -1 >> X -> -1
   if (ssa.op() == BinarySSA::Operator::AShr) {
     if (auto cint = ConstantHelper::Fold(lhs)) {
-      if (cint->value() == -1) return ReplaceInstUsesWith(cur_, cint);
+      if (cint->value() == 0xffffffff) {
+        return ReplaceInstUsesWith(cur_, cint);
+      }
     }
   }
   if (auto cint = ConstantHelper::Fold(rhs)) {
