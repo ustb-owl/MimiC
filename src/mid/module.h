@@ -36,13 +36,13 @@ class Module {
   // create a argument reference
   SSAPtr CreateArgRef(const SSAPtr &func, std::size_t index);
   // create a store instruction
-  SSAPtr CreateStore(const SSAPtr &value, const SSAPtr &pointer);
+  UserPtr CreateStore(const SSAPtr &value, const SSAPtr &pointer);
   // create a allocation instruction
   SSAPtr CreateAlloca(const define::TypePtr &type);
   // create a jump instruction
-  SSAPtr CreateJump(const BlockPtr &target);
+  UserPtr CreateJump(const BlockPtr &target);
   // create a return instruction
-  SSAPtr CreateReturn(const SSAPtr &value);
+  UserPtr CreateReturn(const SSAPtr &value);
   // create a global variable definition
   GlobalVarPtr CreateGlobalVar(LinkageTypes link, bool is_var,
                                const std::string &name,
@@ -53,71 +53,71 @@ class Module {
                                const std::string &name,
                                const define::TypePtr &type);
   // create a branch instruction
-  SSAPtr CreateBranch(const SSAPtr &cond, const BlockPtr &true_block,
-                      const BlockPtr &false_block);
+  UserPtr CreateBranch(const SSAPtr &cond, const BlockPtr &true_block,
+                       const BlockPtr &false_block);
   // create a load instruction
-  SSAPtr CreateLoad(const SSAPtr &ptr);
+  UserPtr CreateLoad(const SSAPtr &ptr);
   // create a call instruction
-  SSAPtr CreateCall(const SSAPtr &callee, const SSAPtrList &args);
+  UserPtr CreateCall(const SSAPtr &callee, const SSAPtrList &args);
   // create a pointer access instruction
-  SSAPtr CreatePtrAccess(const SSAPtr &ptr, const SSAPtr &index);
+  UserPtr CreatePtrAccess(const SSAPtr &ptr, const SSAPtr &index);
   // create a element access instruction
-  SSAPtr CreateElemAccess(const SSAPtr &ptr, const SSAPtr &index,
-                          const define::TypePtr &type);
+  UserPtr CreateElemAccess(const SSAPtr &ptr, const SSAPtr &index,
+                           const define::TypePtr &type);
   // create a binary instruction
-  SSAPtr CreateBinary(BinarySSA::Operator op, const SSAPtr &lhs,
-                      const SSAPtr &rhs, const define::TypePtr &type);
+  UserPtr CreateBinary(BinarySSA::Operator op, const SSAPtr &lhs,
+                       const SSAPtr &rhs, const define::TypePtr &type);
   // create a unary instruction
-  SSAPtr CreateUnary(UnarySSA::Operator op, const SSAPtr &opr,
-                     const define::TypePtr &type);
+  UserPtr CreateUnary(UnarySSA::Operator op, const SSAPtr &opr,
+                      const define::TypePtr &type);
 
   // create equal (with type detection)
-  SSAPtr CreateEqual(const SSAPtr &lhs, const SSAPtr &rhs);
+  UserPtr CreateEqual(const SSAPtr &lhs, const SSAPtr &rhs);
   // create negate (with type detection)
-  SSAPtr CreateNeg(const SSAPtr &opr);
+  UserPtr CreateNeg(const SSAPtr &opr);
   // create add (with type detection)
-  SSAPtr CreateAdd(const SSAPtr &lhs, const SSAPtr &rhs);
+  UserPtr CreateAdd(const SSAPtr &lhs, const SSAPtr &rhs);
   // create sub (with type detection)
-  SSAPtr CreateSub(const SSAPtr &lhs, const SSAPtr &rhs);
+  UserPtr CreateSub(const SSAPtr &lhs, const SSAPtr &rhs);
   // create mul (with type detection)
-  SSAPtr CreateMul(const SSAPtr &lhs, const SSAPtr &rhs);
+  UserPtr CreateMul(const SSAPtr &lhs, const SSAPtr &rhs);
   // create div (with type detection)
-  SSAPtr CreateDiv(const SSAPtr &lhs, const SSAPtr &rhs);
+  UserPtr CreateDiv(const SSAPtr &lhs, const SSAPtr &rhs);
   // create rem (with type detection)
-  SSAPtr CreateRem(const SSAPtr &lhs, const SSAPtr &rhs);
+  UserPtr CreateRem(const SSAPtr &lhs, const SSAPtr &rhs);
   // create not equal (with type detection)
-  SSAPtr CreateNotEq(const SSAPtr &lhs, const SSAPtr &rhs);
+  UserPtr CreateNotEq(const SSAPtr &lhs, const SSAPtr &rhs);
   // create less than (with type detection)
-  SSAPtr CreateLess(const SSAPtr &lhs, const SSAPtr &rhs);
+  UserPtr CreateLess(const SSAPtr &lhs, const SSAPtr &rhs);
   // create less or equal (with type detection)
-  SSAPtr CreateLessEq(const SSAPtr &lhs, const SSAPtr &rhs);
+  UserPtr CreateLessEq(const SSAPtr &lhs, const SSAPtr &rhs);
   // create great than (with type detection)
-  SSAPtr CreateGreat(const SSAPtr &lhs, const SSAPtr &rhs);
+  UserPtr CreateGreat(const SSAPtr &lhs, const SSAPtr &rhs);
   // create great or equal (with type detection)
-  SSAPtr CreateGreatEq(const SSAPtr &lhs, const SSAPtr &rhs);
+  UserPtr CreateGreatEq(const SSAPtr &lhs, const SSAPtr &rhs);
   // create and
-  SSAPtr CreateAnd(const SSAPtr &lhs, const SSAPtr &rhs);
+  UserPtr CreateAnd(const SSAPtr &lhs, const SSAPtr &rhs);
   // create or
-  SSAPtr CreateOr(const SSAPtr &lhs, const SSAPtr &rhs);
+  UserPtr CreateOr(const SSAPtr &lhs, const SSAPtr &rhs);
   // create xor
-  SSAPtr CreateXor(const SSAPtr &lhs, const SSAPtr &rhs);
+  UserPtr CreateXor(const SSAPtr &lhs, const SSAPtr &rhs);
   // create shift left
-  SSAPtr CreateShl(const SSAPtr &lhs, const SSAPtr &rhs);
+  UserPtr CreateShl(const SSAPtr &lhs, const SSAPtr &rhs);
   // create shift right (with type detection)
-  SSAPtr CreateShr(const SSAPtr &lhs, const SSAPtr &rhs);
+  UserPtr CreateShr(const SSAPtr &lhs, const SSAPtr &rhs);
   // create type casting
   SSAPtr CreateCast(const SSAPtr &opr, const define::TypePtr &type);
   // create logic not
-  SSAPtr CreateLogicNot(const SSAPtr &opr);
+  UserPtr CreateLogicNot(const SSAPtr &opr);
   // create bitwise not
-  SSAPtr CreateNot(const SSAPtr &opr);
+  UserPtr CreateNot(const SSAPtr &opr);
   // create a phi node operand
-  SSAPtr CreatePhiOperand(const SSAPtr &val, const BlockPtr &block);
+  UserPtr CreatePhiOperand(const SSAPtr &val, const BlockPtr &block);
   // create a phi node
-  SSAPtr CreatePhi(const SSAPtrList &oprs);
+  UserPtr CreatePhi(const SSAPtrList &oprs);
   // create a select instruction
-  SSAPtr CreateSelect(const SSAPtr &cond, const SSAPtr &true_val,
-                      const SSAPtr &false_val);
+  UserPtr CreateSelect(const SSAPtr &cond, const SSAPtr &true_val,
+                       const SSAPtr &false_val);
 
   // create a constant zero
   SSAPtr GetZero(const define::TypePtr &type);
@@ -175,7 +175,7 @@ class Module {
 
   // create a new instruction SSA, and push into current block
   template <typename T, typename... Args>
-  SSAPtr AddInst(Args &&... args) {
+  auto AddInst(Args &&... args) {
     auto inst = MakeSSA<T>(std::forward<Args>(args)...);
     insert_pos_ = ++insert_block_->insts().insert(insert_pos_, inst);
     return inst;

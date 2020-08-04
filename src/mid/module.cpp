@@ -109,7 +109,7 @@ SSAPtr Module::CreateArgRef(const SSAPtr &func, std::size_t index) {
   return arg_ref;
 }
 
-SSAPtr Module::CreateStore(const SSAPtr &value, const SSAPtr &pointer) {
+UserPtr Module::CreateStore(const SSAPtr &value, const SSAPtr &pointer) {
   // get proper pointer
   auto ptr = pointer, val = value;
   for (;;) {
@@ -141,7 +141,7 @@ SSAPtr Module::CreateAlloca(const TypePtr &type) {
   return alloca;
 }
 
-SSAPtr Module::CreateJump(const BlockPtr &target) {
+UserPtr Module::CreateJump(const BlockPtr &target) {
   // create jump
   auto jump = AddInst<JumpSSA>(target);
   jump->set_type(nullptr);
@@ -150,7 +150,7 @@ SSAPtr Module::CreateJump(const BlockPtr &target) {
   return jump;
 }
 
-SSAPtr Module::CreateReturn(const SSAPtr &value) {
+UserPtr Module::CreateReturn(const SSAPtr &value) {
   // get proper return value
   const auto &func_type = insert_block_->parent()->type();
   auto ret_type = func_type->GetReturnType(*func_type->GetArgsType());
@@ -187,8 +187,8 @@ GlobalVarPtr Module::CreateGlobalVar(LinkageTypes link, bool is_var,
   return CreateGlobalVar(link, is_var, name, type, nullptr);
 }
 
-SSAPtr Module::CreateBranch(const SSAPtr &cond, const BlockPtr &true_block,
-                            const BlockPtr &false_block) {
+UserPtr Module::CreateBranch(const SSAPtr &cond, const BlockPtr &true_block,
+                             const BlockPtr &false_block) {
   // assertion for type checking
   assert(cond->type()->IsInteger());
   // create branch
@@ -200,7 +200,7 @@ SSAPtr Module::CreateBranch(const SSAPtr &cond, const BlockPtr &true_block,
   return branch;
 }
 
-SSAPtr Module::CreateLoad(const SSAPtr &ptr) {
+UserPtr Module::CreateLoad(const SSAPtr &ptr) {
   // assertion for type checking
   assert(ptr->type()->IsPointer());
   // create load
@@ -209,7 +209,7 @@ SSAPtr Module::CreateLoad(const SSAPtr &ptr) {
   return load;
 }
 
-SSAPtr Module::CreateCall(const SSAPtr &callee, const SSAPtrList &args) {
+UserPtr Module::CreateCall(const SSAPtr &callee, const SSAPtrList &args) {
   // assertion for type checking
   assert(callee->type()->IsFunction());
   auto args_type = *callee->type()->GetArgsType();
@@ -233,7 +233,7 @@ SSAPtr Module::CreateCall(const SSAPtr &callee, const SSAPtrList &args) {
   return call;
 }
 
-SSAPtr Module::CreatePtrAccess(const SSAPtr &ptr, const SSAPtr &index) {
+UserPtr Module::CreatePtrAccess(const SSAPtr &ptr, const SSAPtr &index) {
   // assertion for type checking
   assert(ptr->type()->IsPointer() && index->type()->IsInteger());
   // create access
@@ -243,8 +243,8 @@ SSAPtr Module::CreatePtrAccess(const SSAPtr &ptr, const SSAPtr &index) {
   return access;
 }
 
-SSAPtr Module::CreateElemAccess(const SSAPtr &ptr, const SSAPtr &index,
-                                const TypePtr &type) {
+UserPtr Module::CreateElemAccess(const SSAPtr &ptr, const SSAPtr &index,
+                                 const TypePtr &type) {
   // get proper pointer
   auto pointer = ptr;
   if (!pointer->type()->IsPointer()) pointer = pointer->GetAddr();
@@ -258,8 +258,8 @@ SSAPtr Module::CreateElemAccess(const SSAPtr &ptr, const SSAPtr &index,
   return access;
 }
 
-SSAPtr Module::CreateBinary(BinaryOp op, const SSAPtr &lhs,
-                            const SSAPtr &rhs, const TypePtr &type) {
+UserPtr Module::CreateBinary(BinaryOp op, const SSAPtr &lhs,
+                             const SSAPtr &rhs, const TypePtr &type) {
   // assertion for type checking
   assert(lhs->type()->IsIdentical(rhs->type()));
   // create binary
@@ -268,92 +268,92 @@ SSAPtr Module::CreateBinary(BinaryOp op, const SSAPtr &lhs,
   return binary;
 }
 
-SSAPtr Module::CreateUnary(UnaryOp op, const SSAPtr &opr,
-                           const TypePtr &type) {
+UserPtr Module::CreateUnary(UnaryOp op, const SSAPtr &opr,
+                            const TypePtr &type) {
   auto unary = AddInst<UnarySSA>(op, opr);
   unary->set_type(type);
   return unary;
 }
 
-SSAPtr Module::CreateEqual(const SSAPtr &lhs, const SSAPtr &rhs) {
+UserPtr Module::CreateEqual(const SSAPtr &lhs, const SSAPtr &rhs) {
   auto bool_ty = MakePrimType(PrimType::Type::Int32, false);
   assert(lhs->type()->IsInteger() || lhs->type()->IsFunction() ||
          lhs->type()->IsPointer());
   return CreateBinary(BinaryOp::Equal, lhs, rhs, bool_ty);
 }
 
-SSAPtr Module::CreateNeg(const SSAPtr &opr) {
+UserPtr Module::CreateNeg(const SSAPtr &opr) {
   const auto &type = opr->type();
   assert(type->IsInteger());
   return CreateUnary(UnaryOp::Neg, opr, type);
 }
 
-SSAPtr Module::CreateAdd(const SSAPtr &lhs, const SSAPtr &rhs) {
+UserPtr Module::CreateAdd(const SSAPtr &lhs, const SSAPtr &rhs) {
   CREATE_BINARY(Add, lhs, rhs);
 }
 
-SSAPtr Module::CreateSub(const SSAPtr &lhs, const SSAPtr &rhs) {
+UserPtr Module::CreateSub(const SSAPtr &lhs, const SSAPtr &rhs) {
   CREATE_BINARY(Sub, lhs, rhs);
 }
 
-SSAPtr Module::CreateMul(const SSAPtr &lhs, const SSAPtr &rhs) {
+UserPtr Module::CreateMul(const SSAPtr &lhs, const SSAPtr &rhs) {
   CREATE_BINARY(Mul, lhs, rhs);
 }
 
-SSAPtr Module::CreateDiv(const SSAPtr &lhs, const SSAPtr &rhs) {
+UserPtr Module::CreateDiv(const SSAPtr &lhs, const SSAPtr &rhs) {
   const auto &type = lhs->type();
   assert(type->IsInteger());
   auto op = type->IsUnsigned() ? BinaryOp::UDiv : BinaryOp::SDiv;
   return CreateBinary(op, lhs, rhs, type);
 }
 
-SSAPtr Module::CreateRem(const SSAPtr &lhs, const SSAPtr &rhs) {
+UserPtr Module::CreateRem(const SSAPtr &lhs, const SSAPtr &rhs) {
   const auto &type = lhs->type();
   assert(type->IsInteger());
   auto op = type->IsUnsigned() ? BinaryOp::URem : BinaryOp::SRem;
   return CreateBinary(op, lhs, rhs, type);
 }
 
-SSAPtr Module::CreateNotEq(const SSAPtr &lhs, const SSAPtr &rhs) {
+UserPtr Module::CreateNotEq(const SSAPtr &lhs, const SSAPtr &rhs) {
   auto bool_ty = MakePrimType(PrimType::Type::Int32, false);
   assert(lhs->type()->IsInteger() || lhs->type()->IsFunction() ||
          lhs->type()->IsPointer());
   return CreateBinary(BinaryOp::NotEq, lhs, rhs, bool_ty);
 }
 
-SSAPtr Module::CreateLess(const SSAPtr &lhs, const SSAPtr &rhs) {
+UserPtr Module::CreateLess(const SSAPtr &lhs, const SSAPtr &rhs) {
   CREATE_RELOP(Less, lhs, rhs);
 }
 
-SSAPtr Module::CreateLessEq(const SSAPtr &lhs, const SSAPtr &rhs) {
+UserPtr Module::CreateLessEq(const SSAPtr &lhs, const SSAPtr &rhs) {
   CREATE_RELOP(LessEq, lhs, rhs);
 }
 
-SSAPtr Module::CreateGreat(const SSAPtr &lhs, const SSAPtr &rhs) {
+UserPtr Module::CreateGreat(const SSAPtr &lhs, const SSAPtr &rhs) {
   CREATE_RELOP(Great, lhs, rhs);
 }
 
-SSAPtr Module::CreateGreatEq(const SSAPtr &lhs, const SSAPtr &rhs) {
+UserPtr Module::CreateGreatEq(const SSAPtr &lhs, const SSAPtr &rhs) {
   CREATE_RELOP(GreatEq, lhs, rhs);
 }
 
-SSAPtr Module::CreateAnd(const SSAPtr &lhs, const SSAPtr &rhs) {
+UserPtr Module::CreateAnd(const SSAPtr &lhs, const SSAPtr &rhs) {
   CREATE_BITOP(And, lhs, rhs);
 }
 
-SSAPtr Module::CreateOr(const SSAPtr &lhs, const SSAPtr &rhs) {
+UserPtr Module::CreateOr(const SSAPtr &lhs, const SSAPtr &rhs) {
   CREATE_BITOP(Or, lhs, rhs);
 }
 
-SSAPtr Module::CreateXor(const SSAPtr &lhs, const SSAPtr &rhs) {
+UserPtr Module::CreateXor(const SSAPtr &lhs, const SSAPtr &rhs) {
   CREATE_BITOP(Xor, lhs, rhs);
 }
 
-SSAPtr Module::CreateShl(const SSAPtr &lhs, const SSAPtr &rhs) {
+UserPtr Module::CreateShl(const SSAPtr &lhs, const SSAPtr &rhs) {
   CREATE_BITOP(Shl, lhs, rhs);
 }
 
-SSAPtr Module::CreateShr(const SSAPtr &lhs, const SSAPtr &rhs) {
+UserPtr Module::CreateShr(const SSAPtr &lhs, const SSAPtr &rhs) {
   const auto &type = lhs->type();
   assert(type->IsInteger());
   auto op = type->IsUnsigned() ? BinaryOp::LShr : BinaryOp::AShr;
@@ -387,7 +387,7 @@ SSAPtr Module::CreateCast(const SSAPtr &opr, const TypePtr &type) {
   return cast;
 }
 
-SSAPtr Module::CreateLogicNot(const SSAPtr &opr) {
+UserPtr Module::CreateLogicNot(const SSAPtr &opr) {
   // assertion for type checking
   const auto &type = opr->type();
   assert(type->IsInteger());
@@ -397,13 +397,13 @@ SSAPtr Module::CreateLogicNot(const SSAPtr &opr) {
   return CreateUnary(UnaryOp::LogicNot, opr, bool_ty);
 }
 
-SSAPtr Module::CreateNot(const SSAPtr &opr) {
+UserPtr Module::CreateNot(const SSAPtr &opr) {
   const auto &type = opr->type();
   assert(type->IsInteger());
   return CreateUnary(UnaryOp::Not, opr, type);
 }
 
-SSAPtr Module::CreatePhiOperand(const SSAPtr &val, const BlockPtr &block) {
+UserPtr Module::CreatePhiOperand(const SSAPtr &val, const BlockPtr &block) {
   assert(!val->type()->IsVoid());
   // create phi operand
   auto phi_opr = MakeSSA<PhiOperandSSA>(val, block);
@@ -411,7 +411,7 @@ SSAPtr Module::CreatePhiOperand(const SSAPtr &val, const BlockPtr &block) {
   return phi_opr;
 }
 
-SSAPtr Module::CreatePhi(const SSAPtrList &oprs) {
+UserPtr Module::CreatePhi(const SSAPtrList &oprs) {
   // assertion for type checking
   TypePtr type;
   for (const auto &i : oprs) {
@@ -430,8 +430,8 @@ SSAPtr Module::CreatePhi(const SSAPtrList &oprs) {
   return phi;
 }
 
-SSAPtr Module::CreateSelect(const SSAPtr &cond, const SSAPtr &true_val,
-                            const SSAPtr &false_val) {
+UserPtr Module::CreateSelect(const SSAPtr &cond, const SSAPtr &true_val,
+                             const SSAPtr &false_val) {
   // assertion for type checking
   assert(cond->type()->IsInteger() &&
          true_val->type()->IsIdentical(false_val->type()));
