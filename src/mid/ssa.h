@@ -138,6 +138,9 @@ class BinarySSA : public User {
   DECL_GETTER_SETTER(lhs, 0);
   DECL_GETTER_SETTER(rhs, 1);
 
+  // setters
+  void set_op(Operator op) { op_ = op; }
+
   // getters
   Operator op() const { return op_; }
 
