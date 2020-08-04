@@ -133,3 +133,8 @@ bool ConstantHelper::IsIdentical(const SSAPtr &val1, const SSAPtr &val2) {
   }
   return val1 == val2;
 }
+
+bool ConstantHelper::IsZero(const mid::SSAPtr &val) {
+  if (auto c = Fold(val)) return !c->value();
+  return false;
+}

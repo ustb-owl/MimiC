@@ -33,6 +33,10 @@ class ConstantHelper {
   // otherwise, perform pointer comparison
   static bool IsIdentical(const mid::SSAPtr &val1, const mid::SSAPtr &val2);
 
+  // check if integer value equals to constant zero
+  // returns false if value is not an integer/pointer, or value is not zero
+  static bool IsZero(const mid::SSAPtr &val);
+
  private:
   ConstantHelper() {}
 };
