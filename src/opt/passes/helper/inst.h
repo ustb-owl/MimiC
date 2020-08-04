@@ -4,13 +4,14 @@
 #include <unordered_map>
 
 #include "opt/pass.h"
+#include "opt/passes/helper/cast.h"
 
 namespace mimic::opt {
 namespace __impl {
 
 class InstCheckerHelperPass : public HelperPass {
  public:
-  bool IsInstruction(Value *val) {
+  bool IsInstruction(mid::Value *val) {
     is_inst_ = false;
     val->RunPass(*this);
     return is_inst_;
@@ -67,7 +68,11 @@ inline bool IsInstruction(const mid::SSAPtr &val) {
 inline bool IsInstDead(const mid::Value *inst) {
   if (!IsInstruction(inst)) return false;
   if (!inst->uses().empty()) return false;
-  if (IsSSA<StoreSSA>(inst) || IsSSA<CallSSA>(inst)) return false;
+  if (IsSSA<mid::StoreSSA>(inst) || IsSSA<mid::CallSSA>(inst) ||
+      IsSSA<mid::BranchSSA>(inst) || IsSSA<mid::JumpSSA>(inst) ||
+      IsSSA<mid::ReturnSSA>(inst)) {
+    return false;
+  }
   return true;
 }
 inline bool IsInstDead(const mid::Value &val) {
