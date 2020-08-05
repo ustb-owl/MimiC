@@ -21,11 +21,11 @@ namespace {
   parameters used by function inlining pass
 */
 // threshold of callee's instruction count
-constexpr std::size_t kCalleeInstThreshold = 1 << 8;
+constexpr std::size_t kCalleeInstThreshold = 1 << 7;
 // threshold of caller's instruction count
-constexpr std::size_t kCallerInstThreshold = 1 << 14;
+constexpr std::size_t kCallerInstThreshold = 1 << 10;
 // threshold of recursive function's instruction count
-constexpr std::size_t kRecFuncInstThreshold = 1 << 8;
+constexpr std::size_t kRecFuncInstThreshold = 1 << 7;
 // threshold of recursive function's inline count
 constexpr std::size_t kRecFuncInlineCountThreshold = 3;
 // threshold of in-loop function's basic block count
