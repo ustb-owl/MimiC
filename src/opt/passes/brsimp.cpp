@@ -54,6 +54,7 @@ class BranchSimplifyPass : public BlockPass {
       replace_ = true;
       // get value of condition
       if (cond_->IsConst()) {
+        assert(cond_->type()->IsInteger());
         cond_->RunPass(*this);
       }
       else {
@@ -75,6 +76,11 @@ class BranchSimplifyPass : public BlockPass {
   void RunOn(ConstIntSSA &ssa) override {
     // method will be called if value is a condition
     val_ = ssa.value();
+  }
+
+  void RunOn(ConstZeroSSA &ssa) override {
+    // method will be called if value is a condition
+    val_ = 0;
   }
 
   void RunOn(PhiSSA &ssa) override {

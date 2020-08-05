@@ -34,6 +34,7 @@ class ImmNormalizePass : public PassInterface {
         }
         // instructions that allow register operands only
         case OpCode::STR: case OpCode::STRB: case OpCode::MUL:
+        case OpCode::MLS: case OpCode::SDIV: case OpCode::UDIV:
         case OpCode::CLZ: case OpCode::SXTB: case OpCode::UXTB: {
           auto mask = GetRegMask(inst);
           for (auto &&i : inst->oprs()) {

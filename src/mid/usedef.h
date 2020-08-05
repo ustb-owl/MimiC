@@ -38,6 +38,7 @@ class Use;
 
 using SSAPtr = std::shared_ptr<Value>;
 using SSAPtrList = std::list<SSAPtr>;
+using SSARef = std::weak_ptr<Value>;
 using UserPtr = std::shared_ptr<User>;
 using UserPtrList = std::list<UserPtr>;
 

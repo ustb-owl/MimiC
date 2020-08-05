@@ -33,3 +33,21 @@ void BFSTraverseHelperPass::RunOn(JumpSSA &ssa) {
   // push target block to queue
   Push(ssa.target());
 }
+
+void RPOTraverseHelperPass::TraverseRPO(BlockSSA *cur) {
+  if (!visited_.insert(cur).second) return;
+  // try to visit successors
+  cur->insts().back()->RunPass(*this);
+  rpo_.push_front(cur);
+}
+
+void RPOTraverseHelperPass::RunOn(BranchSSA &ssa) {
+  // visit true/false block
+  TraverseRPO(SSACast<BlockSSA>(ssa.true_block().get()));
+  TraverseRPO(SSACast<BlockSSA>(ssa.false_block().get()));
+}
+
+void RPOTraverseHelperPass::RunOn(JumpSSA &ssa) {
+  // visit target
+  TraverseRPO(SSACast<BlockSSA>(ssa.target().get()));
+}

@@ -143,7 +143,7 @@ class AArch32Inst : public InstBase {
     // memory accessing
     LDR, LDRB, STR, STRB, PUSH, POP,
     // arithmetic
-    ADD, SUB, SUBS, RSB, MUL,
+    ADD, SUB, SUBS, RSB, MUL, MLS, SDIV, UDIV,
     // comparison/branch/jump
     CMP, BEQ, B, BL, BX,
     // data moving

@@ -129,6 +129,7 @@ class CFGSimplifyPass : public FunctionPass {
       auto uses = ssa.uses();
       for (const auto &i : uses) i->user()->RunPass(helper);
       // mark current block as removed
+      ssa.insts().clear();
       ssa.ReplaceBy(nullptr);
       changed_ = true;
     }

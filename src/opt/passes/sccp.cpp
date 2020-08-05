@@ -1,45 +1,21 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
-#include <functional>
 #include <queue>
+#include <list>
 #include <cstddef>
 #include <cassert>
 
 #include "opt/pass.h"
 #include "opt/passman.h"
 #include "opt/passes/helper/cast.h"
+#include "opt/passes/helper/const.h"
 #include "opt/passes/helper/inst.h"
 #include "mid/module.h"
+#include "utils/hashing.h"
 
 using namespace mimic::mid;
 using namespace mimic::opt;
-
-namespace {
-
-// helper function for hash combining
-template <typename T>
-inline void HashCombine(std::size_t &seed, const T &v) {
-  std::hash<T> hasher;
-  seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-}
-
-}  // namespace
-
-namespace std {
-
-// hasher for std::pair
-template <typename T0, typename T1>
-struct hash<std::pair<T0, T1>> {
-  inline std::size_t operator()(const std::pair<T0, T1> &val) const {
-    std::size_t seed = 0;
-    HashCombine(seed, val.first);
-    HashCombine(seed, val.second);
-    return seed;
-  }
-};
-
-}  // namespace std
 
 namespace {
 
@@ -262,13 +238,8 @@ class SparseCondConstPropagationPass : public FunctionPass {
   LatticeVal &GetValue(const SSAPtr &val) {
     auto [it, succ] = values_.insert({val.get(), LatticeVal()});
     if (succ) {
-      if (IsSSA<ConstIntSSA>(val)) {
-        it->second.setAsConst(val);
-      }
-      else if (val->IsConst() &&
-               (val->type()->IsInteger() || val->type()->IsPointer())) {
-        // try to evaluate other inline constants
-        val->RunPass(*this);
+      if (auto cint = ConstantHelper::Fold(val)) {
+        it->second.setAsConst(cint);
       }
     }
     return it->second;
@@ -365,8 +336,68 @@ These methods makes sure to do the following actions:
 */
 
 void SparseCondConstPropagationPass::RunOn(LoadSSA &ssa) {
-  // treat all memory load as overdefined
-  MarkOverdefined(&ssa);
+  auto &ssa_val = values_[&ssa];
+  if (ssa_val.is_overdefined()) return;
+  // if is not a load of an integer, just mark as overdefined
+  if (!ssa.type()->IsInteger()) return MarkOverdefined(ssa_val, &ssa);
+  // check if is loading a constant global (or it's pointer)
+  if (auto gvar = SSADynCast<GlobalVarSSA>(ssa.ptr().get())) {
+    if (gvar->is_var()) return MarkOverdefined(ssa_val, &ssa);
+    // loading from constant global variable
+    SSAPtr val;
+    if (gvar->init()) {
+      val = gvar->init();
+    }
+    else {
+      val = MakeModule(gvar->logger()).GetInt(0, ssa.type());
+    }
+    return MarkConst(ssa_val, &ssa, val);
+  }
+  else if (auto acc = SSADynCast<AccessSSA>(ssa.ptr().get())) {
+    // loading from pointer
+    // fetch indices
+    std::list<std::uint32_t> indices;
+    do {
+      // get index
+      const auto &index = GetValue(acc->index());
+      if (index.is_unknown()) return;
+      if (index.is_overdefined()) break;
+      indices.push_front(*index);
+      // check if is an access of const global variable
+      if (auto gvar = SSADynCast<GlobalVarSSA>(acc->ptr().get())) {
+        if (gvar->is_var()) break;
+        // handle arrays only
+        auto type = gvar->type()->GetDerefedType();
+        if (!type->IsArray()) break;
+        // check if access is out of range
+        for (const auto &i : indices) {
+          if (i >= type->GetLength()) return;
+          type = type->GetDerefedType();
+        }
+        // read constant from initial value
+        auto val = gvar->init();
+        if (val) {
+          for (const auto &i : indices) {
+            if (auto arr = SSADynCast<ConstArraySSA>(val.get())) {
+              val = (*arr)[i].value();
+            }
+            else {
+              assert(IsSSA<ConstZeroSSA>(val));
+              val = MakeModule(gvar->logger()).GetInt(0, ssa.type());
+              break;
+            }
+          }
+          assert(IsSSA<ConstIntSSA>(val));
+        }
+        else {
+          val = MakeModule(gvar->logger()).GetInt(0, ssa.type());
+        }
+        return MarkConst(ssa_val, &ssa, val);
+      }
+    } while ((acc = SSADynCast<AccessSSA>(acc->ptr().get())));
+  }
+  // otherwise, treat as overdefined
+  MarkOverdefined(ssa_val, &ssa);
 }
 
 void SparseCondConstPropagationPass::RunOn(StoreSSA &ssa) {
@@ -415,38 +446,8 @@ void SparseCondConstPropagationPass::RunOn(BinarySSA &ssa) {
   if (ssa_val.is_overdefined()) return;
   // fold if is constant
   if (lhs && rhs) {
-    auto lv = *lhs, rv = *rhs;
-    auto slv = static_cast<std::int32_t>(lv);
-    auto srv = static_cast<std::int32_t>(rv);
-    std::uint32_t val;
-    switch (ssa.op()) {
-      case Op::Add: val = lv + rv; break;
-      case Op::Sub: val = lv - rv; break;
-      case Op::Mul: val = lv * rv; break;
-      case Op::UDiv: val = lv / rv; break;
-      case Op::SDiv: val = slv / srv; break;
-      case Op::URem: val = lv % rv; break;
-      case Op::SRem: val = slv % srv; break;
-      case Op::Equal: val = lv == rv; break;
-      case Op::NotEq: val = lv != rv; break;
-      case Op::ULess: val = lv < rv; break;
-      case Op::SLess: val = slv < srv; break;
-      case Op::ULessEq: val = lv <= rv; break;
-      case Op::SLessEq: val = slv <= srv; break;
-      case Op::UGreat: val = lv > rv; break;
-      case Op::SGreat: val = slv > srv; break;
-      case Op::UGreatEq: val = lv >= rv; break;
-      case Op::SGreatEq: val = slv >= srv; break;
-      case Op::And: val = lv & rv; break;
-      case Op::Or: val = lv | rv; break;
-      case Op::Xor: val = lv ^ rv; break;
-      case Op::Shl: val = lv << rv; break;
-      case Op::LShr: val = lv >> rv; break;
-      case Op::AShr: val = slv >> rv; break;
-      default: assert(false);
-    }
-    auto mod = MakeModule(ssa.logger());
-    return MarkConst(ssa_val, &ssa, mod.GetInt(val, ssa.type()));
+    auto cint = ConstantHelper::Fold(ssa.op(), lhs.value(), rhs.value());
+    return MarkConst(ssa_val, &ssa, cint);
   }
   // if something is undef, wait for it to resolve
   if (!lhs.is_overdefined() && !rhs.is_overdefined()) return;
@@ -486,21 +487,13 @@ void SparseCondConstPropagationPass::RunOn(BinarySSA &ssa) {
 }
 
 void SparseCondConstPropagationPass::RunOn(UnarySSA &ssa) {
-  using Op = UnarySSA::Operator;
   const auto &opr = GetValue(ssa.opr());
   auto &ssa_val = values_[&ssa];
   if (ssa_val.is_overdefined()) return;
   // fold if is constant
   if (opr) {
-    auto val = *opr;
-    switch (ssa.op()) {
-      case Op::Neg: val = -val; break;
-      case Op::LogicNot: val = !val; break;
-      case Op::Not: val = ~val; break;
-      default: assert(false);
-    }
-    auto mod = MakeModule(ssa.logger());
-    return MarkConst(ssa_val, &ssa, mod.GetInt(val, ssa.type()));
+    auto cint = ConstantHelper::Fold(ssa.op(), opr.value());
+    return MarkConst(ssa_val, &ssa, cint);
   }
   // if something is undef, wait for it to resolve
   if (!opr.is_overdefined()) return;
@@ -509,32 +502,12 @@ void SparseCondConstPropagationPass::RunOn(UnarySSA &ssa) {
 
 void SparseCondConstPropagationPass::RunOn(CastSSA &ssa) {
   const auto &lv = GetValue(ssa.opr());
-  if (lv.is_overdefined()) {
-    // inherit overdefinedness of operand
-    MarkOverdefined(&ssa);
-  }
-  else if (lv) {
-    // fold constant
-    auto val = *lv;
-    const auto &type = ssa.type();
-    assert(type->IsInteger() || type->IsPointer());
-    if (type->GetSize() == 1) {
-      // i8/u8
-      val = type->IsUnsigned() ? static_cast<std::uint8_t>(val)
-                               : static_cast<std::int8_t>(val);
-    }
-    else if (type->GetSize() == 4) {
-      // i32/u32/ptrs
-      val = type->IsUnsigned() || type->IsPointer()
-                ? static_cast<std::uint32_t>(val)
-                : static_cast<std::int32_t>(val);
-    }
-    else {
-      assert(false);
-    }
-    // propagate the value
-    auto mod = MakeModule(ssa.logger());
-    MarkConst(&ssa, mod.GetInt(val, type));
+  // inherit overdefinedness of operand
+  if (lv.is_overdefined()) return MarkOverdefined(&ssa);
+  // mark access from global variables as overdefined
+  if (IsSSA<GlobalVarSSA>(ssa.opr())) return MarkOverdefined(&ssa);
+  if (lv) {
+    MarkConst(&ssa, ConstantHelper::Fold(lv.value(), ssa.type()));
   }
 }
 
@@ -624,7 +597,8 @@ void SparseCondConstPropagationPass::RunOn(PhiSSA &ssa) {
       continue;
     }
     // two conflicted constants, mark as overdefined
-    if (SSACast<ConstIntSSA>(opr_val.get())->value() != *lv) {
+    if ((IsSSA<ConstZeroSSA>(opr_val) && *lv) ||
+        (SSACast<ConstIntSSA>(opr_val.get())->value() != *lv)) {
       return MarkOverdefined(&ssa);
     }
   }

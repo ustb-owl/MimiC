@@ -7,6 +7,7 @@
 #include "opt/passman.h"
 #include "mid/module.h"
 #include "opt/passes/helper/cast.h"
+#include "opt/passes/helper/blkiter.h"
 
 using namespace mimic::mid;
 using namespace mimic::opt;
@@ -44,6 +45,10 @@ class GetPromAllocaHelperPass : public HelperPass {
     is_prom_ = false;
   }
 
+  void RunOn(CastSSA &ssa) override {
+    is_prom_ = false;
+  }
+
  private:
   bool is_prom_;
   std::unordered_set<Value *> prom_allocas_;
@@ -66,8 +71,8 @@ class MemToRegPass : public FunctionPass {
     auto entry = SSACast<BlockSSA>((*func)[0].value().get());
     if (!prom_helper_.ScanAlloca(entry)) return false;
     // traverse all blocks
-    for (const auto &i : *func) {
-      i.value()->RunPass(*this);
+    for (const auto &i : RPOTraverse(entry)) {
+      i->RunPass(*this);
     }
     // handle created phi nodes
     while (!created_phis_.empty()) {

@@ -1,5 +1,6 @@
 #include "opt/pass.h"
 #include "opt/passman.h"
+#include "opt/passes/helper/cast.h"
 
 using namespace mimic::mid;
 using namespace mimic::opt;
@@ -42,6 +43,16 @@ class DeadGlobalValEliminationPass : public ModulePass {
       }
       // mark if need to be removed
       remove_flag_ = !ssa.size() || is_internal;
+      // release blocks if function will be removed
+      // because there may be circular referenced caused by control flow
+      if (remove_flag_) {
+        for (const auto &block : ssa) {
+          auto block_ptr = SSACast<BlockSSA>(block.value().get());
+          block_ptr->Clear();
+          block_ptr->insts().clear();
+        }
+        ssa.Clear();
+      }
     }
   }
 

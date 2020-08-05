@@ -40,7 +40,7 @@ class LoadSSA : public User {
   }
 
   void Dump(std::ostream &os, IdManager &idm) const override;
-  SSAPtr GetAddr() const override { return addr_; }
+  SSAPtr GetAddr() const override { return addr_.lock(); }
   bool IsConst() const override { return false; }
   bool IsUndef() const override { return ptr()->IsUndef(); }
 
@@ -51,7 +51,7 @@ class LoadSSA : public User {
   DECL_GETTER_SETTER(ptr, 0);
 
  private:
-  SSAPtr addr_;
+  SSARef addr_;
 };
 
 // store to allocation
@@ -134,9 +134,18 @@ class BinarySSA : public User {
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
 
+  // check if is a comparison instruction
+  bool IsCmp() const {
+    return static_cast<int>(op_) >= static_cast<int>(Operator::Equal) &&
+           static_cast<int>(op_) <= static_cast<int>(Operator::SGreatEq);
+  }
+
   // getter/setter
   DECL_GETTER_SETTER(lhs, 0);
   DECL_GETTER_SETTER(rhs, 1);
+
+  // setters
+  void set_op(Operator op) { op_ = op; }
 
   // getters
   Operator op() const { return op_; }
@@ -341,6 +350,7 @@ class GlobalVarSSA : public User {
 
   // setters
   void set_link(LinkageTypes link) { link_ = link; }
+  void set_is_var(bool is_var) { is_var_ = is_var; }
 
   // getters
   LinkageTypes link() const { return link_; }
