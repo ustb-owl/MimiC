@@ -100,6 +100,8 @@ class BlockSplitterHelperPass : public HelperPass {
 // helper pass for copying all blocks of a function
 class InlineHelperPass : public IRCopier {
  public:
+  using IRCopier::RunOn;
+
   void CopyTarget(const FuncPtr &cur, CallSSA *call) {
     cur_func_ = cur;
     cur_entry_ = SSACast<BlockSSA>(cur->entry().get());
