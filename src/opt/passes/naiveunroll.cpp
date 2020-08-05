@@ -19,6 +19,8 @@ namespace {
 */
 // threshold of loop's basic block count
 constexpr std::size_t kBlockCountThreshold = 4;
+// threshold of loop's trip count
+constexpr std::size_t kTripCountThreshold = 100;
 
 
 // information required by loop unroller
@@ -418,6 +420,18 @@ bool NaiveLoopUnrollingPass::RunOnLoop(const LoopInfo &loop) {
   // check if we can perform unrolling on current loop
   auto ui = CheckLoop(loop);
   if (!ui.can_unroll) return false;
+  // TODO: fix me! dirty hack!
+  if (ui.init_val > kTripCountThreshold) return false;
+  if (ui.end_cond->lhs()->IsConst() &&
+      ConstantHelper::Fold(ui.end_cond->lhs())->value() >
+          kTripCountThreshold) {
+    return false;
+  }
+  if (ui.end_cond->rhs()->IsConst() &&
+      ConstantHelper::Fold(ui.end_cond->rhs())->value() >
+          kTripCountThreshold) {
+    return false;
+  }
   // perform unroll
   LoopUnrollerHelperPass(loop, ui).Unroll();
   return true;
