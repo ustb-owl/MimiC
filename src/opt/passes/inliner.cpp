@@ -105,12 +105,12 @@ class InlineHelperPass : public IRCopier {
   void CopyTarget(const FuncPtr &cur, CallSSA *call) {
     cur_func_ = cur;
     cur_entry_ = SSACast<BlockSSA>(cur->entry().get());
+    auto target = SSACast<FunctionSSA>(call->callee().get());
     // remember all arguments
     for (std::size_t i = 1; i < call->size(); ++i) {
-      AddCopiedValue(cur->args()[i - 1].get(), (*call)[i].value());
+      AddCopiedValue(target->args()[i - 1].get(), (*call)[i].value());
     }
     // traverse all blocks
-    auto target = SSACast<FunctionSSA>(call->callee().get());
     auto target_entry = SSACast<BlockSSA>(target->entry().get());
     target_entry->RunPass(*this);
   }
