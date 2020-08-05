@@ -65,6 +65,16 @@ void LoopDetector::ScanNaturalLoop(BlockSSA *be_tail, BlockSSA *be_head) {
 
 
 BlockPtr PreheaderCreator::CreatePreheader(const LoopInfo &loop) {
+  // check if need to exit
+  if (loop.entry->size() == 2) {
+    if ((*loop.entry)[0].value().get() == loop.tail) {
+      return SSACast<BlockSSA>((*loop.entry)[1].value());
+    }
+    else {
+      assert((*loop.entry)[1].value().get() == loop.tail);
+      return SSACast<BlockSSA>((*loop.entry)[0].value());
+    }
+  }
   // create preheader block
   auto mod = MakeModule(loop.entry->logger());
   preheader_ = mod.CreateBlock(loop.entry->parent(),

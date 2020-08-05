@@ -48,9 +48,11 @@ class LoopDetector {
 };
 
 
-// create preheader block for specific loop
+// helper class for creating loop preheader
 class PreheaderCreator : public HelperPass {
  public:
+  // create preheader block for specific loop
+  // if there is already one, just return it's pointer
   mid::BlockPtr CreatePreheader(const LoopInfo &loop);
 
   void RunOn(mid::BranchSSA &ssa) override;
