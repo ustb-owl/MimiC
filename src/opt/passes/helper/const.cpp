@@ -11,11 +11,9 @@ using namespace mimic::opt;
 
 ConstantHelper::ConstIntPtr ConstantHelper::Fold(const SSAPtr &val) {
   if (!val) return nullptr;
-  // check if is constant int/ptr
+  // check if is integer/pointer
   const auto &type = val->type();
-  if (!val->IsConst() || !(type->IsInteger() || type->IsPointer())) {
-    return nullptr;
-  }
+  if (!type || (!type->IsInteger() && !type->IsPointer())) return nullptr;
   // handle by SSA type
   if (auto cint = SSADynCast<ConstIntSSA>(val)) {
     return cint;
@@ -34,7 +32,6 @@ ConstantHelper::ConstIntPtr ConstantHelper::Fold(const SSAPtr &val) {
     return Fold(cast->opr(), cast->type());
   }
   else {
-    assert(false);
     return nullptr;
   }
 }
