@@ -134,6 +134,12 @@ class BinarySSA : public User {
   void RunPass(opt::PassBase &pass) override;
   void GenerateCode(back::CodeGen &gen) override;
 
+  // check if is a comparison instruction
+  bool IsCmp() const {
+    return static_cast<int>(op_) >= static_cast<int>(Operator::Equal) &&
+           static_cast<int>(op_) <= static_cast<int>(Operator::SGreatEq);
+  }
+
   // getter/setter
   DECL_GETTER_SETTER(lhs, 0);
   DECL_GETTER_SETTER(rhs, 1);
