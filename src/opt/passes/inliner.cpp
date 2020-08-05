@@ -294,6 +294,8 @@ bool FunctionInliningPass::CanInline(FunctionSSA *cur, CallSSA *call) {
   if (target->is_decl()) return false;
   const auto &cur_info = GetFuncInfo(cur);
   const auto &target_info = GetFuncInfo(target);
+  // do not inline if caller is too large
+  if (cur_info.inst_count > kCallerInstThreshold) return false;
   // do not inline if is calling another recursive function
   // do not inline another function if current is recursive
   if (cur != target &&
@@ -316,8 +318,7 @@ bool FunctionInliningPass::CanInline(FunctionSSA *cur, CallSSA *call) {
       return false;
     }
   }
-  else if (target_info.inst_count > kCalleeInstThreshold ||
-           cur_info.inst_count > kCallerInstThreshold) {
+  else if (target_info.inst_count > kCalleeInstThreshold) {
     return false;
   }
   return true;
