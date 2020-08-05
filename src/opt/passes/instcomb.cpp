@@ -532,7 +532,7 @@ struct FoldCmpLogical {
 }  // namespace
 
 // register current pass
-REGISTER_PASS(InstCombinePass, inst_comb, 1, PassStage::Opt);
+REGISTER_PASS(InstCombinePass, inst_comb, 3, PassStage::Opt);
 
 
 // This performs a few simplifications for commutative

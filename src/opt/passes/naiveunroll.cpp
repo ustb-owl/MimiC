@@ -20,9 +20,9 @@ namespace {
 // threshold of loop's basic block count
 constexpr std::size_t kBlockCountThreshold = 4;
 // threshold of loop's trip count
-constexpr std::size_t kTripCountThreshold = 100;
+constexpr std::size_t kTripCountThreshold = 50;
 // threshold of the number of times unroller was called
-constexpr std::size_t kUnrollCountThreshold = 5;
+constexpr std::size_t kUnrollCountThreshold = 1;
 
 
 // information required by loop unroller
