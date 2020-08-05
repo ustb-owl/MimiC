@@ -8,6 +8,7 @@
 #include "opt/pass.h"
 #include "opt/passman.h"
 #include "opt/passes/helper/cast.h"
+#include "opt/passes/helper/ircopier.h"
 #include "opt/passes/helper/loop.h"
 #include "mid/module.h"
 
@@ -97,14 +98,14 @@ class BlockSplitterHelperPass : public HelperPass {
 };
 
 // helper pass for copying all blocks of a function
-class InlineHelperPass : public HelperPass {
+class InlineHelperPass : public IRCopier {
  public:
   void CopyTarget(const FuncPtr &cur, CallSSA *call) {
     cur_func_ = cur;
     cur_entry_ = SSACast<BlockSSA>(cur->entry().get());
     // remember all arguments
     for (std::size_t i = 1; i < call->size(); ++i) {
-      args_.push_back((*call)[i].value());
+      AddCopiedValue(cur->args()[i - 1].get(), (*call)[i].value());
     }
     // traverse all blocks
     auto target = SSACast<FunctionSSA>(call->callee().get());
@@ -114,7 +115,6 @@ class InlineHelperPass : public HelperPass {
 
   void RunOn(BlockSSA &ssa) override {
     // create a new block
-    auto mod = MakeModule(ssa.logger());
     auto block = CopyFromValue(ssa, cur_func_, ssa.name());
     block->Resize(ssa.size());
     CopyOperand(block, ssa);
@@ -141,145 +141,12 @@ class InlineHelperPass : public HelperPass {
     }
   }
 
-  void RunOn(LoadSSA &ssa) override {
-    auto load = CopyFromValue(ssa, nullptr);
-    CopyOperand(load, ssa);
-  }
-
-  void RunOn(StoreSSA &ssa) override {
-    auto store = CopyFromValue(ssa, nullptr, nullptr);
-    CopyOperand(store, ssa);
-  }
-
-  void RunOn(AccessSSA &ssa) override {
-    auto acc = CopyFromValue(ssa, ssa.acc_type(), nullptr, nullptr);
-    CopyOperand(acc, ssa);
-  }
-
-  void RunOn(BinarySSA &ssa) override {
-    auto bin = CopyFromValue(ssa, ssa.op(), nullptr, nullptr);
-    CopyOperand(bin, ssa);
-  }
-
-  void RunOn(UnarySSA &ssa) override {
-    auto una = CopyFromValue(ssa, ssa.op(), nullptr);
-    CopyOperand(una, ssa);
-  }
-
-  void RunOn(CastSSA &ssa) override {
-    auto cast = CopyFromValue(ssa, nullptr);
-    CopyOperand(cast, ssa);
-  }
-
-  void RunOn(CallSSA &ssa) override {
-    auto call = CopyFromValue(ssa, nullptr, SSAPtrList(ssa.size() - 1));
-    CopyOperand(call, ssa);
-  }
-
-  void RunOn(BranchSSA &ssa) override {
-    auto branch = CopyFromValue(ssa, nullptr, nullptr, nullptr);
-    CopyOperand(branch, ssa);
-  }
-
-  void RunOn(JumpSSA &ssa) override {
-    auto jump = CopyFromValue(ssa, nullptr);
-    CopyOperand(jump, ssa);
-  }
-
-  void RunOn(ReturnSSA &ssa) override {
-    auto ret = CopyFromValue(ssa, nullptr);
-    CopyOperand(ret, ssa);
-  }
-
-  void RunOn(AllocaSSA &ssa) override {
-    CopyFromValue(ssa);
-  }
-
-  void RunOn(ConstIntSSA &ssa) override {
-    CopyFromValue(ssa, ssa.value());
-  }
-
-  void RunOn(ConstStrSSA &ssa) override {
-    CopyFromValue(ssa, ssa.str());
-  }
-
-  void RunOn(ConstStructSSA &ssa) override {
-    auto const_struct = CopyFromValue(ssa, SSAPtrList(ssa.size()));
-    CopyOperand(const_struct, ssa);
-  }
-
-  void RunOn(ConstArraySSA &ssa) override {
-    auto const_array = CopyFromValue(ssa, SSAPtrList(ssa.size()));
-    CopyOperand(const_array, ssa);
-  }
-
-  void RunOn(ConstZeroSSA &ssa) override {
-    CopyFromValue(ssa);
-  }
-
-  void RunOn(PhiOperandSSA &ssa) override {
-    auto phi_opr = CopyFromValue(ssa, nullptr, nullptr);
-    CopyOperand(phi_opr, ssa);
-  }
-
-  void RunOn(PhiSSA &ssa) override {
-    auto phi = CopyFromValue(ssa, SSAPtrList(ssa.size()));
-    CopyOperand(phi, ssa);
-  }
-
-  void RunOn(SelectSSA &ssa) override {
-    auto select = CopyFromValue(ssa, nullptr, nullptr, nullptr);
-    CopyOperand(select, ssa);
-  }
-
-  void RunOn(UndefSSA &ssa) override {
-    CopyFromValue(ssa);
-  }
-
   // getters
   const BlockPtr &entry() const { return entry_; }
   const BlockPtr &exit() const { return exit_; }
   const SSAPtr &ret_val() const { return ret_val_; }
 
  private:
-  SSAPtr GetCopy(const SSAPtr &value) {
-    if (!value) return nullptr;
-    // find from cache
-    auto it = copied_vals_.find(value.get());
-    if (it != copied_vals_.end()) {
-      return it->second;
-    }
-    else if (IsSSA<GlobalVarSSA>(value) || IsSSA<FunctionSSA>(value)) {
-      // skip global variable and functions
-      return copied_vals_[value.get()] = value;
-    }
-    else if (auto arg = SSADynCast<ArgRefSSA>(value.get())) {
-      // return stored argument
-      return copied_vals_[value.get()] = args_[arg->index()];
-    }
-    else {
-      value->RunPass(*this);
-      auto it = copied_vals_.find(value.get());
-      assert(it != copied_vals_.end());
-      return it->second;
-    }
-  }
-
-  template <typename T, typename... Args>
-  inline std::shared_ptr<T> CopyFromValue(T &ssa, Args &&... args) {
-    auto val = std::make_shared<T>(std::forward<Args>(args)...);
-    val->set_logger(ssa.logger());
-    val->set_type(ssa.type());
-    copied_vals_[&ssa] = val;
-    return val;
-  }
-
-  void CopyOperand(const UserPtr &copied, User &user) {
-    for (std::size_t i = 0; i < user.size(); ++i) {
-      (*copied)[i].set_value(GetCopy(user[i].value()));
-    }
-  }
-
   // pointer to copied entry block & exit block
   BlockPtr entry_, exit_;
   // return value of current function
@@ -288,10 +155,6 @@ class InlineHelperPass : public HelperPass {
   FuncPtr cur_func_;
   // entry block of current function
   BlockSSA *cur_entry_;
-  // argument list
-  std::vector<SSAPtr> args_;
-  // all copied values (source -> copied)
-  std::unordered_map<Value *, SSAPtr> copied_vals_;
 };
 
 
