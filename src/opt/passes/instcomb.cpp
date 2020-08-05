@@ -294,17 +294,6 @@ inline bool IsOnlyUse(Value *val) {
   return val->uses().size() == 1 || val->IsConst();
 }
 
-// check binary operator is a comparison operator
-inline bool IsBinOpCmp(BinarySSA::Operator op) {
-  using Op = BinarySSA::Operator;
-  switch (op) {
-    case Op::Equal: case Op::NotEq: case Op::ULess: case Op::SLess:
-    case Op::ULessEq: case Op::SLessEq: case Op::UGreat: case Op::SGreat:
-    case Op::UGreatEq: case Op::SGreatEq: return true;
-    default: return false;
-  }
-}
-
 // get inversed comparison operator
 inline BinarySSA::Operator InverseCmpOp(BinarySSA::Operator op) {
   using Op = BinarySSA::Operator;
@@ -392,7 +381,7 @@ inline void SwapOperands(BinarySSA *bin) {
       break;
     }
     default: {
-      if (IsBinOpCmp(bin->op())) {
+      if (bin->IsCmp()) {
         bin->set_op(InverseCmpOp(bin->op()));
       }
       else {
@@ -507,7 +496,7 @@ struct FoldCmpLogical {
       : ic(ic), lhs(cmp->lhs()), rhs(cmp->rhs()) {}
   bool ShouldApply(const SSAPtr &lhs) const {
     if (auto bin = SSADynCast<BinarySSA>(lhs.get())) {
-      if (!IsBinOpCmp(bin->op())) return false;
+      if (!bin->IsCmp()) return false;
       return (bin->lhs() == lhs && bin->rhs() == rhs) ||
              (bin->lhs() == rhs && bin->rhs() == lhs);
     }
@@ -902,7 +891,7 @@ UserPtr InstCombinePass::RunOnAnd(BinarySSA &ssa) {
   }
   // (A cmp1 B) & (A cmp2 B) -> (A cmp3 B)
   if (auto cmp = SSADynCast<BinarySSA>(rhs.get())) {
-    if (IsBinOpCmp(cmp->op())) {
+    if (cmp->IsCmp()) {
       if (auto result = AssociativeOpt(ssa, FoldCmpLogical(*this, cmp))) {
         return result;
       }
@@ -970,7 +959,7 @@ UserPtr InstCombinePass::RunOnOr(BinarySSA &ssa) {
   }
   // (A cmp1 B) | (A cmp2 B) -> (A cmp3 B)
   if (auto cmp = SSADynCast<BinarySSA>(rhs.get())) {
-    if (IsBinOpCmp(cmp->op())) {
+    if (cmp->IsCmp()) {
       if (auto result = AssociativeOpt(ssa, FoldCmpLogical(*this, cmp))) {
         return result;
       }
@@ -992,7 +981,7 @@ UserPtr InstCombinePass::RunOnXor(BinarySSA &ssa) {
     if (!crhs->value()) return ReplaceInstUsesWith(cur_, lhs);
     if (auto bin = SSADynCast<BinarySSA>(lhs.get())) {
       // (A cmp B) ^ true -> !(A cmp B) -> (A !cmp B)
-      if (IsBinOpCmp(bin->op())) {
+      if (bin->IsCmp()) {
         if (crhs->value() && bin->uses().size() == 1) {
           return mod.CreateBinary(InverseCmpOp(bin->op()), bin->lhs(),
                                   bin->rhs(), ssa.type());
@@ -1049,7 +1038,7 @@ UserPtr InstCombinePass::RunOnXor(BinarySSA &ssa) {
   }
   // (A cmp1 B) ^ (A cmp2 B) -> (A cmp3 B)
   if (auto cmp = SSADynCast<BinarySSA>(rhs.get())) {
-    if (IsBinOpCmp(cmp->op())) {
+    if (cmp->IsCmp()) {
       if (auto result = AssociativeOpt(ssa, FoldCmpLogical(*this, cmp))) {
         return result;
       }
