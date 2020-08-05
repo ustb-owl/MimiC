@@ -20,9 +20,7 @@ namespace {
 // threshold of loop's basic block count
 constexpr std::size_t kBlockCountThreshold = 4;
 // threshold of loop's trip count
-constexpr std::size_t kTripCountThreshold = 50;
-// threshold of the number of times unroller was called
-constexpr std::size_t kUnrollCountThreshold = 1;
+constexpr std::size_t kTripCountThreshold = 100;
 
 
 // information required by loop unroller
@@ -336,10 +334,9 @@ class LoopUnrollerHelperPass : public IRCopier {
 */
 class NaiveLoopUnrollingPass : public FunctionPass {
  public:
-  NaiveLoopUnrollingPass() : unroll_count_(0) {}
+  NaiveLoopUnrollingPass() {}
 
   bool RunOnFunction(const UserPtr &func) override {
-    if (unroll_count_++ > kUnrollCountThreshold) return false;
     // get pointer to current function
     auto func_ptr = SSACast<FunctionSSA>(func.get());
     if (func_ptr->is_decl()) return false;
@@ -357,10 +354,6 @@ class NaiveLoopUnrollingPass : public FunctionPass {
  private:
   UnrollInfo CheckLoop(const LoopInfo &loop);
   bool RunOnLoop(const LoopInfo &loop);
-
-  // count of unroller was called
-  // NOTE: the data will not be reset between pass calls
-  std::size_t unroll_count_;
 };
 
 }  // namespace
