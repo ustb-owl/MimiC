@@ -21,6 +21,8 @@ namespace {
 constexpr std::size_t kBlockCountThreshold = 4;
 // threshold of loop's trip count
 constexpr std::size_t kTripCountThreshold = 100;
+// threshold of the number of times unroller was called
+constexpr std::size_t kUnrollCountThreshold = 5;
 
 
 // information required by loop unroller
@@ -48,7 +50,8 @@ class LoopUnrollerHelperPass : public IRCopier {
   LoopUnrollerHelperPass(const LoopInfo &loop, const UnrollInfo &ui)
       : loop_(loop), ui_(ui) {}
 
-  void Unroll() {
+  // perform unrolling, returns false if failed
+  bool Unroll() {
     assert(ui_.can_unroll);
     // determine which instruction should be copied
     for (const auto &block : loop_.body) {
@@ -58,7 +61,16 @@ class LoopUnrollerHelperPass : public IRCopier {
     }
     // copy blocks
     BlockPtr first_entry, last_entry, last_tail;
-    for (;;) {
+    for (std::size_t count = 0;; ++count) {
+      // check if trip count limit exceeded
+      if (count > kTripCountThreshold) {
+        // clear all blocks
+        for (const auto &b : copied_blocks_) {
+          b->insts().clear();
+          b->Clear();
+        }
+        return false;
+      }
       // create value for all phi nodes in entry block
       InitCopiedValue(!last_entry);
       // copy entry block
@@ -107,6 +119,10 @@ class LoopUnrollerHelperPass : public IRCopier {
           parent->RemoveValue(block);
         }
         ui_.exit_block->RemoveValue(loop_.entry);
+        // add all copied blocks to parent function
+        for (const auto &b : copied_blocks_) {
+          parent->AddValue(b);
+        }
         // reroute jump/branch to original loop entry to unrolled entry
         assert(loop_.entry->size() == 2);
         auto pre = (*loop_.entry)[0].value().get() == loop_.tail
@@ -118,6 +134,7 @@ class LoopUnrollerHelperPass : public IRCopier {
         break;
       }
     }
+    return true;
   }
 
   void RunOn(BlockSSA &ssa) override {
@@ -125,7 +142,7 @@ class LoopUnrollerHelperPass : public IRCopier {
     if (!loop_.body.count(&ssa)) return;
     // create a new block (do not copy predecessors)
     auto block = CopyFromValue(ssa, ssa.parent(), ssa.name());
-    ssa.parent()->AddValue(block);
+    copied_blocks_.push_back(block);
     // copy all instructions
     for (const auto &i : ssa.insts()) {
       // copy current instruction
@@ -306,6 +323,7 @@ class LoopUnrollerHelperPass : public IRCopier {
   const LoopInfo &loop_;
   const UnrollInfo &ui_;
   std::unordered_set<Value *> should_copy_;
+  std::list<BlockPtr> copied_blocks_;
 };
 
 
@@ -318,9 +336,11 @@ class LoopUnrollerHelperPass : public IRCopier {
 */
 class NaiveLoopUnrollingPass : public FunctionPass {
  public:
-  NaiveLoopUnrollingPass() {}
+  NaiveLoopUnrollingPass() : unroll_count_(0) {}
 
   bool RunOnFunction(const UserPtr &func) override {
+    if (unroll_count_++ > kUnrollCountThreshold) return false;
+    // get pointer to current function
     auto func_ptr = SSACast<FunctionSSA>(func.get());
     if (func_ptr->is_decl()) return false;
     // run on loops
@@ -337,6 +357,10 @@ class NaiveLoopUnrollingPass : public FunctionPass {
  private:
   UnrollInfo CheckLoop(const LoopInfo &loop);
   bool RunOnLoop(const LoopInfo &loop);
+
+  // count of unroller was called
+  // NOTE: the data will not be reset between pass calls
+  std::size_t unroll_count_;
 };
 
 }  // namespace
@@ -420,19 +444,6 @@ bool NaiveLoopUnrollingPass::RunOnLoop(const LoopInfo &loop) {
   // check if we can perform unrolling on current loop
   auto ui = CheckLoop(loop);
   if (!ui.can_unroll) return false;
-  // TODO: fix me! dirty hack!
-  if (ui.init_val > kTripCountThreshold) return false;
-  if (ui.end_cond->lhs()->IsConst() &&
-      ConstantHelper::Fold(ui.end_cond->lhs())->value() >
-          kTripCountThreshold) {
-    return false;
-  }
-  if (ui.end_cond->rhs()->IsConst() &&
-      ConstantHelper::Fold(ui.end_cond->rhs())->value() >
-          kTripCountThreshold) {
-    return false;
-  }
   // perform unroll
-  LoopUnrollerHelperPass(loop, ui).Unroll();
-  return true;
+  return LoopUnrollerHelperPass(loop, ui).Unroll();
 }
