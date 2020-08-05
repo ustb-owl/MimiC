@@ -8,6 +8,7 @@
 #include "opt/pass.h"
 #include "opt/passman.h"
 #include "opt/passes/helper/cast.h"
+#include "opt/passes/helper/loop.h"
 #include "mid/module.h"
 
 using namespace mimic::mid;
@@ -16,7 +17,7 @@ using namespace mimic::opt;
 namespace {
 
 /*
-  arguments used by function inlining pass
+  parameters used by function inlining pass
 */
 // threshold of callee's instruction count
 constexpr std::size_t kCalleeInstThreshold = 1 << 8;
@@ -26,6 +27,10 @@ constexpr std::size_t kCallerInstThreshold = 1 << 14;
 constexpr std::size_t kRecFuncInstThreshold = 1 << 8;
 // threshold of recursive function's inline count
 constexpr std::size_t kRecFuncInlineCountThreshold = 3;
+// threshold of in-loop function's basic block count
+constexpr std::size_t kInLoopFuncBlockCountThreshold = 3;
+// threshold of in-loop function's instruction count
+constexpr std::size_t kInLoopFuncInstCountThreshold = 1 << 7;
 
 
 // pointer to function
@@ -304,6 +309,8 @@ class FunctionInliningPass : public FunctionPass {
   bool RunOnFunction(const UserPtr &func) override {
     auto func_ptr = SSACast<FunctionSSA>(func);
     if (func_ptr->is_decl()) return false;
+    // update information of in-loop calls
+    UpdateInLoopInfo(func_ptr.get());
     // traverse all instructions
     bool changed = true;
     while (changed) {
@@ -323,6 +330,8 @@ class FunctionInliningPass : public FunctionPass {
 
  private:
   struct FuncInfo {
+    // basic block count
+    std::size_t block_count;
     // instruction count
     std::size_t inst_count;
     // count of contained function calls (including recursive call)
@@ -333,6 +342,8 @@ class FunctionInliningPass : public FunctionPass {
 
   void UpdateFuncInfo(FunctionSSA *func);
   const FuncInfo &GetFuncInfo(FunctionSSA *func);
+  void UpdateInLoopInfo(FunctionSSA *func);
+  bool IsInLoop(FunctionSSA *cur, CallSSA *call);
   bool CanInline(FunctionSSA *cur, CallSSA *call);
   void IncreaseInlineCount(CallSSA *call);
   bool ScanBlock(const FuncPtr &func, const BlockPtr &block);
@@ -342,6 +353,10 @@ class FunctionInliningPass : public FunctionPass {
   // inline counter
   // NOTE: the data will not be cleared between pass calls
   std::unordered_map<FunctionSSA *, std::size_t> inline_count_;
+  // all in-loop function calls in function
+  // NOTE: the data will not be cleared between pass calls
+  std::unordered_map<FunctionSSA *, std::unordered_set<Value *>>
+      in_loop_calls_;
 };
 
 }  // namespace
@@ -355,6 +370,7 @@ void FunctionInliningPass::UpdateFuncInfo(FunctionSSA *func) {
   auto &info = func_info_[func];
   for (const auto &block : *func) {
     auto block_ptr = SSACast<BlockSSA>(block.value().get());
+    ++info.block_count;
     for (const auto &inst : block_ptr->insts()) {
       ++info.inst_count;
       if (auto call = SSADynCast<CallSSA>(inst)) {
@@ -381,6 +397,33 @@ const FunctionInliningPass::FuncInfo &FunctionInliningPass::GetFuncInfo(
   }
 }
 
+// get all in-loop function calls of the specific function
+// initialize only once for each function
+void FunctionInliningPass::UpdateInLoopInfo(FunctionSSA *func) {
+  // create new entry
+  auto [it, succ] = in_loop_calls_.insert({func, {}});
+  if (!succ) return;
+  // detect all loops in function
+  LoopDetector ld(func);
+  // find out all call instructions in loop
+  std::unordered_set<BlockSSA *> visited;
+  for (const auto &loop : ld.loops()) {
+    for (const auto &block : loop.body) {
+      if (!visited.insert(block).second) continue;
+      for (const auto &inst : block->insts()) {
+        if (IsSSA<CallSSA>(inst)) it->second.insert(inst.get());
+      }
+    }
+  }
+}
+
+// check if the specific call instruction is in a loop
+bool FunctionInliningPass::IsInLoop(FunctionSSA *cur, CallSSA *call) {
+  auto it = in_loop_calls_.find(cur);
+  assert(it != in_loop_calls_.end());
+  return it->second.count(call);
+}
+
 // check if target function of call instruction
 // can be inlined into current function
 bool FunctionInliningPass::CanInline(FunctionSSA *cur, CallSSA *call) {
@@ -393,6 +436,12 @@ bool FunctionInliningPass::CanInline(FunctionSSA *cur, CallSSA *call) {
   if (cur != target &&
       (cur_info.is_recursive || target_info.is_recursive)) {
     return false;
+  }
+  // check for in-loop function calls
+  if (IsInLoop(cur, call)) {
+    return !target_info.is_recursive &&
+           target_info.block_count <= kInLoopFuncBlockCountThreshold &&
+           target_info.inst_count <= kInLoopFuncInstCountThreshold;
   }
   // inline functions that has only been called once anyway
   if (cur != target && target->uses().size() == 1) return true;
