@@ -92,4 +92,5 @@ class BlockMergePass : public FunctionPass {
 // register current passs
 REGISTER_PASS(BlockMergePass, blk_merge)
     .set_min_opt_level(1)
-    .set_stages(PassStage::PreOpt | PassStage::Opt | PassStage::PostOpt);
+    .set_stages(PassStage::PreOpt | PassStage::Opt | PassStage::PostOpt)
+    .Invalidates("dom_info");
