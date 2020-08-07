@@ -45,8 +45,8 @@ PassManager::PassInfoList PassManager::GetPasses(PassStage stage) const {
   PassInfoList passes;
   // filter all passes that can be run at current stage & opt_level
   for (const auto &[name, info] : GetPasses()) {
-    if ((info.stages() & stage) != PassStage::None &&
-        opt_level_ >= info.min_opt_level()) {
+    if (!info.is_analysis() && opt_level_ >= info.min_opt_level() &&
+        (info.stages() & stage) != PassStage::None) {
       passes.push_back({name, &info});
     }
   }
