@@ -30,7 +30,7 @@ class InstCombinePass : public FunctionPass {
   bool RunOnFunction(const FuncPtr &func) override;
 
   void CleanUp() override {
-    worklist_.clear();
+    assert(worklist_.empty());
     parent_.clear();
     cur_ = nullptr;
     result_ = nullptr;
