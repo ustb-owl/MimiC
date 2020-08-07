@@ -3,6 +3,9 @@
 #include <iomanip>
 #include <cassert>
 
+#include "opt/passes/helper/cast.h"
+
+using namespace mimic::mid;
 using namespace mimic::opt;
 
 namespace {
@@ -33,58 +36,87 @@ std::ostream &operator<<(std::ostream &os, PassStage stage) {
 
 }  // namespace
 
-std::list<PassInfo *> &PassManager::GetPasses() {
-  static std::list<PassInfo *> passes;
+PassManager::PassInfoMap &PassManager::GetPasses() {
+  static PassInfoMap passes;
   return passes;
 }
 
-std::list<PassInfo *> PassManager::GetPasses(PassStage stage) const {
-  std::list<PassInfo *> passes;
-  for (const auto &info : GetPasses()) {
-    if ((info->stage() & stage) != PassStage::None &&
-        opt_level_ >= info->min_opt_level()) {
-      passes.push_front(info);
+PassManager::PassInfoList PassManager::GetPasses(PassStage stage) const {
+  PassInfoList passes;
+  // filter all passes that can be run at current stage & opt_level
+  for (const auto &[name, info] : GetPasses()) {
+    if ((info.stages() & stage) != PassStage::None &&
+        opt_level_ >= info.min_opt_level()) {
+      passes.push_back({name, &info});
     }
   }
   return passes;
 }
 
-void PassManager::RunPasses(const std::list<PassInfo *> &passes) const {
+bool PassManager::RunPass(const PassPtr &pass) const {
+  bool changed = false;
+  // handle by pass type
+  if (pass->IsModulePass()) {
+    // run on global values
+    if (pass->RunOnModule(*vars_)) changed = true;
+    if (pass->RunOnModule(*funcs_)) changed = true;
+  }
+  else if (pass->IsFunctionPass()) {
+    // traverse all functions
+    for (const auto &i : *funcs_) {
+      auto func = SSACast<FunctionSSA>(i);
+      if (pass->RunOnFunction(func)) changed = true;
+    }
+  }
+  else {
+    assert(pass->IsBlockPass());
+    // traverse all basic blocks
+    for (const auto &func : *funcs_) {
+      for (const auto &i : *func) {
+        auto blk = SSACast<BlockSSA>(i.value());
+        if (pass->RunOnBlock(blk)) changed = true;
+      }
+    }
+  }
+  // clean up
+  pass->CleanUp();
+  return changed;
+}
+
+bool PassManager::RunPass(PassNameSet &valid,
+                          const PassInfoPair &info) const {
+  bool changed = false;
+  // check dependencies, run required passes first
+  for (const auto &name : info.second->required_passes()) {
+    if (!valid.count(name)) {
+      const auto &passes = GetPasses();
+      auto it = passes.find(name);
+      assert(it != passes.end());
+      changed |= RunPass(valid, {it->first, &it->second});
+    }
+  }
+  // run current pass
+  changed |= RunPass(info.second->pass());
+  valid.insert(info.first);
+  // invalidate passes
+  for (const auto &name : info.second->invalidated_passes()) {
+    valid.erase(name);
+  }
+  return changed;
+}
+
+void PassManager::RunPasses(const PassInfoList &passes) const {
   bool changed = true;
+  PassNameSet valid;
   // run until nothing changes
   while (changed) {
     changed = false;
+    valid.clear();
     // traverse all passes
     for (const auto &info : passes) {
-      const auto &pass = info->pass();
-      // handle by pass type
-      if (pass->IsModulePass()) {
-        // run on global values
-        if (pass->RunOnModule(*vars_)) changed = true;
-        if (pass->RunOnModule(*funcs_)) changed = true;
-      }
-      else if (pass->IsFunctionPass()) {
-        // traverse all functions
-        for (const auto &func : *funcs_) {
-          if (pass->RunOnFunction(func)) changed = true;
-        }
-      }
-      else {
-        assert(pass->IsBlockPass());
-        // traverse all basic blocks
-        for (const auto &func : *funcs_) {
-          for (const auto &i : *func) {
-            auto blk = std::static_pointer_cast<mid::BlockSSA>(i.value());
-            if (pass->RunOnBlock(blk)) changed = true;
-          }
-        }
-      }
+      changed |= RunPass(valid, info);
     }
   }
-}
-
-void PassManager::RegisterPass(PassInfo *info) {
-  GetPasses().push_back(info);
 }
 
 void PassManager::RunPasses() const {
@@ -108,21 +140,21 @@ void PassManager::ShowInfo(std::ostream &os) const {
     os << "  <none>" << std::endl;
     return;
   }
-  for (const auto &i : GetPasses()) {
+  for (const auto &[name, info] : GetPasses()) {
     os << "  ";
-    os << std::setw(20) << std::left << i->name();
-    os << "min_opt_level = " << i->min_opt_level() << ", ";
-    os << "pass_stage = " << i->stage() << std::endl;
+    os << std::setw(20) << std::left << name;
+    os << "min_opt_level = " << info.min_opt_level() << ", ";
+    os << "pass_stage = " << info.stages() << std::endl;
   }
   os << std::endl;
   // show enabled passes
   int count = 0;
   os << "enabled passes:" << std::endl;
-  for (const auto &i : GetPasses()) {
-    if (opt_level_ >= i->min_opt_level() &&
-        IsStageContain(stage_, i->stage())) {
+  for (const auto &[name, info] : GetPasses()) {
+    if (opt_level_ >= info.min_opt_level() &&
+        IsStageContain(stage_, info.stages())) {
       if (count % 5 == 0) os << "  ";
-      os << std::setw(16) << std::left << i->name();
+      os << std::setw(16) << std::left << name;
       if (count % 5 == 4) os << std::endl;
       ++count;
     }
