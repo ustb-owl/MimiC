@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "opt/pass.h"
-#include "opt/analysis/dominance.h"
 
 namespace mimic::opt {
 
@@ -48,8 +47,6 @@ class LoopInfoPass : public FunctionPass {
   void ScanNaturalLoop(const mid::FuncPtr &func, mid::BlockSSA *be_tail,
                        mid::BlockSSA *be_head);
 
-  // dominance info
-  const DominanceInfoPass *dom_;
   // all detected loops
   std::unordered_map<mid::FunctionSSA *, LoopInfoList> loops_;
 };
