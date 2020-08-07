@@ -139,11 +139,10 @@ class GlobalValueNumberingPass : public FunctionPass {
   GlobalValueNumberingPass() {}
 
   bool RunOnFunction(const FuncPtr &func) override {
-    auto func_ptr = SSACast<FunctionSSA>(func.get());
-    if (func_ptr->is_decl()) return false;
+    if (func->is_decl()) return false;
     changed_ = false;
     // traverse all blocks in RPO
-    auto entry = SSACast<BlockSSA>(func_ptr->entry().get());
+    auto entry = SSACast<BlockSSA>(func->entry().get());
     for (const auto &i : RPOTraverse(entry)) {
       i->RunPass(*this);
     }

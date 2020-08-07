@@ -338,11 +338,10 @@ class NaiveLoopUnrollingPass : public FunctionPass {
 
   bool RunOnFunction(const FuncPtr &func) override {
     // get pointer to current function
-    auto func_ptr = SSACast<FunctionSSA>(func.get());
-    if (func_ptr->is_decl()) return false;
+    if (func->is_decl()) return false;
     // run on loops
     bool changed = false;
-    LoopDetector ld(func_ptr);
+    LoopDetector ld(func.get());
     for (const auto &loop : ld.loops()) {
       if (RunOnLoop(loop)) {
         changed = true;

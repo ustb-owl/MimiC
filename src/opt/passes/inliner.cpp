@@ -169,17 +169,16 @@ class FunctionInliningPass : public FunctionPass {
   FunctionInliningPass() {}
 
   bool RunOnFunction(const FuncPtr &func) override {
-    auto func_ptr = SSACast<FunctionSSA>(func);
-    if (func_ptr->is_decl()) return false;
+    if (func->is_decl()) return false;
     // update information of in-loop calls
-    UpdateInLoopInfo(func_ptr.get());
+    UpdateInLoopInfo(func.get());
     // traverse all instructions
     bool changed = true;
     while (changed) {
       changed = false;
       for (const auto &i : *func) {
         auto block = SSACast<BlockSSA>(i.value());
-        if (ScanBlock(func_ptr, block)) {
+        if (ScanBlock(func, block)) {
           changed = true;
           break;
         }

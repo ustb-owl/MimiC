@@ -197,7 +197,7 @@ class RegToMemPass : public FunctionPass {
     CriticalEdgeBreakerHelperPass breaker;
     breaker.BreakOn(func);
     // get entry block
-    auto entry = SSACast<BlockSSA>((*func)[0].value());
+    auto entry = SSACast<BlockSSA>(func->entry());
     assert(entry->empty());
     // demote escaped instructions
     for (const auto &i : insts.escaped_insts()) DemoteRegToStack(i, entry);

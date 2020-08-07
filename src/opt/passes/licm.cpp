@@ -23,20 +23,19 @@ class LoopInvariantCodeMotionPass : public FunctionPass {
   LoopInvariantCodeMotionPass() {}
 
   bool RunOnFunction(const FuncPtr &func) override {
-    auto func_ptr = SSACast<FunctionSSA>(func.get());
-    if (func_ptr->is_decl()) return false;
+    if (func->is_decl()) return false;
     // run on loops
     bool changed = false;
     // prepare parent info
     // must be rescanned in each iteration since parent info
     // may be changed due to preheader insertion
-    ParentScanner parent(func_ptr);
+    ParentScanner parent(func);
     parent_ = &parent;
     // prepare dominance checker
-    DominanceChecker dom(func_ptr);
+    DominanceChecker dom(func.get());
     dom_ = &dom;
     // scan for all loops
-    LoopDetector loop_det(dom, func_ptr);
+    LoopDetector loop_det(dom, func.get());
     for (const auto &info : loop_det.loops()) {
       cur_loop_ = &info;
       if (ProcessLoop()) changed = true;

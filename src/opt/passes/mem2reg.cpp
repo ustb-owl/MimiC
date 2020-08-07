@@ -68,7 +68,7 @@ class MemToRegPass : public FunctionPass {
   bool RunOnFunction(const FuncPtr &func) override {
     // check if need to run
     if (func->empty()) return false;
-    auto entry = SSACast<BlockSSA>((*func)[0].value().get());
+    auto entry = SSACast<BlockSSA>(func->entry().get());
     if (!prom_helper_.ScanAlloca(entry)) return false;
     // traverse all blocks
     for (const auto &i : RPOTraverse(entry)) {
