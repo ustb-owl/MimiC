@@ -21,7 +21,9 @@ class PassInfo {
  public:
   using PassNameList = std::vector<std::string_view>;
 
-  PassInfo(PassPtr pass) : pass_(std::move(pass)) {}
+  PassInfo(PassPtr pass)
+      : pass_(std::move(pass)), is_analysis_(false),
+        min_opt_level_(0), stages_(PassStage::None) {}
 
   // add required pass by name for current pass
   // all required passes should be run before running current pass
@@ -38,6 +40,11 @@ class PassInfo {
   }
 
   // setters
+  // set if current pass is an analysis pass
+  PassInfo &set_is_analysis(bool is_analysis) {
+    is_analysis_ = is_analysis;
+    return *this;
+  }
   // set minimum optimization level of current pass required
   PassInfo &set_min_opt_level(std::size_t min_opt_level) {
     min_opt_level_ = min_opt_level;
@@ -51,6 +58,7 @@ class PassInfo {
 
   // getters
   const PassPtr &pass() const { return pass_; }
+  bool is_analysis() const { return is_analysis_; }
   std::size_t min_opt_level() const { return min_opt_level_; }
   PassStage stages() const { return stages_; }
   const PassNameList &required_passes() const { return required_passes_; }
@@ -60,6 +68,7 @@ class PassInfo {
 
  private:
   PassPtr pass_;
+  bool is_analysis_;
   std::size_t min_opt_level_;
   PassStage stages_;
   PassNameList required_passes_, invalidated_passes_;
