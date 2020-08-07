@@ -5,7 +5,7 @@
 #include "opt/passman.h"
 #include "opt/helper/ircopier.h"
 #include "opt/helper/cast.h"
-#include "opt/helper/loop.h"
+#include "opt/analysis/loopinfo.h"
 #include "opt/helper/const.h"
 #include "mid/module.h"
 
@@ -341,8 +341,9 @@ class NaiveLoopUnrollingPass : public FunctionPass {
     if (func->is_decl()) return false;
     // run on loops
     bool changed = false;
-    LoopDetector ld(func.get());
-    for (const auto &loop : ld.loops()) {
+    const auto &li = PassManager::GetPass<LoopInfoPass>("loop_info");
+    const auto &loops = li.GetLoopInfo(func.get());
+    for (const auto &loop : loops) {
       if (RunOnLoop(loop)) {
         changed = true;
       }
@@ -360,7 +361,9 @@ class NaiveLoopUnrollingPass : public FunctionPass {
 // register current pass
 REGISTER_PASS(NaiveLoopUnrollingPass, naive_unroll)
     .set_min_opt_level(2)
-    .set_stages(PassStage::Opt);
+    .set_stages(PassStage::Opt)
+    .Requires("loop_info")
+    .Invalidates("dom_info");
 
 
 // check if the specific loop can be unrolled

@@ -2,7 +2,8 @@
 #include "opt/passman.h"
 #include "opt/helper/cast.h"
 #include "opt/helper/inst.h"
-#include "opt/helper/dom.h"
+#include "opt/analysis/dominance.h"
+#include "opt/analysis/loopinfo.h"
 #include "opt/helper/loop.h"
 #include "mid/module.h"
 
@@ -32,11 +33,11 @@ class LoopInvariantCodeMotionPass : public FunctionPass {
     ParentScanner parent(func);
     parent_ = &parent;
     // prepare dominance checker
-    DominanceChecker dom(func.get());
-    dom_ = &dom;
+    dom_ = &PassManager::GetPass<DominanceInfoPass>("dom_info");
     // scan for all loops
-    LoopDetector loop_det(dom, func.get());
-    for (const auto &info : loop_det.loops()) {
+    const auto &li = PassManager::GetPass<LoopInfoPass>("loop_info");
+    const auto &loops = li.GetLoopInfo(func.get());
+    for (const auto &info : loops) {
       cur_loop_ = &info;
       if (ProcessLoop()) changed = true;
     }
@@ -68,9 +69,9 @@ class LoopInvariantCodeMotionPass : public FunctionPass {
   void ProcessStores();
   bool ProcessLoop();
 
-  // helper passes
+  // helper passes & analysis passes
   ParentScanner *parent_;
-  DominanceChecker *dom_;
+  const DominanceInfoPass *dom_;
   // loop that current being processed
   const LoopInfo *cur_loop_;
   // block that current being processed
@@ -87,7 +88,10 @@ class LoopInvariantCodeMotionPass : public FunctionPass {
 // register current pass
 REGISTER_PASS(LoopInvariantCodeMotionPass, licm)
     .set_min_opt_level(2)
-    .set_stages(PassStage::Opt);
+    .set_stages(PassStage::Opt)
+    .Requires("dom_info")
+    .Requires("loop_info")
+    .Invalidates("dom_info");
 
 
 // check if value is an invariant
