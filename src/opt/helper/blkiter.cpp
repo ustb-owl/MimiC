@@ -1,6 +1,6 @@
-#include "opt/passes/helper/blkiter.h"
+#include "opt/helper/blkiter.h"
 
-#include "opt/passes/helper/cast.h"
+#include "opt/helper/cast.h"
 
 using namespace mimic::mid;
 using namespace mimic::opt::__impl;

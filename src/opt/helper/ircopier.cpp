@@ -1,4 +1,4 @@
-#include "opt/passes/helper/ircopier.h"
+#include "opt/helper/ircopier.h"
 
 using namespace mimic::mid;
 using namespace mimic::opt;

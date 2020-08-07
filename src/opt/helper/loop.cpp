@@ -1,9 +1,9 @@
-#include "opt/passes/helper/loop.h"
+#include "opt/helper/loop.h"
 
 #include <stack>
 #include <cassert>
 
-#include "opt/passes/helper/cast.h"
+#include "opt/helper/cast.h"
 #include "mid/module.h"
 
 using namespace mimic::mid;
