@@ -27,6 +27,9 @@ class PassBase {
   // run on basic blocks, return true if there is modification
   virtual bool RunOnBlock(const mid::BlockPtr &block) = 0;
 
+  // perform some necessary cleanup operations after pass runs
+  virtual void CleanUp() {}
+
   // visitor methods for running on SSA IRs
   virtual void RunOn(mid::LoadSSA &ssa) {}
   virtual void RunOn(mid::StoreSSA &ssa) {}
@@ -52,9 +55,6 @@ class PassBase {
   virtual void RunOn(mid::PhiSSA &ssa) {}
   virtual void RunOn(mid::SelectSSA &ssa) {}
   virtual void RunOn(mid::UndefSSA &ssa) {}
-
-  // perform some necessary cleanup operations after pass runs
-  virtual void CleanUp() {}
 };
 
 // pointer of pass

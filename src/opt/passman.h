@@ -81,12 +81,13 @@ class PassManager {
         .first->second;
   }
 
-  // get pointer to pass by name
-  static const PassPtr &GetPass(std::string_view name) {
+  // get pass by name
+  template <typename T>
+  static const T &GetPass(std::string_view name) {
     const auto &passes = GetPasses();
     auto it = passes.find(name);
     assert(it != passes.end());
-    return it->second.pass();
+    return *static_cast<const T *>(it->second.pass().get());
   }
 
   // run passes on current module
