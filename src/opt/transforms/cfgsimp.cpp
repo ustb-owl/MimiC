@@ -171,4 +171,5 @@ class CFGSimplifyPass : public FunctionPass {
 // register current passs
 REGISTER_PASS(CFGSimplifyPass, cfg_simplify)
     .set_min_opt_level(1)
-    .set_stages(PassStage::PreOpt | PassStage::Opt | PassStage::PostOpt);
+    .set_stages(PassStage::PreOpt | PassStage::Opt | PassStage::PostOpt)
+    .Invalidates("dom_info");
