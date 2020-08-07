@@ -164,13 +164,15 @@ class SparseCondConstPropagationPass : public FunctionPass {
         }
       }
     }
-    // clean up
+    return false;
+  }
+
+  void CleanUp() override {
     values_.clear();
     exe_blocks_.clear();
     known_edges_.clear();
     assert(block_list_.empty() && inst_list_.empty() &&
            overdefed_list_.empty());
-    return false;
   }
 
   void RunOn(LoadSSA &ssa) override;

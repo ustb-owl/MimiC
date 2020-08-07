@@ -29,6 +29,13 @@ class InstCombinePass : public FunctionPass {
 
   bool RunOnFunction(const FuncPtr &func) override;
 
+  void CleanUp() override {
+    worklist_.clear();
+    parent_.clear();
+    cur_ = nullptr;
+    result_ = nullptr;
+  }
+
   void RunOn(AccessSSA &ssa) override;
   void RunOn(BinarySSA &ssa) override;
   void RunOn(CastSSA &ssa) override;
@@ -48,14 +55,6 @@ class InstCombinePass : public FunctionPass {
   }
 
  private:
-  // clean up for next run
-  void Reset() {
-    worklist_.clear();
-    parent_.clear();
-    cur_ = nullptr;
-    result_ = nullptr;
-  }
-
   // erase instruction from it's parent block
   void RemoveFromParent(const UserPtr &inst) {
     parent_[inst.get()]->insts().remove_if(
@@ -1523,7 +1522,5 @@ bool InstCombinePass::RunOnFunction(const FuncPtr &func) {
       changed = true;
     }
   }
-  // release resources
-  Reset();
   return changed;
 }

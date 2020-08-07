@@ -95,9 +95,11 @@ class MemToRegPass : public FunctionPass {
         ++it;
       }
     }
-    // release local definitions
-    cur_defs_.clear();
     return true;
+  }
+
+  void CleanUp() override {
+    cur_defs_.clear();
   }
 
   void RunOn(BlockSSA &ssa) override {

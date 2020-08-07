@@ -32,12 +32,14 @@ class BranchSimplifyPass : public BlockPass {
       // replace last instruction with jump
       block->insts().back() = jump;
     }
-    // release values
+    return replace_;
+  }
+
+  void CleanUp() override {
     cond_ = nullptr;
     target_ = nullptr;
     opr_val_ = nullptr;
     opr_block_ = nullptr;
-    return replace_;
   }
 
   void RunOn(BranchSSA &ssa) override {

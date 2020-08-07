@@ -149,14 +149,16 @@ class GlobalValueNumberingPass : public FunctionPass {
     }
     // process created phi nodes
     ProcessPhi();
-    // release all resources
+    return changed_;
+  }
+
+  void CleanUp() override {
     values_.Reset();
     val_defs_.clear();
     ptr_defs_.clear();
     global_vals_.clear();
     tracked_ptrs_.clear();
     assert(created_phis_.empty());
-    return changed_;
   }
 
   void RunOn(BlockSSA &ssa) override {

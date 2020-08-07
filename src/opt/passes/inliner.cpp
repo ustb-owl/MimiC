@@ -185,9 +185,11 @@ class FunctionInliningPass : public FunctionPass {
         }
       }
     }
-    // release resources
-    func_info_.clear();
     return changed;
+  }
+
+  void CleanUp() override {
+    func_info_.clear();
   }
 
  private:
