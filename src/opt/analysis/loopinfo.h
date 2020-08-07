@@ -44,7 +44,7 @@ class LoopInfoPass : public FunctionPass {
 
  private:
   void ScanOn(const mid::FuncPtr &func);
-  void ScanNaturalLoop(const mid::FuncPtr &func, mid::BlockSSA *be_tail,
+  void ScanNaturalLoop(LoopInfoList &loops, mid::BlockSSA *be_tail,
                        mid::BlockSSA *be_head);
 
   // all detected loops

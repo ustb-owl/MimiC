@@ -19,6 +19,7 @@ REGISTER_PASS(LoopInfoPass, loop_info)
 
 void LoopInfoPass::ScanOn(const FuncPtr &func) {
   // scan for back edges
+  auto &loops = loops_[func.get()];
   for (const auto &i : *func) {
     auto block = SSACast<BlockSSA>(i.value().get());
     // skip dead blocks
@@ -29,13 +30,13 @@ void LoopInfoPass::ScanOn(const FuncPtr &func) {
       auto pred = SSACast<BlockSSA>(p.value().get());
       if (!dom.IsDeadBlock(pred) && dom.IsDominate(block, pred)) {
         // back edge found
-        ScanNaturalLoop(func, pred, block);
+        ScanNaturalLoop(loops, pred, block);
       }
     }
   }
 }
 
-void LoopInfoPass::ScanNaturalLoop(const FuncPtr &func, BlockSSA *be_tail,
+void LoopInfoPass::ScanNaturalLoop(LoopInfoList &loops, BlockSSA *be_tail,
                                    BlockSSA *be_head) {
   // initialize loop info
   LoopInfo info = {be_head, be_tail};
@@ -70,7 +71,7 @@ void LoopInfoPass::ScanNaturalLoop(const FuncPtr &func, BlockSSA *be_tail,
     }
   }
   // add to list
-  loops_[func.get()].push_back(std::move(info));
+  loops.push_back(std::move(info));
 }
 
 bool LoopInfoPass::RunOnFunction(const FuncPtr &func) {
