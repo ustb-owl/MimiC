@@ -1,5 +1,5 @@
 #include "mid/ssa.h"
-#include "opt/passes/helper/cast.h"
+#include "opt/helper/cast.h"
 
 #include <streambuf>
 #include <unordered_set>

@@ -8,9 +8,9 @@
 
 #include "opt/pass.h"
 #include "opt/passman.h"
-#include "opt/passes/helper/cast.h"
-#include "opt/passes/helper/const.h"
-#include "opt/passes/helper/inst.h"
+#include "opt/helper/cast.h"
+#include "opt/helper/const.h"
+#include "opt/helper/inst.h"
 #include "mid/module.h"
 #include "utils/hashing.h"
 

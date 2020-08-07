@@ -10,8 +10,8 @@
 
 #include "opt/pass.h"
 #include "opt/passman.h"
-#include "opt/passes/helper/cast.h"
-#include "opt/passes/helper/blkiter.h"
+#include "opt/helper/cast.h"
+#include "opt/helper/blkiter.h"
 #include "mid/module.h"
 #include "utils/hashing.h"
 

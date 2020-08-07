@@ -1,9 +1,9 @@
 #include "opt/pass.h"
 #include "opt/passman.h"
-#include "opt/passes/helper/cast.h"
-#include "opt/passes/helper/inst.h"
-#include "opt/passes/helper/dom.h"
-#include "opt/passes/helper/loop.h"
+#include "opt/helper/cast.h"
+#include "opt/helper/inst.h"
+#include "opt/helper/dom.h"
+#include "opt/helper/loop.h"
 #include "mid/module.h"
 
 #include <unordered_set>
