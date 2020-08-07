@@ -55,17 +55,21 @@ PassManager::PassInfoList PassManager::GetPasses(PassStage stage) const {
 
 bool PassManager::RunPass(const PassPtr &pass) const {
   bool changed = false;
+  // initialize
+  pass->Initialize();
   // handle by pass type
   if (pass->IsModulePass()) {
     // run on global values
     if (pass->RunOnModule(*vars_)) changed = true;
     if (pass->RunOnModule(*funcs_)) changed = true;
+    pass->CleanUp();
   }
   else if (pass->IsFunctionPass()) {
     // traverse all functions
     for (const auto &i : *funcs_) {
       auto func = SSACast<FunctionSSA>(i);
       if (pass->RunOnFunction(func)) changed = true;
+      pass->CleanUp();
     }
   }
   else {
@@ -75,17 +79,17 @@ bool PassManager::RunPass(const PassPtr &pass) const {
       for (const auto &i : *func) {
         auto blk = SSACast<BlockSSA>(i.value());
         if (pass->RunOnBlock(blk)) changed = true;
+        pass->CleanUp();
       }
     }
   }
-  // clean up
-  pass->CleanUp();
   return changed;
 }
 
 bool PassManager::RunPass(PassNameSet &valid,
                           const PassInfoPair &info) const {
   bool changed = false;
+  if (!valid.insert(info.first).second) return changed;
   // check dependencies, run required passes first
   for (const auto &name : info.second->required_passes()) {
     if (!valid.count(name)) {
@@ -96,11 +100,12 @@ bool PassManager::RunPass(PassNameSet &valid,
     }
   }
   // run current pass
-  changed |= RunPass(info.second->pass());
-  valid.insert(info.first);
-  // invalidate passes
-  for (const auto &name : info.second->invalidated_passes()) {
-    valid.erase(name);
+  if (RunPass(info.second->pass())) {
+    changed = true;
+    // invalidate passes
+    for (const auto &name : info.second->invalidated_passes()) {
+      valid.erase(name);
+    }
   }
   return changed;
 }
