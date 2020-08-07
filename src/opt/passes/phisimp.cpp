@@ -1,7 +1,7 @@
 #include "opt/pass.h"
 #include "opt/passman.h"
-#include "opt/passes/helper/cast.h"
-#include "opt/passes/helper/const.h"
+#include "opt/helper/cast.h"
+#include "opt/helper/const.h"
 #include "mid/module.h"
 
 using namespace mimic::mid;

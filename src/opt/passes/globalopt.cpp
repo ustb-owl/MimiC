@@ -4,7 +4,7 @@
 
 #include "opt/pass.h"
 #include "opt/passman.h"
-#include "opt/passes/helper/cast.h"
+#include "opt/helper/cast.h"
 #include "mid/module.h"
 
 #include "xstl/guard.h"

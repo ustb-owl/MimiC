@@ -2,8 +2,8 @@
 
 #include <cmath>
 
-#include "opt/passes/helper/cast.h"
-#include "opt/passes/helper/blkiter.h"
+#include "opt/helper/cast.h"
+#include "opt/helper/blkiter.h"
 
 #include "xstl/guard.h"
 
