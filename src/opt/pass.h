@@ -27,7 +27,11 @@ class PassBase {
   // run on basic blocks, return true if there is modification
   virtual bool RunOnBlock(const mid::BlockPtr &block) = 0;
 
+  // initialize the state of pass before running
+  // when a pass is scheduled to run, it will only be initialized once
+  virtual void Initialize() {}
   // perform some necessary cleanup operations after pass runs
+  // this method will be called every time after pass runs on a function/bb
   virtual void CleanUp() {}
 
   // visitor methods for running on SSA IRs
