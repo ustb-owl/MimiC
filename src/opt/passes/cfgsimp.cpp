@@ -96,7 +96,7 @@ class CFGSimplifyPass : public FunctionPass {
  public:
   CFGSimplifyPass() {}
 
-  bool RunOnFunction(const UserPtr &func) override {
+  bool RunOnFunction(const FuncPtr &func) override {
     changed_ = false;
     // traverse all basic blocks except entry
     for (std::size_t i = 1; i < func->size(); ++i) {
@@ -167,5 +167,6 @@ class CFGSimplifyPass : public FunctionPass {
 }  // namespace
 
 // register current passs
-REGISTER_PASS(CFGSimplifyPass, cfg_simplify, 1,
-              PassStage::PreOpt | PassStage::Opt | PassStage::PostOpt);
+REGISTER_PASS(CFGSimplifyPass, cfg_simplify)
+    .set_min_opt_level(1)
+    .set_stages(PassStage::PreOpt | PassStage::Opt | PassStage::PostOpt);

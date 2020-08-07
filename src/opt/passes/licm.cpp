@@ -22,7 +22,7 @@ class LoopInvariantCodeMotionPass : public FunctionPass {
  public:
   LoopInvariantCodeMotionPass() {}
 
-  bool RunOnFunction(const UserPtr &func) override {
+  bool RunOnFunction(const FuncPtr &func) override {
     auto func_ptr = SSACast<FunctionSSA>(func.get());
     if (func_ptr->is_decl()) return false;
     // run on loops
@@ -84,7 +84,9 @@ class LoopInvariantCodeMotionPass : public FunctionPass {
 }  // namespace
 
 // register current pass
-REGISTER_PASS(LoopInvariantCodeMotionPass, licm, 2, PassStage::Opt);
+REGISTER_PASS(LoopInvariantCodeMotionPass, licm)
+    .set_min_opt_level(2)
+    .set_stages(PassStage::Opt);
 
 
 // check if value is an invariant

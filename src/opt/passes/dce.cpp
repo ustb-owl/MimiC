@@ -14,7 +14,7 @@ class DeadCodeEliminationPass : public FunctionPass {
  public:
   DeadCodeEliminationPass() {}
 
-  bool RunOnFunction(const UserPtr &func) override {
+  bool RunOnFunction(const FuncPtr &func) override {
     changed_ = false;
     // traverse all basic blocks
     for (const auto &i : *func) {
@@ -81,5 +81,6 @@ class DeadCodeEliminationPass : public FunctionPass {
 }  // namespace
 
 // register current pass
-REGISTER_PASS(DeadCodeEliminationPass, dead_code_elim, 0,
-              PassStage::PreOpt | PassStage::Opt | PassStage::PostOpt);
+REGISTER_PASS(DeadCodeEliminationPass, dead_code_elim)
+    .set_min_opt_level(0)
+    .set_stages(PassStage::PreOpt | PassStage::Opt | PassStage::PostOpt);

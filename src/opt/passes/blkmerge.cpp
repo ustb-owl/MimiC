@@ -26,7 +26,7 @@ class BlockMergePass : public FunctionPass {
  public:
   BlockMergePass() {}
 
-  bool RunOnFunction(const UserPtr &func) override {
+  bool RunOnFunction(const FuncPtr &func) override {
     SSAPtr entry;
     changed_ = false;
     // traverse all basic blocks
@@ -90,5 +90,6 @@ class BlockMergePass : public FunctionPass {
 }  // namespace
 
 // register current passs
-REGISTER_PASS(BlockMergePass, blk_merge, 1,
-              PassStage::PreOpt | PassStage::Opt | PassStage::PostOpt);
+REGISTER_PASS(BlockMergePass, blk_merge)
+    .set_min_opt_level(1)
+    .set_stages(PassStage::PreOpt | PassStage::Opt | PassStage::PostOpt);

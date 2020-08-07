@@ -34,9 +34,6 @@ constexpr std::size_t kInLoopFuncBlockCountThreshold = 3;
 constexpr std::size_t kInLoopFuncInstCountThreshold = 1 << 7;
 
 
-// pointer to function
-using FuncPtr = std::shared_ptr<FunctionSSA>;
-
 // helper class for block splitting
 class BlockSplitterHelperPass : public HelperPass {
  public:
@@ -171,7 +168,7 @@ class FunctionInliningPass : public FunctionPass {
  public:
   FunctionInliningPass() {}
 
-  bool RunOnFunction(const UserPtr &func) override {
+  bool RunOnFunction(const FuncPtr &func) override {
     auto func_ptr = SSACast<FunctionSSA>(func);
     if (func_ptr->is_decl()) return false;
     // update information of in-loop calls
@@ -227,7 +224,9 @@ class FunctionInliningPass : public FunctionPass {
 }  // namespace
 
 // register current pass
-REGISTER_PASS(FunctionInliningPass, inliner, 2, PassStage::Opt);
+REGISTER_PASS(FunctionInliningPass, inliner)
+    .set_min_opt_level(2)
+    .set_stages(PassStage::Opt);
 
 
 // regather & update information of the specific function

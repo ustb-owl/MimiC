@@ -118,4 +118,6 @@ class GlobalOptPass : public ModulePass {
 }  // namespace
 
 // register current pass
-REGISTER_PASS(GlobalOptPass, global_opt, 2, PassStage::Opt);
+REGISTER_PASS(GlobalOptPass, global_opt)
+    .set_min_opt_level(2)
+    .set_stages(PassStage::Opt);

@@ -72,4 +72,6 @@ class PhiSimplifyPass : public BlockPass {
 }  // namespace
 
 // register current pass
-REGISTER_PASS(PhiSimplifyPass, phi_simp, 1, PassStage::Promote);
+REGISTER_PASS(PhiSimplifyPass, phi_simp)
+    .set_min_opt_level(1)
+    .set_stages(PassStage::Promote);

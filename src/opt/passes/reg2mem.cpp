@@ -186,7 +186,7 @@ class RegToMemPass : public FunctionPass {
  public:
   RegToMemPass() {}
 
-  bool RunOnFunction(const UserPtr &func) override {
+  bool RunOnFunction(const FuncPtr &func) override {
     // skip declarations
     if (func->empty()) return false;
     // find target instructions
@@ -224,7 +224,9 @@ class RegToMemPass : public FunctionPass {
 }  // namespace
 
 // register current pass
-REGISTER_PASS(RegToMemPass, reg2mem, 1, PassStage::Demote);
+REGISTER_PASS(RegToMemPass, reg2mem)
+    .set_min_opt_level(1)
+    .set_stages(PassStage::Demote);
 
 
 // get iterator of instruction list of the specific instruction

@@ -108,7 +108,7 @@ class SparseCondConstPropagationPass : public FunctionPass {
  public:
   SparseCondConstPropagationPass() {}
 
-  bool RunOnFunction(const UserPtr &func) override {
+  bool RunOnFunction(const FuncPtr &func) override {
     auto func_ptr = SSACast<FunctionSSA>(func.get());
     if (func_ptr->is_decl()) return false;
     // scan for parent info
@@ -310,7 +310,9 @@ class SparseCondConstPropagationPass : public FunctionPass {
 }  // namespace
 
 // register current pass
-REGISTER_PASS(SparseCondConstPropagationPass, sccp, 1, PassStage::Opt);
+REGISTER_PASS(SparseCondConstPropagationPass, sccp)
+    .set_min_opt_level(1)
+    .set_stages(PassStage::Opt);
 
 
 /*

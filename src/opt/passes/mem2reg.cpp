@@ -65,7 +65,7 @@ class MemToRegPass : public FunctionPass {
  public:
   MemToRegPass() {}
 
-  bool RunOnFunction(const UserPtr &func) override {
+  bool RunOnFunction(const FuncPtr &func) override {
     // check if need to run
     if (func->empty()) return false;
     auto entry = SSACast<BlockSSA>((*func)[0].value().get());
@@ -172,7 +172,9 @@ class MemToRegPass : public FunctionPass {
 }  // namespace
 
 // register current pass
-REGISTER_PASS(MemToRegPass, mem2reg, 1, PassStage::Promote);
+REGISTER_PASS(MemToRegPass, mem2reg)
+    .set_min_opt_level(1)
+    .set_stages(PassStage::Promote);
 
 
 // create an empty phi node, use alloca's type & logger

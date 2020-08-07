@@ -138,7 +138,7 @@ class GlobalValueNumberingPass : public FunctionPass {
  public:
   GlobalValueNumberingPass() {}
 
-  bool RunOnFunction(const UserPtr &func) override {
+  bool RunOnFunction(const FuncPtr &func) override {
     auto func_ptr = SSACast<FunctionSSA>(func.get());
     if (func_ptr->is_decl()) return false;
     changed_ = false;
@@ -235,7 +235,9 @@ class GlobalValueNumberingPass : public FunctionPass {
 }  // namespace
 
 // register current pass
-REGISTER_PASS(GlobalValueNumberingPass, gvn, 2, PassStage::Opt);
+REGISTER_PASS(GlobalValueNumberingPass, gvn)
+    .set_min_opt_level(2)
+    .set_stages(PassStage::Opt);
 
 
 /*

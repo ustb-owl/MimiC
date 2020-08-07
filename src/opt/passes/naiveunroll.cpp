@@ -336,7 +336,7 @@ class NaiveLoopUnrollingPass : public FunctionPass {
  public:
   NaiveLoopUnrollingPass() {}
 
-  bool RunOnFunction(const UserPtr &func) override {
+  bool RunOnFunction(const FuncPtr &func) override {
     // get pointer to current function
     auto func_ptr = SSACast<FunctionSSA>(func.get());
     if (func_ptr->is_decl()) return false;
@@ -359,7 +359,9 @@ class NaiveLoopUnrollingPass : public FunctionPass {
 }  // namespace
 
 // register current pass
-REGISTER_PASS(NaiveLoopUnrollingPass, naive_unroll, 2, PassStage::Opt);
+REGISTER_PASS(NaiveLoopUnrollingPass, naive_unroll)
+    .set_min_opt_level(2)
+    .set_stages(PassStage::Opt);
 
 
 // check if the specific loop can be unrolled
