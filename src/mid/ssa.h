@@ -19,10 +19,12 @@ namespace mimic::mid {
 
 // forward declarations
 class BlockSSA;
+class FunctionSSA;
 class GlobalVarSSA;
 
 // type aliases
 using BlockPtr = std::shared_ptr<BlockSSA>;
+using FuncPtr = std::shared_ptr<FunctionSSA>;
 using GlobalVarPtr = std::shared_ptr<GlobalVarSSA>;
 
 // linkage types
