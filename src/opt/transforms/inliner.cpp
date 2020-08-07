@@ -9,7 +9,7 @@
 #include "opt/passman.h"
 #include "opt/helper/cast.h"
 #include "opt/helper/ircopier.h"
-#include "opt/helper/loop.h"
+#include "opt/analysis/loopinfo.h"
 #include "mid/module.h"
 
 using namespace mimic::mid;
@@ -227,7 +227,9 @@ class FunctionInliningPass : public FunctionPass {
 // register current pass
 REGISTER_PASS(FunctionInliningPass, inliner)
     .set_min_opt_level(2)
-    .set_stages(PassStage::Opt);
+    .set_stages(PassStage::Opt)
+    .Requires("loop_info")
+    .Invalidates("dom_info");
 
 
 // regather & update information of the specific function
@@ -269,10 +271,11 @@ void FunctionInliningPass::UpdateInLoopInfo(FunctionSSA *func) {
   auto [it, succ] = in_loop_calls_.insert({func, {}});
   if (!succ) return;
   // detect all loops in function
-  LoopDetector ld(func);
+  const auto &li = PassManager::GetPass<LoopInfoPass>("loop_info");
+  const auto &loops = li.GetLoopInfo(func);
   // find out all call instructions in loop
   std::unordered_set<BlockSSA *> visited;
-  for (const auto &loop : ld.loops()) {
+  for (const auto &loop : loops) {
     for (const auto &block : loop.body) {
       if (!visited.insert(block).second) continue;
       for (const auto &inst : block->insts()) {
