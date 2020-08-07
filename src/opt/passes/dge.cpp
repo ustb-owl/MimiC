@@ -77,5 +77,6 @@ class DeadGlobalValEliminationPass : public ModulePass {
 }  // namespace
 
 // register current pass
-REGISTER_PASS(DeadGlobalValEliminationPass, dead_glob_elim, 0,
-              PassStage::PreOpt | PassStage::Opt);
+REGISTER_PASS(DeadGlobalValEliminationPass, dead_glob_elim)
+    .set_min_opt_level(0)
+    .set_stages(PassStage::PreOpt | PassStage::Opt);

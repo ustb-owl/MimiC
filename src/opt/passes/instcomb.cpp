@@ -27,7 +27,7 @@ class InstCombinePass : public FunctionPass {
  public:
   InstCombinePass() {}
 
-  bool RunOnFunction(const UserPtr &func) override;
+  bool RunOnFunction(const FuncPtr &func) override;
 
   void RunOn(AccessSSA &ssa) override;
   void RunOn(BinarySSA &ssa) override;
@@ -532,7 +532,9 @@ struct FoldCmpLogical {
 }  // namespace
 
 // register current pass
-REGISTER_PASS(InstCombinePass, inst_comb, 1, PassStage::Opt);
+REGISTER_PASS(InstCombinePass, inst_comb)
+    .set_min_opt_level(1)
+    .set_stages(PassStage::Opt);
 
 
 // This performs a few simplifications for commutative
@@ -1445,7 +1447,7 @@ void InstCombinePass::RunOn(SelectSSA &ssa) {
   result_ = nullptr;
 }
 
-bool InstCombinePass::RunOnFunction(const UserPtr &func) {
+bool InstCombinePass::RunOnFunction(const FuncPtr &func) {
   bool changed = false;
   // insert all instructions to worklist
   for (const auto &i : *func) {

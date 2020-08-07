@@ -120,5 +120,6 @@ class BranchSimplifyPass : public BlockPass {
 }  // namespace
 
 // register current pass
-REGISTER_PASS(BranchSimplifyPass, branch_simp, 1,
-              PassStage::PreOpt | PassStage::Opt | PassStage::PostOpt);
+REGISTER_PASS(BranchSimplifyPass, branch_simp)
+    .set_min_opt_level(1)
+    .set_stages(PassStage::PreOpt | PassStage::Opt | PassStage::PostOpt);

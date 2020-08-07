@@ -104,4 +104,6 @@ class DirtyConversionPass : public ModulePass {
 
 }  // namespace
 
-REGISTER_PASS(DirtyConversionPass, dirty_conv, 0, PassStage::PreOpt);
+REGISTER_PASS(DirtyConversionPass, dirty_conv)
+    .set_min_opt_level(0)
+    .set_stages(PassStage::PreOpt);

@@ -73,7 +73,7 @@ class MemLVNPass : public FunctionPass {
  public:
   MemLVNPass() {}
 
-  bool RunOnFunction(const UserPtr &func) override {
+  bool RunOnFunction(const FuncPtr &func) override {
     if (func->empty()) return false;
     changed_ = false;
     // get all trivial allocas
@@ -139,4 +139,6 @@ class MemLVNPass : public FunctionPass {
 }  // namespace
 
 // register current pass
-REGISTER_PASS(MemLVNPass, mem_lvn, 1, PassStage::PostOpt);
+REGISTER_PASS(MemLVNPass, mem_lvn)
+    .set_min_opt_level(1)
+    .set_stages(PassStage::PostOpt);

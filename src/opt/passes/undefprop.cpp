@@ -38,4 +38,6 @@ class UndefPropagationPass : public BlockPass {
 }  // namespace
 
 // register current pass
-REGISTER_PASS(UndefPropagationPass, undef_prop, 1, PassStage::Opt);
+REGISTER_PASS(UndefPropagationPass, undef_prop)
+    .set_min_opt_level(1)
+    .set_stages(PassStage::Opt);
