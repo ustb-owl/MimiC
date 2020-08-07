@@ -41,9 +41,11 @@ class LoopInvariantCodeMotionPass : public FunctionPass {
       cur_loop_ = &info;
       if (ProcessLoop()) changed = true;
     }
-    // clean up
-    invs_.clear();
     return changed;
+  }
+
+  void CleanUp() override {
+    invs_.clear();
   }
 
   void RunOn(AccessSSA &ssa) override { LogInvariant(ssa); }

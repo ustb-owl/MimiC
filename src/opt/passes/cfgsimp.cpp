@@ -112,9 +112,11 @@ class CFGSimplifyPass : public FunctionPass {
     }
     // remove all marked blocks
     if (changed_) func->RemoveValue(nullptr);
-    // release value in 'target'
-    target_ = nullptr;
     return changed_;
+  }
+
+  void CleanUp() override {
+    target_ = nullptr;
   }
 
   void RunOn(BlockSSA &ssa) override {
