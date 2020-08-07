@@ -109,23 +109,22 @@ class SparseCondConstPropagationPass : public FunctionPass {
   SparseCondConstPropagationPass() {}
 
   bool RunOnFunction(const FuncPtr &func) override {
-    auto func_ptr = SSACast<FunctionSSA>(func.get());
-    if (func_ptr->is_decl()) return false;
+    if (func->is_decl()) return false;
     // scan for parent info
     ParentScanner parent(func);
     parent_ = &parent;
     // mark entry block as executable
-    auto entry = SSACast<BlockSSA>(func_ptr->entry().get());
+    auto entry = SSACast<BlockSSA>(func->entry().get());
     MarkBlockExecutable(entry);
     // mark all arguments as overdefined
-    for (const auto &i : func_ptr->args()) {
+    for (const auto &i : func->args()) {
       MarkOverdefined(i.get());
     }
     // solve for constants
     bool resoved_undefs = true;
     while (resoved_undefs) {
-      Solve(func_ptr);
-      resoved_undefs = ResolvedUndefsIn(func_ptr);
+      Solve(func.get());
+      resoved_undefs = ResolvedUndefsIn(func.get());
     }
     // traverse all blocks & apply changes
     bool changed = false;

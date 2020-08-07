@@ -77,7 +77,7 @@ class MemLVNPass : public FunctionPass {
     if (func->empty()) return false;
     changed_ = false;
     // get all trivial allocas
-    auto entry = SSACast<BlockSSA>((*func)[0].value().get());
+    auto entry = SSACast<BlockSSA>(func->entry().get());
     if (!helper_.ScanAlloca(entry)) return false;
     // traverse all blocks
     for (const auto &i : *func) i.value()->RunPass(*this);
