@@ -10,33 +10,27 @@ namespace {
   dead code elimination
   this pass will remove unused instructions
 */
-class DeadCodeEliminationPass : public FunctionPass {
+class DeadCodeEliminationPass : public BlockPass {
  public:
   DeadCodeEliminationPass() {}
 
-  bool RunOnFunction(const FuncPtr &func) override {
-    changed_ = false;
-    // traverse all basic blocks
-    for (const auto &i : *func) {
-      i.value()->RunPass(*this);
-    }
-    return changed_;
-  }
-
-  void RunOn(BlockSSA &ssa) override {
+  bool RunOnBlock(const BlockPtr &block) override {
+    bool changed = false;
     // traverse all instructions
-    for (auto it = ssa.insts().begin(); it != ssa.insts().end();) {
+    auto &insts = block->insts();
+    for (auto it = insts.begin(); it != insts.end();) {
       remove_flag_ = false;
       (*it)->RunPass(*this);
       // check if need to be removed
       if (remove_flag_) {
-        it = ssa.insts().erase(it);
-        changed_ = true;
+        it = insts.erase(it);
+        changed = true;
       }
       else {
         ++it;
       }
     }
+    return changed;
   }
 
   void RunOn(LoadSSA &ssa) override {
@@ -75,7 +69,7 @@ class DeadCodeEliminationPass : public FunctionPass {
   }
 
  private:
-  bool changed_, remove_flag_;
+  bool remove_flag_;
 };
 
 }  // namespace
