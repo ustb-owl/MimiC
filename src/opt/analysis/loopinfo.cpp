@@ -5,6 +5,7 @@
 
 #include "opt/passman.h"
 #include "opt/helper/cast.h"
+#include "opt/analysis/dominance.h"
 #include "mid/module.h"
 
 using namespace mimic::mid;
@@ -21,11 +22,12 @@ void LoopInfoPass::ScanOn(const FuncPtr &func) {
   for (const auto &i : *func) {
     auto block = SSACast<BlockSSA>(i.value().get());
     // skip dead blocks
-    if (dom_->IsDeadBlock(block)) continue;
+    const auto &dom = PassManager::GetPass<DominanceInfoPass>("dom_info");
+    if (dom.IsDeadBlock(block)) continue;
     // check all incoming edges (pred -> block)
     for (const auto &p : *block) {
       auto pred = SSACast<BlockSSA>(p.value().get());
-      if (!dom_->IsDeadBlock(pred) && dom_->IsDominate(block, pred)) {
+      if (!dom.IsDeadBlock(pred) && dom.IsDominate(block, pred)) {
         // back edge found
         ScanNaturalLoop(func, pred, block);
       }
@@ -78,6 +80,5 @@ bool LoopInfoPass::RunOnFunction(const FuncPtr &func) {
 }
 
 void LoopInfoPass::Initialize() {
-  dom_ = &PassManager::GetPass<DominanceInfoPass>("dom_info");
   loops_.clear();
 }
