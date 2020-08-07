@@ -1,9 +1,9 @@
-#include "opt/passes/helper/const.h"
+#include "opt/helper/const.h"
 
 #include <cassert>
 
 #include "mid/module.h"
-#include "opt/passes/helper/cast.h"
+#include "opt/helper/cast.h"
 
 using namespace mimic::mid;
 using namespace mimic::define;

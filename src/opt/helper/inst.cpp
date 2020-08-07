@@ -1,8 +1,8 @@
-#include "opt/passes/helper/inst.h"
+#include "opt/helper/inst.h"
 
 #include <cassert>
 
-#include "opt/passes/helper/cast.h"
+#include "opt/helper/cast.h"
 
 using namespace mimic::mid;
 using namespace mimic::opt;

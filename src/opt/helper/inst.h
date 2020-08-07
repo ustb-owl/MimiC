@@ -4,7 +4,7 @@
 #include <unordered_map>
 
 #include "opt/pass.h"
-#include "opt/passes/helper/cast.h"
+#include "opt/helper/cast.h"
 
 namespace mimic::opt {
 namespace __impl {

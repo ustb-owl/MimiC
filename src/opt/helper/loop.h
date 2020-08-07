@@ -5,7 +5,7 @@
 #include <list>
 
 #include "opt/pass.h"
-#include "opt/passes/helper/dom.h"
+#include "opt/helper/dom.h"
 
 namespace mimic::opt {
 
