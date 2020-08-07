@@ -20,7 +20,7 @@ class PassBase {
   // return true if is function pass
   virtual bool IsFunctionPass() const = 0;
   // run on functions, return true if there is modification
-  virtual bool RunOnFunction(const mid::UserPtr &func) = 0;
+  virtual bool RunOnFunction(const mid::FuncPtr &func) = 0;
 
   // return true if is block pass
   virtual bool IsBlockPass() const = 0;
@@ -52,6 +52,9 @@ class PassBase {
   virtual void RunOn(mid::PhiSSA &ssa) {}
   virtual void RunOn(mid::SelectSSA &ssa) {}
   virtual void RunOn(mid::UndefSSA &ssa) {}
+
+  // perform some necessary cleanup operations after pass runs
+  virtual void CleanUp() {}
 };
 
 // pointer of pass
@@ -64,7 +67,7 @@ class ModulePass : public PassBase {
   bool IsFunctionPass() const override final { return false; }
   bool IsBlockPass() const override final { return false; }
 
-  bool RunOnFunction(const mid::UserPtr &funcs) override final {
+  bool RunOnFunction(const mid::FuncPtr &funcs) override final {
     return false;
   }
   bool RunOnBlock(const mid::BlockPtr &block) override final {
@@ -97,7 +100,7 @@ class BlockPass : public PassBase {
   bool RunOnModule(mid::UserPtrList &global_vals) override final {
     return false;
   }
-  bool RunOnFunction(const mid::UserPtr &func) override final {
+  bool RunOnFunction(const mid::FuncPtr &func) override final {
     return false;
   }
 };
@@ -112,7 +115,7 @@ class HelperPass : public PassBase {
   bool RunOnModule(mid::UserPtrList &global_vals) override final {
     return false;
   }
-  bool RunOnFunction(const mid::UserPtr &func) override final {
+  bool RunOnFunction(const mid::FuncPtr &func) override final {
     return false;
   }
   bool RunOnBlock(const mid::BlockPtr &block) override final {
