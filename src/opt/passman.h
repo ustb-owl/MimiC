@@ -19,7 +19,7 @@ namespace mimic::opt {
 // pass information
 class PassInfo {
  public:
-  using PassNameList = std::vector<std::string_view>;
+  using PassNameSet = std::unordered_set<std::string_view>;
 
   PassInfo(PassPtr pass)
       : pass_(std::move(pass)), is_analysis_(false),
@@ -27,17 +27,11 @@ class PassInfo {
 
   // add required pass by name for current pass
   // all required passes should be run before running current pass
-  PassInfo &Requires(std::string_view pass_name) {
-    required_passes_.push_back(pass_name);
-    return *this;
-  }
+  PassInfo &Requires(std::string_view pass_name);
 
   // add invalidated pass by name for current pass
   // all invalidated passes should be run again after running current pass
-  PassInfo &Invalidates(std::string_view pass_name) {
-    invalidated_passes_.push_back(pass_name);
-    return *this;
-  }
+  PassInfo &Invalidates(std::string_view pass_name);
 
   // setters
   // set if current pass is an analysis pass
@@ -61,8 +55,8 @@ class PassInfo {
   bool is_analysis() const { return is_analysis_; }
   std::size_t min_opt_level() const { return min_opt_level_; }
   PassStage stages() const { return stages_; }
-  const PassNameList &required_passes() const { return required_passes_; }
-  const PassNameList &invalidated_passes() const {
+  const PassNameSet &required_passes() const { return required_passes_; }
+  const PassNameSet &invalidated_passes() const {
     return invalidated_passes_;
   }
 
@@ -71,7 +65,7 @@ class PassInfo {
   bool is_analysis_;
   std::size_t min_opt_level_;
   PassStage stages_;
-  PassNameList required_passes_, invalidated_passes_;
+  PassNameSet required_passes_, invalidated_passes_;
 };
 
 // pass manager for all SSA IR passes
@@ -88,6 +82,11 @@ class PassManager {
     assert(!passes.count(name) && "pass has already been registered");
     return passes.insert({name, PassInfo(std::make_unique<T>())})
         .first->second;
+  }
+
+  // update 'required by' relationship
+  static void RequiredBy(std::string_view parent, const PassInfo *child) {
+    GetRequiredBy()[parent].insert(child);
   }
 
   // get pass by name
@@ -116,21 +115,25 @@ class PassManager {
 
  private:
   using PassInfoMap = std::unordered_map<std::string_view, PassInfo>;
-  using PassInfoPair = std::pair<std::string_view, const PassInfo *>;
-  using PassInfoList = std::vector<PassInfoPair>;
-  using PassNameSet = std::unordered_set<std::string_view>;
+  using PassPtrList = std::vector<const PassInfo *>;
+  using PassPtrSet = std::unordered_set<const PassInfo *>;
+  using RequirementMap = std::unordered_map<std::string_view, PassPtrSet>;
 
   // get pass info list
   static PassInfoMap &GetPasses();
+  // get requirement list
+  static RequirementMap &GetRequiredBy();
   // get passes in specific stage
-  PassInfoList GetPasses(PassStage stage) const;
+  PassPtrList GetPasses(PassStage stage) const;
   // run a specific pass, returns true if changed
   bool RunPass(const PassPtr &pass) const;
   // run a specific pass if it's not valid
   // returns true if changed
-  bool RunPass(PassNameSet &valid, const PassInfoPair &info) const;
+  bool RunPass(PassPtrSet &valid, const PassInfo *info) const;
+  // invalidate the specific pass
+  void InvalidatePass(PassPtrSet &valid, const PassInfo *info) const;
   // run all passes in specific list
-  void RunPasses(const PassInfoList &passes) const;
+  void RunPasses(const PassPtrList &passes) const;
 
   std::size_t opt_level_;
   PassStage stage_;
