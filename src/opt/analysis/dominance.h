@@ -1,5 +1,5 @@
-#ifndef MIMIC_OPT_PASSES_ANALYSIS_DOMINANCE_H_
-#define MIMIC_OPT_PASSES_ANALYSIS_DOMINANCE_H_
+#ifndef MIMIC_OPT_ANALYSIS_DOMINANCE_H_
+#define MIMIC_OPT_ANALYSIS_DOMINANCE_H_
 
 #include <unordered_map>
 #include <cstddef>
@@ -43,4 +43,4 @@ class DominanceInfoPass : public FunctionPass {
 
 }  // namespace mimic::opt
 
-#endif  // MIMIC_OPT_PASSES_ANALYSIS_DOMINANCE_H_
+#endif  // MIMIC_OPT_ANALYSIS_DOMINANCE_H_

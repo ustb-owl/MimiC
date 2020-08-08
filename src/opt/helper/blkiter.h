@@ -1,5 +1,5 @@
-#ifndef MIMIC_OPT_PASSES_HELPER_BLKITER_H_
-#define MIMIC_OPT_PASSES_HELPER_BLKITER_H_
+#ifndef MIMIC_OPT_HELPER_BLKITER_H_
+#define MIMIC_OPT_HELPER_BLKITER_H_
 
 #include <cassert>
 #include <queue>
@@ -107,4 +107,4 @@ inline __impl::RPOTraverseHelperPass RPOTraverse(
 
 }  // namespace mimic::opt
 
-#endif  // MIMIC_OPT_PASSES_HELPER_BLKITER_H_
+#endif  // MIMIC_OPT_HELPER_BLKITER_H_

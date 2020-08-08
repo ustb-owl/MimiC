@@ -1,5 +1,5 @@
-#ifndef MIMIC_OPT_PASSES_ANALYSIS_LOOPINFO_H_
-#define MIMIC_OPT_PASSES_ANALYSIS_LOOPINFO_H_
+#ifndef MIMIC_OPT_ANALYSIS_LOOPINFO_H_
+#define MIMIC_OPT_ANALYSIS_LOOPINFO_H_
 
 #include <unordered_set>
 #include <unordered_map>
@@ -53,4 +53,4 @@ class LoopInfoPass : public FunctionPass {
 
 }  // namespace mimic::opt
 
-#endif  // MIMIC_OPT_PASSES_ANALYSIS_LOOPINFO_H_
+#endif  // MIMIC_OPT_ANALYSIS_LOOPINFO_H_

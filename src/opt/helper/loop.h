@@ -1,5 +1,5 @@
-#ifndef MIMIC_OPT_PASSES_HELPER_LOOP_H_
-#define MIMIC_OPT_PASSES_HELPER_LOOP_H_
+#ifndef MIMIC_OPT_HELPER_LOOP_H_
+#define MIMIC_OPT_HELPER_LOOP_H_
 
 #include "opt/pass.h"
 #include "opt/analysis/loopinfo.h"
@@ -25,4 +25,4 @@ class PreheaderCreator : public HelperPass {
 
 }  // namespace mimic::opt
 
-#endif  // MIMIC_OPT_PASSES_HELPER_LOOP_H_
+#endif  // MIMIC_OPT_HELPER_LOOP_H_

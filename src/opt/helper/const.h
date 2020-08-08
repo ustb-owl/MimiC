@@ -1,5 +1,5 @@
-#ifndef MIMIC_OPT_PASSES_HELPER_CONST_H_
-#define MIMIC_OPT_PASSES_HELPER_CONST_H_
+#ifndef MIMIC_OPT_HELPER_CONST_H_
+#define MIMIC_OPT_HELPER_CONST_H_
 
 #include <memory>
 
@@ -44,4 +44,4 @@ class ConstantHelper {
 
 }  // namespace mimic::opt
 
-#endif  // MIMIC_OPT_PASSES_HELPER_CONST_H_
+#endif  // MIMIC_OPT_HELPER_CONST_H_
