@@ -59,6 +59,19 @@ void LoopInfoPass::ScanNaturalLoop(LoopInfoList &loops, BlockSSA *be_tail,
       }
     }
   }
+  // scan for preheader
+  if (info.entry->size() == 2) {
+    if ((*info.entry)[0].value().get() == info.tail) {
+      info.preheader = SSACast<BlockSSA>((*info.entry)[1].value().get());
+    }
+    else {
+      assert((*info.entry)[1].value().get() == info.tail);
+      info.preheader = SSACast<BlockSSA>((*info.entry)[0].value().get());
+    }
+  }
+  else {
+    info.preheader = nullptr;
+  }
   // scan for exit blocks
   for (const auto &i : info.body) {
     assert(!i->insts().empty());
