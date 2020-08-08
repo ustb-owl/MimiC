@@ -49,7 +49,7 @@ class DeadGlobalValEliminationPass : public ModulePass {
         for (const auto &block : ssa) {
           auto block_ptr = SSACast<BlockSSA>(block.value().get());
           block_ptr->Clear();
-          block_ptr->insts().clear();
+          block_ptr->ClearInst();
         }
         ssa.Clear();
       }
