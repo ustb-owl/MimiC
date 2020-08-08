@@ -105,18 +105,29 @@ class LoopUnrollerHelperPass : public IRCopier {
       }
       else {
         // unroll completed, stop copying
-        ReroutePhiNodes(last_entry != nullptr);
-        // remove blocks of the original loop from parent
-        assert(!loop_.entry->uses().empty());
+        ReroutePhiNodes();
         // prevent loop entry from released
+        assert(!loop_.entry->uses().empty());
         auto loop_entry = loop_.entry->uses().front()->value();
+        // remove blocks of the original loop from parent
         auto parent = loop_.entry->parent();
         for (const auto &block : loop_.body) {
-          block->insts().clear();
+          block->ClearInst();
           if (block != loop_.entry) block->Clear();
           parent->RemoveValue(block);
         }
+        // update exit block's predecessors
         ui_.exit_block->RemoveValue(loop_.entry);
+        for (const auto &i : ui_.exit_block->insts()) {
+          if (auto phi = SSADynCast<PhiSSA>(i.get())) {
+            for (const auto &opr : *phi) {
+              auto opr_ptr = SSACast<PhiOperandSSA>(opr.value().get());
+              if (opr_ptr->block().get() == loop_.entry) {
+                opr_ptr->set_block(entry);
+              }
+            }
+          }
+        }
         // add all copied blocks to parent function
         for (const auto &b : copied_blocks_) {
           parent->AddValue(b);
@@ -294,7 +305,7 @@ class LoopUnrollerHelperPass : public IRCopier {
   }
 
   // reroute all uses of phi nodes in entry block after unrolling
-  void ReroutePhiNodes(bool unrolled) {
+  void ReroutePhiNodes() {
     for (const auto &i : loop_.entry->insts()) {
       if (IsSSA<PhiSSA>(i.get())) {
         auto val = FindCopiedValue(i.get());
