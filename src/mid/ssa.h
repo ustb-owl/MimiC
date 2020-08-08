@@ -394,6 +394,8 @@ class BlockSSA : public User {
 
   // add a new instruction
   void AddInst(const SSAPtr &inst) { insts_.push_back(inst); }
+  // clear all instructions
+  void ClearInst();
 
   // setters
   void set_parent(const UserPtr &parent) { parent_ = parent; }
