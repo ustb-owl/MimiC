@@ -1,5 +1,5 @@
-#ifndef MIMIC_OPT_PASSES_HELPER_UTILS_H_
-#define MIMIC_OPT_PASSES_HELPER_UTILS_H_
+#ifndef MIMIC_OPT_HELPER_UTILS_H_
+#define MIMIC_OPT_HELPER_UTILS_H_
 
 #include <type_traits>
 #include <memory>
@@ -119,4 +119,4 @@ inline std::shared_ptr<T> SSACast(const mid::SSAPtr &ssa) {
 
 }  // namespace mimic::opt
 
-#endif  // MIMIC_OPT_PASSES_HELPER_UTILS_H_
+#endif  // MIMIC_OPT_HELPER_UTILS_H_

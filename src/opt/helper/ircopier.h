@@ -1,5 +1,5 @@
-#ifndef MIMIC_OPT_PASSES_HELPER_IRCOPIER_H_
-#define MIMIC_OPT_PASSES_HELPER_IRCOPIER_H_
+#ifndef MIMIC_OPT_HELPER_IRCOPIER_H_
+#define MIMIC_OPT_HELPER_IRCOPIER_H_
 
 #include <memory>
 #include <utility>
@@ -124,4 +124,4 @@ class IRCopier : public HelperPass {
 
 }  // namespace mimic::opt
 
-#endif  // MIMIC_OPT_PASSES_HELPER_IRCOPIER_H_
+#endif  // MIMIC_OPT_HELPER_IRCOPIER_H_

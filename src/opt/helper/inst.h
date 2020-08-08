@@ -1,5 +1,5 @@
-#ifndef MIMIC_OPT_PASSES_HELPER_INST_H_
-#define MIMIC_OPT_PASSES_HELPER_INST_H_
+#ifndef MIMIC_OPT_HELPER_INST_H_
+#define MIMIC_OPT_HELPER_INST_H_
 
 #include <unordered_map>
 
@@ -110,4 +110,4 @@ inline mid::UserPtr InstCast(const mid::SSAPtr &ssa) {
 
 }  // namespace mimic::opt
 
-#endif  // MIMIC_OPT_PASSES_HELPER_INST_H_
+#endif  // MIMIC_OPT_HELPER_INST_H_
