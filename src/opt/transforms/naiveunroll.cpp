@@ -64,7 +64,7 @@ class LoopUnrollerHelperPass : public IRCopier {
       if (count > kTripCountThreshold) {
         // clear all blocks
         for (const auto &b : copied_blocks_) {
-          b->insts().clear();
+          b->ClearInst();
           b->Clear();
         }
         return false;
@@ -124,6 +124,7 @@ class LoopUnrollerHelperPass : public IRCopier {
               auto opr_ptr = SSACast<PhiOperandSSA>(opr.value().get());
               if (opr_ptr->block().get() == loop_.entry) {
                 opr_ptr->set_block(entry);
+                break;
               }
             }
           }
