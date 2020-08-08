@@ -130,6 +130,8 @@ class PassManager {
   // run a specific pass if it's not valid
   // returns true if changed
   bool RunPass(PassPtrSet &valid, const PassInfo *info) const;
+  // run required passes
+  bool RunRequiredPasses(PassPtrSet &valid, const PassInfo *info) const;
   // invalidate the specific pass
   void InvalidatePass(PassPtrSet &valid, const PassInfo *info) const;
   // run all passes in specific list
