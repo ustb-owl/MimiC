@@ -178,8 +178,14 @@ void PassManager::ShowInfo(std::ostream &os) const {
   for (const auto &[name, info] : GetPasses()) {
     os << "  ";
     os << std::setw(20) << std::left << name;
-    os << "min_opt_level = " << info.min_opt_level() << ", ";
-    os << "pass_stage = " << info.stages() << std::endl;
+    if (info.is_analysis()) {
+      os << "is_analysis = true";
+    }
+    else {
+      os << "min_opt_level = " << info.min_opt_level() << ", ";
+      os << "pass_stage = " << info.stages();
+    }
+    os << std::endl;
   }
   os << std::endl;
   // show enabled passes
