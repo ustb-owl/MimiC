@@ -106,19 +106,32 @@ bool PassManager::RunPass(PassPtrSet &valid, const PassInfo *info) const {
   bool changed = false;
   if (!valid.insert(info).second) return changed;
   // check dependencies, run required passes first
-  for (const auto &name : info->required_passes()) {
-    const auto &passes = GetPasses();
-    auto it = passes.find(name);
-    assert(it != passes.end());
-    if (!valid.count(&it->second)) {
-      changed |= RunPass(valid, &it->second);
-    }
-  }
+  if (RunRequiredPasses(valid, info)) changed = true;
   // run current pass
   if (RunPass(info->pass())) {
     changed = true;
     // invalidate passes
     InvalidatePass(valid, info);
+  }
+  return changed;
+}
+
+bool PassManager::RunRequiredPasses(PassPtrSet &valid,
+                                    const PassInfo *info) const {
+  bool changed = false, rerun = true;
+  while (rerun) {
+    rerun = false;
+    for (const auto &name : info->required_passes()) {
+      // get pointer of pass
+      const auto &passes = GetPasses();
+      auto it = passes.find(name);
+      assert(it != passes.end());
+      // run if not valid
+      if (!valid.count(&it->second) && RunPass(valid, &it->second)) {
+        changed = true;
+        rerun = !it->second.invalidated_passes().empty();
+      }
+    }
   }
   return changed;
 }
