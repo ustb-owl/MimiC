@@ -15,6 +15,8 @@ struct LoopInfo {
   mid::BlockSSA *entry;
   // tail block (tail of back edge)
   mid::BlockSSA *tail;
+  // preheader block
+  mid::BlockSSA *preheader;
   // all blocks of loop (containing entry and tail)
   std::unordered_set<mid::BlockSSA *> body;
   // exit blocks
