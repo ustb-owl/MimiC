@@ -4,8 +4,6 @@
 #include "opt/helper/inst.h"
 #include "opt/analysis/dominance.h"
 #include "opt/analysis/loopinfo.h"
-#include "opt/helper/loop.h"
-#include "mid/module.h"
 
 #include <unordered_set>
 
@@ -91,7 +89,7 @@ REGISTER_PASS(LoopInvariantCodeMotionPass, licm)
     .set_stages(PassStage::Opt)
     .Requires("dom_info")
     .Requires("loop_info")
-    .Invalidates("dom_info");
+    .Requires("loop_norm");
 
 
 // check if value is an invariant
@@ -191,10 +189,9 @@ bool LoopInvariantCodeMotionPass::ProcessLoop() {
     }
   }
   if (invs_.empty()) return false;
-  // create preheader block
-  PreheaderCreator creator;
-  auto block = creator.CreatePreheader(*cur_loop_);
-  // insert invariant instructions
+  // insert invariant instructions to preheader
+  auto block = cur_loop_->preheader;
+  assert(block);
   auto pos = --block->insts().end();
   block->insts().insert(pos, invs_.begin(), invs_.end());
   // remove invariant instructions from their parent
