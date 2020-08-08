@@ -1,5 +1,6 @@
 #include "mid/ssa.h"
 #include "opt/helper/cast.h"
+#include "opt/helper/inst.h"
 
 #include <streambuf>
 #include <unordered_set>
@@ -391,4 +392,14 @@ bool PhiOperandSSA::IsUndef() const {
   auto ret = val->IsUndef();
   visited_vals.erase(it);
   return ret;
+}
+
+
+void BlockSSA::ClearInst() {
+  for (const auto &i : insts_) {
+    if (auto inst = opt::InstDynCast(i.get())) {
+      inst->Clear();
+    }
+  }
+  insts_.clear();
 }
