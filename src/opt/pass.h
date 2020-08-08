@@ -125,6 +125,9 @@ class HelperPass : public PassBase {
   bool RunOnBlock(const mid::BlockPtr &block) override final {
     return false;
   }
+
+  void Initialize() override final {}
+  void CleanUp() override final {}
 };
 
 }  // namespace mimic::opt
