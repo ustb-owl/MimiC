@@ -110,14 +110,13 @@ class LeaCombiningPass : public PassInterface {
 
   InstIt SimplifyLea(InstPtrList &insts, InstIt pos, AArch32Inst *lea) {
     auto &ptr = lea->oprs()[0], &ofs = lea->oprs()[1];
-    // get offset
-    if (!ofs.value()->IsImm()) return ++pos;
-    auto offset = static_cast<AArch32Imm *>(ofs.value().get())->val();
     // handle label first
+    bool ofs_zero = ofs.value()->IsImm() &&
+                    !static_cast<AArch32Imm *>(ofs.value().get())->val();
     if (ptr.value()->IsLabel()) {
       auto ldr = std::make_shared<AArch32Inst>(OpCode::LDR, lea->dest(),
                                                ptr.value());
-      if (!offset) {
+      if (ofs_zero) {
         // replace with LDR
         *pos = std::move(ldr);
         return ++pos;
@@ -128,9 +127,10 @@ class LeaCombiningPass : public PassInterface {
         ptr.set_value(lea->dest());
       }
     }
-    else if (!offset) {
-      return ++pos;
-    }
+    // get offset
+    if (!ofs.value()->IsImm()) return ++pos;
+    auto offset = static_cast<AArch32Imm *>(ofs.value().get())->val();
+    if (!offset) return ++pos;
     // handle by type
     if (ptr.value()->IsSlot()) {
       auto slot_ptr = static_cast<AArch32Slot *>(ptr.value().get());
