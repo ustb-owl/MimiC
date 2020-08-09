@@ -18,10 +18,10 @@ class LoadStorePropagationPass : public PassInterface {
   LoadStorePropagationPass() {}
 
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
+    Reset();
     // traverse all instructions
     for (auto it = insts.begin(); it != insts.end();) {
       auto inst = static_cast<AArch32Inst *>(it->get());
-      if (inst->IsLabel() || inst->IsCall()) Reset();
       // handle by opcode
       switch (inst->opcode()) {
         case OpCode::LDR: {
@@ -71,8 +71,11 @@ class LoadStorePropagationPass : public PassInterface {
           RemoveDef(GetMemOpr(inst->oprs()[1].value()));
         }
         default: {
-          // invalidate definition
-          if (inst->dest()) {
+          if (inst->IsLabel() || inst->IsCall()) {
+            Reset();
+          }
+          else if (inst->dest()) {
+            // invalidate definition
             RemoveLabelDef(inst->dest());
             RemoveDef(inst->dest());
             RemoveUsedByDef(inst->dest());
