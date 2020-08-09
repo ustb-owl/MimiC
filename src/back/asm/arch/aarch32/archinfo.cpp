@@ -2,6 +2,8 @@
 
 #include "back/asm/arch/aarch32/instgen.h"
 #include "back/asm/arch/aarch32/passes/brelim.h"
+#include "back/asm/arch/aarch32/passes/leacomb.h"
+#include "back/asm/arch/aarch32/passes/leaelim.h"
 #include "back/asm/arch/aarch32/passes/lsprop.h"
 #include "back/asm/mir/passes/movprop.h"
 #include "back/asm/mir/passes/movelim.h"
@@ -31,11 +33,16 @@ class AArch32ArchInfo : public ArchInfoBase {
     PassPtrList list;
     list.push_back(MakePass<BranchEliminationPass>());
     if (opt_level) {
+      list.push_back(MakePass<LeaCombiningPass>(inst_gen_));
       list.push_back(MakePass<LoadStorePropagationPass>());
       list.push_back(MakePass<MovePropagationPass>());
       list.push_back(MakePass<MoveEliminatePass>());
     }
     InitRegAlloc(opt_level, list);
+    if (opt_level) {
+      list.push_back(MakePass<LeaCombiningPass>(inst_gen_));
+    }
+    list.push_back(MakePass<LeaEliminationPass>(inst_gen_));
     list.push_back(MakePass<SlotSpillingPass>(inst_gen_));
     list.push_back(MakePass<FuncDecoratePass>(inst_gen_));
     list.push_back(MakePass<ImmNormalizePass>(inst_gen_));
