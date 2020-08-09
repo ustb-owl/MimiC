@@ -37,11 +37,11 @@ class AArch32ArchInfo : public ArchInfoBase {
     }
     InitRegAlloc(opt_level, list);
     list.push_back(MakePass<SlotSpillingPass>(inst_gen_));
+    list.push_back(MakePass<FuncDecoratePass>(inst_gen_));
+    list.push_back(MakePass<ImmNormalizePass>(inst_gen_));
     if (opt_level) {
       list.push_back(MakePass<LoadStorePropagationPass>());
     }
-    list.push_back(MakePass<FuncDecoratePass>(inst_gen_));
-    list.push_back(MakePass<ImmNormalizePass>(inst_gen_));
     return list;
   }
 
