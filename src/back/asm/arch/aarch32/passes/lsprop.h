@@ -1,5 +1,5 @@
-#ifndef MIMIC_BACK_ASM_ARCH_AARCH32_PASSES_LSELIM_H_
-#define MIMIC_BACK_ASM_ARCH_AARCH32_PASSES_LSELIM_H_
+#ifndef MIMIC_BACK_ASM_ARCH_AARCH32_PASSES_LSPROP_H_
+#define MIMIC_BACK_ASM_ARCH_AARCH32_PASSES_LSPROP_H_
 
 #include <unordered_map>
 
@@ -155,4 +155,4 @@ class LoadStorePropagationPass : public PassInterface {
 
 }  // mimic::back::asmgen::aarch32
 
-#endif  // MIMIC_BACK_ASM_ARCH_AARCH32_PASSES_LSELIM_H_
+#endif  // MIMIC_BACK_ASM_ARCH_AARCH32_PASSES_LSPROP_H_
