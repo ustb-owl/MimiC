@@ -53,43 +53,43 @@ OprPtr AArch32InstGen::GenerateZeros(const TypePtr &type) {
   }
 }
 
-void AArch32InstGen::LoadEffAddr(const OprPtr &dest_reg, const OprPtr &ptr,
-                                 const OprPtr &offset) {
-  // check if 'offset' is immediate zero
-  bool ofs_zero = offset->IsImm() &&
-                  !static_cast<AArch32Imm *>(offset.get())->val();
-  if (ptr->IsSlot()) {
-    // get base register
-    auto p = static_cast<AArch32Slot *>(ptr.get());
-    auto base = p->based_on_sp() ? GetReg(RegName::SP) :
-                                   GetReg(RegName::R11);
-    PushInst(OpCode::MOV, dest_reg, base);
-    // calculate stack offset
-    auto ofs = p->offset();
-    if (ofs > 0) {
-      PushInst(OpCode::ADD, dest_reg, dest_reg, GetImm(ofs));
-    }
-    else if (ofs < 0) {
-      PushInst(OpCode::SUB, dest_reg, dest_reg, GetImm(-ofs));
-    }
-  }
-  else if (ptr->IsLabel()) {
-    // load label address
-    PushInst(OpCode::LDR, dest_reg, ptr);
-  }
-  else {
-    assert(ptr->IsReg());
-    // just move address to destination
-    PushInst(OpCode::MOV, dest_reg, ptr);
-  }
-  // add offset to result if offset is not zero
-  if (!ofs_zero) PushInst(OpCode::ADD, dest_reg, dest_reg, offset);
-}
+// void AArch32InstGen::LoadEffAddr(const OprPtr &dest_reg, const OprPtr &ptr,
+//                                  const OprPtr &offset) {
+//   // check if 'offset' is immediate zero
+//   bool ofs_zero = offset->IsImm() &&
+//                   !static_cast<AArch32Imm *>(offset.get())->val();
+//   if (ptr->IsSlot()) {
+//     // get base register
+//     auto p = static_cast<AArch32Slot *>(ptr.get());
+//     auto base = p->based_on_sp() ? GetReg(RegName::SP) :
+//                                    GetReg(RegName::R11);
+//     PushInst(OpCode::MOV, dest_reg, base);
+//     // calculate stack offset
+//     auto ofs = p->offset();
+//     if (ofs > 0) {
+//       PushInst(OpCode::ADD, dest_reg, dest_reg, GetImm(ofs));
+//     }
+//     else if (ofs < 0) {
+//       PushInst(OpCode::SUB, dest_reg, dest_reg, GetImm(-ofs));
+//     }
+//   }
+//   else if (ptr->IsLabel()) {
+//     // load label address
+//     PushInst(OpCode::LDR, dest_reg, ptr);
+//   }
+//   else {
+//     assert(ptr->IsReg());
+//     // just move address to destination
+//     PushInst(OpCode::MOV, dest_reg, ptr);
+//   }
+//   // add offset to result if offset is not zero
+//   if (!ofs_zero) PushInst(OpCode::ADD, dest_reg, dest_reg, offset);
+// }
 
 void AArch32InstGen::GenerateMemCpy(const OprPtr &dest, const OprPtr &src,
                                     std::size_t size) {
-  LoadEffAddr(GetReg(RegName::R0), dest, GetImm(0));
-  LoadEffAddr(GetReg(RegName::R1), src, GetImm(0));
+  PushInst(OpCode::LEA, GetReg(RegName::R0), dest, GetImm(0));
+  PushInst(OpCode::LEA, GetReg(RegName::R1), src, GetImm(0));
   PushInst(OpCode::MOV, GetReg(RegName::R2), GetImm(size));
   PushInst(OpCode::BL, label_fact_.GetLabel("memcpy"));
 }
@@ -133,7 +133,7 @@ OprPtr AArch32InstGen::GenerateOn(LoadSSA &ssa) {
     // load address to register if source operand is a label
     if (src->IsLabel()) {
       auto temp = GetReg(RegName::R0);
-      LoadEffAddr(temp, src, GetImm(0));
+      PushInst(OpCode::LEA, temp, src, GetImm(0));
       src = temp;
     }
     // generate memory load
@@ -166,7 +166,7 @@ OprPtr AArch32InstGen::GenerateOn(StoreSSA &ssa) {
     auto ptr_reg = ptr;
     if (ptr->IsLabel()) {
       ptr_reg = GetReg(RegName::R0);
-      LoadEffAddr(ptr_reg, ptr, GetImm(0));
+      PushInst(OpCode::LEA, ptr_reg, ptr, GetImm(0));
     }
     // generate memory store
     auto opcode = type->GetSize() == 1 ? OpCode::STRB : OpCode::STR;
@@ -220,7 +220,7 @@ OprPtr AArch32InstGen::GenerateOn(AccessSSA &ssa) {
     }
   }
   // get effective address
-  LoadEffAddr(dest, ptr, index);
+  PushInst(OpCode::LEA, dest, ptr, index);
   return dest;
 }
 
@@ -330,7 +330,7 @@ OprPtr AArch32InstGen::GenerateOn(CastSSA &ssa) {
     if (opr->IsLabel() || opr->IsSlot()) {
       assert(src_ty->IsPointer() && dst_ty->IsPointer());
       // load address to dest
-      LoadEffAddr(dest, opr, GetImm(0));
+      PushInst(OpCode::LEA, dest, opr, GetImm(0));
     }
     else {
       assert(opr->IsReg() || opr->IsImm());
