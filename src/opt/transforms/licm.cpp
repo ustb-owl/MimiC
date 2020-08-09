@@ -1,11 +1,11 @@
+#include <unordered_set>
+
 #include "opt/pass.h"
 #include "opt/passman.h"
 #include "opt/helper/cast.h"
 #include "opt/helper/inst.h"
 #include "opt/analysis/dominance.h"
 #include "opt/analysis/loopinfo.h"
-
-#include <unordered_set>
 
 using namespace mimic::mid;
 using namespace mimic::opt;
@@ -114,7 +114,7 @@ void LoopInvariantCodeMotionPass::LogInvariant(User &ssa) {
   // parent block of value must dominance all parent blocks of it's users
   for (const auto &i : ssa.uses()) {
     auto parent = parent_->GetParent(i->user());
-    assert(cur_loop_->body.count(parent));
+    if (!cur_loop_->body.count(parent)) continue;
     if (!dom_->IsDominate(cur_block_, parent)) return;
   }
   // add to invariant list
