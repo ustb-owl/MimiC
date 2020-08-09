@@ -53,6 +53,7 @@ class LoadStorePropagationPass : public PassInterface {
             // update definition
             RemoveLabelDef(load->dest());
             RemoveDef(mem);
+            RemoveDef(load->dest());
             RemoveUsedByDef(load->dest());
             AddDef(mem, load->dest());
           }
