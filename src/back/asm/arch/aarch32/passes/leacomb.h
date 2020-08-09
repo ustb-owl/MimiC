@@ -21,15 +21,17 @@ class LeaCombiningPass : public PassInterface {
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
     ResetSlots();
     // try to combine LEA and LDR/STR
-    for (const auto &i : insts) {
-      auto inst = static_cast<AArch32Inst *>(i.get());
+    for (auto it = insts.begin(); it != insts.end();) {
+      auto inst = static_cast<AArch32Inst *>(it->get());
       switch (inst->opcode()) {
         case OpCode::LEA: {
+          // prevent current LEA from released by 'SimplifyLea'
+          auto lea = *it;
           // try to simplify
-          SimplifyLea(inst);
+          it = SimplifyLea(insts, it, inst);
           // add to slot definitions
           AddSlotDef(inst);
-          break;
+          continue;
         }
         case OpCode::LDR: case OpCode::LDRB: {
           if (auto slot = GetSlotDef(inst->oprs()[0].value())) {
@@ -54,6 +56,7 @@ class LeaCombiningPass : public PassInterface {
           break;
         }
       }
+      ++it;
     }
     // find dead LEAs
     leas_.clear();
@@ -62,7 +65,7 @@ class LeaCombiningPass : public PassInterface {
       auto inst = static_cast<AArch32Inst *>(i.get());
       // used by other instructions, not dead
       for (const auto &opr : inst->oprs()) {
-        leas_.erase(opr.value());
+        if (opr.value()->IsReg()) leas_.erase(opr.value());
       }
       // overrided by other instructions, dead
       if (inst->dest()) {
@@ -99,17 +102,35 @@ class LeaCombiningPass : public PassInterface {
  private:
   using OpCode = AArch32Inst::OpCode;
   using RegName = AArch32Reg::RegName;
+  using InstIt = InstPtrList::iterator;
 
   void ResetSlots() {
     slots_.clear();
   }
 
-  void SimplifyLea(AArch32Inst *lea) {
+  InstIt SimplifyLea(InstPtrList &insts, InstIt pos, AArch32Inst *lea) {
     auto &ptr = lea->oprs()[0], &ofs = lea->oprs()[1];
     // get offset
-    if (!ofs.value()->IsImm()) return;
+    if (!ofs.value()->IsImm()) return ++pos;
     auto offset = static_cast<AArch32Imm *>(ofs.value().get())->val();
-    if (!offset) return;
+    // handle label first
+    if (ptr.value()->IsLabel()) {
+      auto ldr = std::make_shared<AArch32Inst>(OpCode::LDR, lea->dest(),
+                                               ptr.value());
+      if (!offset) {
+        // replace with LDR
+        *pos = std::move(ldr);
+        return ++pos;
+      }
+      else {
+        // insert LDR before current instruction
+        pos = ++insts.insert(pos, std::move(ldr));
+        ptr.set_value(lea->dest());
+      }
+    }
+    else if (!offset) {
+      return ++pos;
+    }
     // handle by type
     if (ptr.value()->IsSlot()) {
       auto slot_ptr = static_cast<AArch32Slot *>(ptr.value().get());
@@ -122,13 +143,16 @@ class LeaCombiningPass : public PassInterface {
       auto base = ptr.value();
       if (base) {
         auto vreg_ptr = static_cast<VirtRegOperand *>(base.get());
-        if (!vreg_ptr->alloc_to()->IsReg()) return;
+        if (!vreg_ptr->alloc_to() || !vreg_ptr->alloc_to()->IsReg()) {
+          return ++pos;
+        }
         base = vreg_ptr->alloc_to();
       }
       auto slot = gen_.GetSlot(base, offset);
       ptr.set_value(slot);
       ofs.set_value(gen_.GetImm(0));
     }
+    return ++pos;
   }
 
   void AddSlotDef(AArch32Inst *lea) {
