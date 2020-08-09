@@ -29,6 +29,10 @@ const char *kOpCodes[] = {
   "clz",
   "sxtb", "uxtb",
   "",
+  "lea", "br",
+  "seteq", "setne",
+  "setult", "setslt", "setule", "setsle",
+  "setugt", "setsgt", "setuge", "setsge",
   ".zero", ".asciz", ".long", ".byte",
 };
 
@@ -88,7 +92,7 @@ void AArch32Str::Dump(std::ostream &os) const {
 }
 
 void AArch32Slot::Dump(std::ostream &os) const {
-  os << '[' << (based_on_sp_ ? "sp" : "r11") << ", #" << offset_ << ']';
+  os << '[' << base_ << ", #" << offset_ << ']';
 }
 
 void AArch32Inst::Dump(std::ostream &os) const {
