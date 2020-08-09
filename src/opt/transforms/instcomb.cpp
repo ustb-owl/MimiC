@@ -246,6 +246,18 @@ inline SSAPtr DynCastNot(const SSAPtr &val) {
   return nullptr;
 }
 
+// check for logic not instruction
+inline SSAPtr DynCastLogicNot(const SSAPtr &val) {
+  if (auto una = SSADynCast<UnarySSA>(val.get())) {
+    if (una->op() == UnarySSA::Operator::LogicNot) return una->opr();
+  }
+  // constants can be considered to be logic not'ed values...
+  if (auto cint = ConstantHelper::Fold(val)) {
+    return MakeModule(val->logger()).GetInt(!cint->value(), val->type());
+  }
+  return nullptr;
+}
+
 // If this value is a multiply that can be folded into other computations
 // (because it has a constant operand), return the non-constant operand.
 inline SSAPtr DynCastFoldableMul(const SSAPtr &val) {
@@ -1387,7 +1399,7 @@ void InstCombinePass::RunOn(CastSSA &ssa) {
 void InstCombinePass::RunOn(BranchSSA &ssa) {
   // branch !X, b1, b2 -> branch X, b2, b1
   if (!ssa.cond()->IsConst()) {
-    if (auto v = DynCastNot(ssa.cond())) {
+    if (auto v = DynCastLogicNot(ssa.cond())) {
       auto tb = ssa.true_block(), fb = ssa.false_block();
       // Swap Destinations and condition...
       ssa.set_cond(v);
@@ -1434,7 +1446,7 @@ void InstCombinePass::RunOn(PhiSSA &ssa) {
 void InstCombinePass::RunOn(SelectSSA &ssa) {
   // select !X, b1, b2 -> select X, b2, b1
   if (!ssa.cond()->IsConst()) {
-    if (auto v = DynCastNot(ssa.cond())) {
+    if (auto v = DynCastLogicNot(ssa.cond())) {
       auto tv = ssa.true_val(), fv = ssa.false_val();
       // Swap Destinations and condition...
       ssa.set_cond(v);
