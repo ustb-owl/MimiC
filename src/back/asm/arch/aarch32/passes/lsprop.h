@@ -19,28 +19,42 @@ class LoadStorePropagationPass : public PassInterface {
 
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
     // traverse all instructions
-    for (auto &&i : insts) {
-      if (i->IsLabel() || i->IsCall()) Reset();
-      auto inst = static_cast<AArch32Inst *>(i.get());
+    for (auto it = insts.begin(); it != insts.end();) {
+      auto inst = static_cast<AArch32Inst *>(it->get());
+      if (inst->IsLabel() || inst->IsCall()) Reset();
+      // handle by opcode
       switch (inst->opcode()) {
         case OpCode::LDR: {
-          auto load = i;
+          auto load = *it;
           const auto &mem_opr = load->oprs()[0].value();
-          // try to replace with move
-          auto it = defs_.find(mem_opr);
-          if (it != defs_.end()) {
-            i = std::make_shared<AArch32Inst>(OpCode::MOV, inst->dest(),
-                                              it->second);
+          if (mem_opr->IsLabel()) {
+            // try to remove redundant label load
+            if (GetMemOpr(inst->dest()) == mem_opr) {
+              it = insts.erase(it);
+              continue;
+            }
+            // update label definition
+            RemoveLabelDef(load->dest());
+            AddLabelDef(load->dest(), mem_opr);
           }
-          // update definition
-          RemoveDef(mem_opr);
-          RemoveUsedByDef(load->dest());
-          AddDef(mem_opr, load->dest());
+          else {
+            // try to replace with move
+            const auto &mem = GetMemOpr(mem_opr);
+            if (auto val = GetDef(mem)) {
+              *it = std::make_shared<AArch32Inst>(OpCode::MOV, inst->dest(),
+                                                  val);
+            }
+            // update definition
+            RemoveLabelDef(load->dest());
+            RemoveDef(mem);
+            RemoveUsedByDef(load->dest());
+            AddDef(mem, load->dest());
+          }
           break;
         }
         case OpCode::STR: {
           // update definition
-          const auto &mem_opr = inst->oprs()[1].value();
+          const auto &mem_opr = GetMemOpr(inst->oprs()[1].value());
           const auto &val_opr = inst->oprs()[0].value();
           RemoveDef(mem_opr);
           AddDef(mem_opr, val_opr);
@@ -48,14 +62,19 @@ class LoadStorePropagationPass : public PassInterface {
         }
         case OpCode::STRB: {
           // invalidate definition
-          RemoveDef(inst->oprs()[1].value());
+          RemoveDef(GetMemOpr(inst->oprs()[1].value()));
         }
         default: {
           // invalidate definition
-          if (inst->dest()) RemoveUsedByDef(inst->dest());
+          if (inst->dest()) {
+            RemoveLabelDef(inst->dest());
+            RemoveDef(inst->dest());
+            RemoveUsedByDef(inst->dest());
+          }
           break;
         }
       }
+      ++it;
     }
   }
 
@@ -64,7 +83,22 @@ class LoadStorePropagationPass : public PassInterface {
 
   void Reset() {
     defs_.clear();
+    labels_.clear();
     uses_.clear();
+  }
+
+  void RemoveLabelDef(const OprPtr &dest) {
+    labels_.erase(dest);
+  }
+
+  const OprPtr &GetMemOpr(const OprPtr &mem_opr) {
+    auto it = labels_.find(mem_opr);
+    return it != labels_.end() ? it->second : mem_opr;
+  }
+
+  void AddLabelDef(const OprPtr &reg, const OprPtr &label) {
+    assert(label->IsLabel() && reg->IsReg());
+    labels_.insert({reg, label});
   }
 
   void RemoveDef(const OprPtr &dest) {
@@ -93,13 +127,18 @@ class LoadStorePropagationPass : public PassInterface {
     uses_.erase(begin, end);
   }
 
+  OprPtr GetDef(const OprPtr &mem_opr) {
+    auto it = defs_.find(mem_opr);
+    return it != defs_.end() ? it->second : nullptr;
+  }
+
   void AddDef(const OprPtr &dest, const OprPtr &val) {
     defs_.insert({dest, val});
     uses_.insert({val, dest});
   }
 
   // all value definitions
-  std::unordered_map<OprPtr, OprPtr> defs_;
+  std::unordered_map<OprPtr, OprPtr> defs_, labels_;
   // values used by definitons
   std::unordered_multimap<OprPtr, OprPtr> uses_;
 };
