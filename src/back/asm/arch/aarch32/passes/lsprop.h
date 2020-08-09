@@ -41,8 +41,14 @@ class LoadStorePropagationPass : public PassInterface {
             // try to replace with move
             const auto &mem = GetMemOpr(mem_opr);
             if (auto val = GetDef(mem)) {
-              *it = std::make_shared<AArch32Inst>(OpCode::MOV, inst->dest(),
-                                                  val);
+              if (val != inst->dest()) {
+                *it = std::make_shared<AArch32Inst>(OpCode::MOV,
+                                                    inst->dest(), val);
+              }
+              else {
+                it = insts.erase(it);
+                continue;
+              }
             }
             // update definition
             RemoveLabelDef(load->dest());
