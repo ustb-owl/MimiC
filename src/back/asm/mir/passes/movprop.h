@@ -12,7 +12,6 @@ class MovePropagationPass : public PassInterface {
   MovePropagationPass() {}
 
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
-    Reset();
     // traverse all instructions
     for (const auto &i : insts) {
       if (i->IsLabel() || i->IsCall()) Reset();
