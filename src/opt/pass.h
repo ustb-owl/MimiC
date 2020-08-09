@@ -20,12 +20,19 @@ class PassBase {
   // return true if is function pass
   virtual bool IsFunctionPass() const = 0;
   // run on functions, return true if there is modification
-  virtual bool RunOnFunction(const mid::UserPtr &func) = 0;
+  virtual bool RunOnFunction(const mid::FuncPtr &func) = 0;
 
   // return true if is block pass
   virtual bool IsBlockPass() const = 0;
   // run on basic blocks, return true if there is modification
   virtual bool RunOnBlock(const mid::BlockPtr &block) = 0;
+
+  // initialize the state of pass before running
+  // when a pass is scheduled to run, it will only be initialized once
+  virtual void Initialize() {}
+  // perform some necessary cleanup operations after pass runs
+  // this method will be called every time after pass runs on a function/bb
+  virtual void CleanUp() {}
 
   // visitor methods for running on SSA IRs
   virtual void RunOn(mid::LoadSSA &ssa) {}
@@ -64,7 +71,7 @@ class ModulePass : public PassBase {
   bool IsFunctionPass() const override final { return false; }
   bool IsBlockPass() const override final { return false; }
 
-  bool RunOnFunction(const mid::UserPtr &funcs) override final {
+  bool RunOnFunction(const mid::FuncPtr &funcs) override final {
     return false;
   }
   bool RunOnBlock(const mid::BlockPtr &block) override final {
@@ -97,7 +104,7 @@ class BlockPass : public PassBase {
   bool RunOnModule(mid::UserPtrList &global_vals) override final {
     return false;
   }
-  bool RunOnFunction(const mid::UserPtr &func) override final {
+  bool RunOnFunction(const mid::FuncPtr &func) override final {
     return false;
   }
 };
@@ -112,12 +119,15 @@ class HelperPass : public PassBase {
   bool RunOnModule(mid::UserPtrList &global_vals) override final {
     return false;
   }
-  bool RunOnFunction(const mid::UserPtr &func) override final {
+  bool RunOnFunction(const mid::FuncPtr &func) override final {
     return false;
   }
   bool RunOnBlock(const mid::BlockPtr &block) override final {
     return false;
   }
+
+  void Initialize() override final {}
+  void CleanUp() override final {}
 };
 
 }  // namespace mimic::opt

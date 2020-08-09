@@ -19,10 +19,12 @@ namespace mimic::mid {
 
 // forward declarations
 class BlockSSA;
+class FunctionSSA;
 class GlobalVarSSA;
 
 // type aliases
 using BlockPtr = std::shared_ptr<BlockSSA>;
+using FuncPtr = std::shared_ptr<FunctionSSA>;
 using GlobalVarPtr = std::shared_ptr<GlobalVarSSA>;
 
 // linkage types
@@ -392,6 +394,8 @@ class BlockSSA : public User {
 
   // add a new instruction
   void AddInst(const SSAPtr &inst) { insts_.push_back(inst); }
+  // clear all instructions
+  void ClearInst();
 
   // setters
   void set_parent(const UserPtr &parent) { parent_ = parent; }
