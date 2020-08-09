@@ -111,7 +111,7 @@ class SlotSpillingPass : public PassInterface {
     // get slot info
     assert(slot->IsSlot() && dest->IsReg());
     auto sl = static_cast<AArch32Slot *>(slot.get());
-    assert(!sl->based_on_sp() && sl->offset() < 0);
+    assert(sl->base() == gen_.GetReg(RegName::R11) && sl->offset() < 0);
     // generate load
     InstPtr inst;
     if (-sl->offset() >= 4096) {
@@ -137,7 +137,7 @@ class SlotSpillingPass : public PassInterface {
     assert(slot->IsSlot() && dest->IsReg() &&
            static_cast<AArch32Reg *>(dest.get())->name() == RegName::R12);
     auto sl = static_cast<AArch32Slot *>(slot.get());
-    assert(!sl->based_on_sp() && sl->offset() < 0);
+    assert(sl->base() == gen_.GetReg(RegName::R11) && sl->offset() < 0);
     // generate store
     InstPtr inst;
     if (-sl->offset() >= 4096) {
