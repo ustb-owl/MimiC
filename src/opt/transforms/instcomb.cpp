@@ -572,6 +572,7 @@ bool InstCombinePass::SimplifyCommutative(BinarySSA &ssa) {
           auto mod = MakeModule(ssa.logger());
           auto inst = mod.CreateBinary(op, opr->lhs(), opr1->lhs(),
                                        ssa.type());
+          InsertNewInstBefore(inst, cur_);
           worklist_.push_back(inst);
           ssa.set_lhs(inst);
           ssa.set_rhs(folded);
