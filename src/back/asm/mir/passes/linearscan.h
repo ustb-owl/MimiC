@@ -3,7 +3,6 @@
 
 #include <map>
 #include <vector>
-#include <queue>
 #include <unordered_map>
 #include <cstddef>
 #include <cassert>
@@ -81,10 +80,13 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
   // reset for next run
   void Reset() {
     // clear free register/slot pool
-    while (!free_regs_.empty()) free_regs_.pop();
-    while (!free_slots_.empty()) free_slots_.pop();
+    free_regs_.clear();
+    free_slots_.clear();
     // initialize free registers
-    for (const auto &i : avaliable_regs_) free_regs_.push(i);
+    for (auto it = avaliable_regs_.rbegin(); it != avaliable_regs_.rend();
+         ++it) {
+      free_slots_.push_back(*it);
+    }
     // reset other stuffs
     vregs_.clear();
   }
@@ -104,16 +106,16 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
       ExpireOldIntervals(active, i.first);
       if (!free_regs_.empty()) {
         // allocate a free register
-        auto reg = free_regs_.front();
-        free_regs_.pop();
+        auto reg = free_regs_.back();
+        free_regs_.pop_back();
         vregs_[i.second] = reg;
         // add to active
         active.insert({i.first, i.second});
       }
       else if (!free_slots_.empty()) {
         // allocate a free slot
-        auto slot = free_slots_.front();
-        free_slots_.pop();
+        auto slot = free_slots_.back();
+        free_slots_.pop_back();
         vregs_[i.second] = slot;
         // add to active
         active.insert({i.first, i.second});
@@ -131,11 +133,11 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
       // free current element's register/slot
       const auto &opr = vregs_[it->second];
       if (opr->IsReg()) {
-        free_regs_.push(opr);
+        free_regs_.push_back(opr);
       }
       else {
         assert(opr->IsSlot());
-        free_slots_.push(opr);
+        free_slots_.push_back(opr);
       }
       // remove current element from active
       it = active.erase(it);
@@ -171,8 +173,8 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
 
   // all avaliable registers
   std::vector<OprPtr> avaliable_regs_;
-  // free register/slot pool (queue)
-  std::queue<OprPtr> free_regs_, free_slots_;
+  // free register/slot pool
+  std::vector<OprPtr> free_regs_, free_slots_;
   // reference of live intervals
   const FuncLiveIntervals *func_live_intervals_;
   // allocated registers/slots of all virtual registers
