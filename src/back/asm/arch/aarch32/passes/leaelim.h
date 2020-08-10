@@ -42,7 +42,6 @@ class LeaEliminationPass : public PassInterface {
   InstIt HandleLea(InstPtrList &insts, InstIt pos, AArch32Inst *lea) {
     auto &ptr = lea->oprs()[0].value(), &offset = lea->oprs()[1].value();
     const auto &dest = lea->dest();
-    assert(!ptr->IsLabel());
     // check if 'offset' is immediate zero
     bool ofs_zero = offset->IsImm() &&
                     !static_cast<AArch32Imm *>(offset.get())->val();
@@ -60,6 +59,10 @@ class LeaEliminationPass : public PassInterface {
         pos = InsertBefore(insts, pos, OpCode::SUB, dest, dest,
                            gen_.GetImm(-ofs));
       }
+    }
+    else if (ptr->IsLabel()) {
+      // load label address
+      pos = InsertBefore(insts, pos, OpCode::LDR, dest, ptr);
     }
     else {
       assert(ptr->IsReg());
