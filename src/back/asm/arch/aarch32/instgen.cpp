@@ -66,7 +66,7 @@ void AArch32InstGen::DumpSeqs(std::ostream &os,
   for (const auto &[label, info] : seqs) {
     // dump '.globl' if is global
     if (info.link != LinkageTypes::Internal) {
-      os << '\t' << ".globl ";
+      os << '\t' << ".globl\t";
       label->Dump(os);
       os << std::endl;
     }
@@ -204,6 +204,16 @@ OprPtr AArch32InstGen::GenerateOn(BinarySSA &ssa) {
     case Op::Mul: opcode = OpCode::MUL; break;
     case Op::UDiv: opcode = OpCode::UDIV; break;
     case Op::SDiv: opcode = OpCode::SDIV; break;
+    case Op::Equal: opcode = OpCode::SETEQ; break;
+    case Op::NotEq: opcode = OpCode::SETNE; break;
+    case Op::ULess: opcode = OpCode::SETULT; break;
+    case Op::SLess: opcode = OpCode::SETSLT; break;
+    case Op::ULessEq: opcode = OpCode::SETULE; break;
+    case Op::SLessEq: opcode = OpCode::SETSLE; break;
+    case Op::UGreat: opcode = OpCode::SETUGT; break;
+    case Op::SGreat: opcode = OpCode::SETSGT; break;
+    case Op::UGreatEq: opcode = OpCode::SETUGE; break;
+    case Op::SGreatEq: opcode = OpCode::SETSGE; break;
     case Op::And: opcode = OpCode::AND; break;
     case Op::Or: opcode = OpCode::ORR; break;
     case Op::Xor: opcode = OpCode::EOR; break;
@@ -215,41 +225,6 @@ OprPtr AArch32InstGen::GenerateOn(BinarySSA &ssa) {
       auto opcode = ssa.op() == Op::URem ? OpCode::UDIV : OpCode::SDIV;
       PushInst(opcode, temp, lhs, rhs);
       PushInst(OpCode::MLS, dest, temp, rhs, lhs);
-      return dest;
-    }
-    case Op::Equal: {
-      PushInst(OpCode::SUB, temp, lhs, rhs);
-      PushInst(OpCode::CLZ, temp, temp);
-      PushInst(OpCode::LSR, dest, temp, GetImm(5));
-      return dest;
-    }
-    case Op::NotEq: {
-      auto temp = GetReg(RegName::R0);
-      PushInst(OpCode::SUBS, temp, lhs, rhs);
-      PushInst(OpCode::MOVWNE, temp, GetImm(1));
-      PushInst(OpCode::MOV, dest, temp);
-      return dest;
-    }
-    case Op::ULess: case Op::SLess: case Op::ULessEq: case Op::SLessEq:
-    case Op::UGreat: case Op::SGreat: case Op::UGreatEq:
-    case Op::SGreatEq: {
-      auto temp = GetReg(RegName::R0);
-      PushInst(OpCode::MOV, temp, GetImm(0));
-      PushInst(OpCode::CMP, lhs, rhs);
-      OpCode opcode;
-      switch (ssa.op()) {
-        case Op::ULess: opcode = OpCode::MOVWLO; break;
-        case Op::SLess: opcode = OpCode::MOVWLT; break;
-        case Op::ULessEq: opcode = OpCode::MOVWLS; break;
-        case Op::SLessEq: opcode = OpCode::MOVWLE; break;
-        case Op::UGreat: opcode = OpCode::MOVWHI; break;
-        case Op::SGreat: opcode = OpCode::MOVWGT; break;
-        case Op::UGreatEq: opcode = OpCode::MOVWHS; break;
-        case Op::SGreatEq: opcode = OpCode::MOVWGE; break;
-        default: assert(false);
-      }
-      PushInst(opcode, temp, GetImm(1));
-      PushInst(OpCode::MOV, dest, temp);
       return dest;
     }
     default: assert(false);
@@ -343,11 +318,9 @@ OprPtr AArch32InstGen::GenerateOn(CallSSA &ssa) {
 }
 
 OprPtr AArch32InstGen::GenerateOn(BranchSSA &ssa) {
-  // generate condition
-  PushInst(OpCode::CMP, GetOpr(ssa.cond()), GetImm(0));
-  // generate branchs
-  PushInst(OpCode::BEQ, GetOpr(ssa.false_block()));
-  PushInst(OpCode::B, GetOpr(ssa.true_block()));
+  // generate branch (pseudo-instruction)
+  PushInst(OpCode::BR, GetOpr(ssa.cond()), GetOpr(ssa.true_block()),
+           GetOpr(ssa.false_block()));
   return nullptr;
 }
 
