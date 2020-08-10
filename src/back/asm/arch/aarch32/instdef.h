@@ -146,7 +146,10 @@ class AArch32Inst : public InstBase {
     // arithmetic
     ADD, SUB, SUBS, RSB, MUL, MLS, SDIV, UDIV,
     // comparison/branch/jump
-    CMP, BEQ, B, BL, BX,
+    CMP, B, BL, BX,
+    BEQ, BNE,
+    BLO, BLT, BLS, BLE,
+    BHI, BGT, BHS, BGE,
     // data moving
     MOV, MOVW, MOVT, MVN,
     MOVEQ, MOVWNE,
