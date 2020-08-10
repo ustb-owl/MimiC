@@ -112,7 +112,7 @@ class FuncDecoratePass : public PassInterface {
       std::size_t ofs = slot->offset() + 4;
       if (ofs > preserved_slot_size_) preserved_slot_size_ = ofs;
     }
-    else if (slot->offset() >= 0) {
+    else if (base_name == RegName::R11 && slot->offset() >= 0) {
       poif_slots_.insert({inst, slot});
     }
   }
