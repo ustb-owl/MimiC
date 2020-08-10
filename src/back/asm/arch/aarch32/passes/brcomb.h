@@ -21,7 +21,7 @@ class BranchCombiningPass : public PassInterface {
 
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
     // handle BRs
-    Reset();
+    ResetDefs();
     for (auto it = insts.begin(); it != insts.end();) {
       auto inst = static_cast<AArch32Inst *>(it->get());
       switch (inst->opcode()) {
@@ -31,7 +31,7 @@ class BranchCombiningPass : public PassInterface {
         case OpCode::SETSGE: {
           // add SETC instructions to map
           assert(inst->dest()->IsVirtual() && !setcs_.count(inst->dest()));
-          setcs_.insert({inst->dest(), inst});
+          AddDef(inst);
           break;
         }
         case OpCode::BR: {
@@ -39,7 +39,16 @@ class BranchCombiningPass : public PassInterface {
           it = HandleBranch(insts, it, inst);
           continue;
         }
-        default:;
+        default: {
+          if (inst->IsLabel() || inst->IsCall()) {
+            ResetDefs();
+          }
+          else if (inst->dest()) {
+            RemoveDef(inst->dest());
+            RemoveUsedByDef(inst->dest());
+          }
+          break;
+        }
       }
       ++it;
     }
@@ -64,8 +73,43 @@ class BranchCombiningPass : public PassInterface {
   using OpCode = AArch32Inst::OpCode;
   using InstIt = InstPtrList::iterator;
 
-  void Reset() {
+  void ResetDefs() {
     setcs_.clear();
+    uses_.clear();
+  }
+
+  void RemoveDef(const OprPtr &dest) {
+    auto it = setcs_.find(dest);
+    if (it != setcs_.end()) {
+      // remove from uses map
+      for (const auto &opr : it->second->oprs()) {
+        auto [cur, end] = uses_.equal_range(opr.value());
+        for (; cur != end; ++cur) {
+          if (cur->second == dest) {
+            uses_.erase(cur);
+            break;
+          }
+        }
+      }
+      // remove from definitions
+      setcs_.erase(it);
+    }
+  }
+
+  void RemoveUsedByDef(const OprPtr &opr) {
+    auto [begin, end] = uses_.equal_range(opr);
+    // remove all definitions with specific value
+    for (auto it = begin; it != end; ++it) {
+      setcs_.erase(it->second);
+    }
+    // remove expired uses
+    uses_.erase(begin, end);
+  }
+
+  void AddDef(AArch32Inst *setc) {
+    setcs_.insert({setc->dest(), setc});
+    uses_.insert({setc->oprs()[0].value(), setc->dest()});
+    uses_.insert({setc->oprs()[1].value(), setc->dest()});
   }
 
   template <typename... Args>
@@ -175,6 +219,7 @@ class BranchCombiningPass : public PassInterface {
 
   AArch32InstGen &gen_;
   std::unordered_map<OprPtr, AArch32Inst *> setcs_;
+  std::unordered_multimap<OprPtr, OprPtr> uses_;
 };
 
 }  // namespace mimic::back::asmgen::aarch32
