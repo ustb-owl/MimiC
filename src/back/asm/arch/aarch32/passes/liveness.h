@@ -96,6 +96,17 @@ class LivenessAnalysisPass : public PassInterface {
     return static_cast<AArch32Inst *>(it->get());
   }
 
+  // check if the specific opcode represents to a branch
+  bool IsBranch(OpCode op) {
+    switch (op) {
+      case OpCode::BEQ: case OpCode::BNE: case OpCode::BLO:
+      case OpCode::BLT: case OpCode::BLS: case OpCode::BLE:
+      case OpCode::BHI: case OpCode::BGT: case OpCode::BHS:
+      case OpCode::BGE: return true;
+      default: return false;
+    }
+  }
+
   // build up CFG by traversing instruction list
   void BuildCFG(const InstPtrList &insts) {
     BlockId cur_bid = 0;
@@ -124,7 +135,7 @@ class LivenessAnalysisPass : public PassInterface {
         auto &cur_bb = bbs_[cur_bid];
         cur_bb.insts.push_back(*it);
         // check for branch instructions
-        if (inst->opcode() == OpCode::BEQ) {
+        if (IsBranch(inst->opcode())) {
           // update predecessor & successor
           auto bid = GetBlockId(inst->oprs()[0].value().get());
           cur_bb.succs.push_back(bid);
