@@ -53,39 +53,6 @@ OprPtr AArch32InstGen::GenerateZeros(const TypePtr &type) {
   }
 }
 
-// void AArch32InstGen::LoadEffAddr(const OprPtr &dest_reg, const OprPtr &ptr,
-//                                  const OprPtr &offset) {
-//   // check if 'offset' is immediate zero
-//   bool ofs_zero = offset->IsImm() &&
-//                   !static_cast<AArch32Imm *>(offset.get())->val();
-//   if (ptr->IsSlot()) {
-//     // get base register
-//     auto p = static_cast<AArch32Slot *>(ptr.get());
-//     auto base = p->based_on_sp() ? GetReg(RegName::SP) :
-//                                    GetReg(RegName::R11);
-//     PushInst(OpCode::MOV, dest_reg, base);
-//     // calculate stack offset
-//     auto ofs = p->offset();
-//     if (ofs > 0) {
-//       PushInst(OpCode::ADD, dest_reg, dest_reg, GetImm(ofs));
-//     }
-//     else if (ofs < 0) {
-//       PushInst(OpCode::SUB, dest_reg, dest_reg, GetImm(-ofs));
-//     }
-//   }
-//   else if (ptr->IsLabel()) {
-//     // load label address
-//     PushInst(OpCode::LDR, dest_reg, ptr);
-//   }
-//   else {
-//     assert(ptr->IsReg());
-//     // just move address to destination
-//     PushInst(OpCode::MOV, dest_reg, ptr);
-//   }
-//   // add offset to result if offset is not zero
-//   if (!ofs_zero) PushInst(OpCode::ADD, dest_reg, dest_reg, offset);
-// }
-
 void AArch32InstGen::GenerateMemCpy(const OprPtr &dest, const OprPtr &src,
                                     std::size_t size) {
   PushInst(OpCode::LEA, GetReg(RegName::R0), dest, GetImm(0));
