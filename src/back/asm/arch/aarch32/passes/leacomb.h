@@ -30,6 +30,8 @@ class LeaCombiningPass : public PassInterface {
           // try to simplify
           it = SimplifyLea(insts, it, inst);
           // add to slot definitions
+          RemoveSlotDef(inst->dest());
+          RemoveUsedByDef(inst->dest());
           AddSlotDef(inst);
           continue;
         }
@@ -38,6 +40,7 @@ class LeaCombiningPass : public PassInterface {
             inst->oprs()[0].set_value(slot);
           }
           RemoveSlotDef(inst->dest());
+          RemoveUsedByDef(inst->dest());
           break;
         }
         case OpCode::STR: case OpCode::STRB: {
@@ -52,6 +55,7 @@ class LeaCombiningPass : public PassInterface {
           }
           else if (inst->dest()) {
             RemoveSlotDef(inst->dest());
+          RemoveUsedByDef(inst->dest());
           }
           break;
         }
@@ -104,8 +108,20 @@ class LeaCombiningPass : public PassInterface {
   using RegName = AArch32Reg::RegName;
   using InstIt = InstPtrList::iterator;
 
+  OprPtr GetRealReg(const OprPtr &reg) {
+    assert(reg->IsReg());
+    if (reg->IsVirtual()) {
+      auto vreg_ptr = static_cast<VirtRegOperand *>(reg.get());
+      if (vreg_ptr->alloc_to() && vreg_ptr->alloc_to()->IsReg()) {
+        return vreg_ptr->alloc_to();
+      }
+    }
+    return reg;
+  }
+
   void ResetSlots() {
     slots_.clear();
+    uses_.clear();
   }
 
   InstIt SimplifyLea(InstPtrList &insts, InstIt pos, AArch32Inst *lea) {
@@ -141,7 +157,7 @@ class LeaCombiningPass : public PassInterface {
     }
     else if (ptr.value()->IsReg()) {
       auto base = ptr.value();
-      if (base) {
+      if (base->IsVirtual()) {
         auto vreg_ptr = static_cast<VirtRegOperand *>(base.get());
         if (!vreg_ptr->alloc_to() || !vreg_ptr->alloc_to()->IsReg()) {
           return ++pos;
@@ -156,28 +172,57 @@ class LeaCombiningPass : public PassInterface {
   }
 
   void AddSlotDef(AArch32Inst *lea) {
-    auto &ptr = lea->oprs()[0], &ofs = lea->oprs()[1];
+    auto &ptr = lea->oprs()[0].value(), &ofs = lea->oprs()[1].value();
     // check pointer
-    if (!ptr.value()->IsSlot()) return;
+    if (!ptr->IsSlot()) return;
+    auto slot_ptr = static_cast<AArch32Slot *>(ptr.get());
     // check offset
-    if (!ofs.value()->IsImm()) return;
-    auto offset = static_cast<AArch32Imm *>(ofs.value().get())->val();
+    if (!ofs->IsImm()) return;
+    auto offset = static_cast<AArch32Imm *>(ofs.get())->val();
     if (offset > 4095 || offset < -4095) return;
     // add to definition
-    slots_[lea->dest()] = ptr.value();
+    auto dest = GetRealReg(lea->dest());
+    slots_.insert({dest, ptr});
+    uses_.insert({slot_ptr->base(), dest});
   }
 
   OprPtr GetSlotDef(const OprPtr &val) {
-    auto it = slots_.find(val);
+    if (!val->IsReg()) return nullptr;
+    auto it = slots_.find(GetRealReg(val));
     return it != slots_.end() ? it->second : nullptr;
   }
 
   void RemoveSlotDef(const OprPtr &reg) {
-    slots_.erase(reg);
+    auto real = GetRealReg(reg);
+    auto it = slots_.find(real);
+    if (it != slots_.end()) {
+      // remove from uses map
+      auto slot_ptr = static_cast<AArch32Slot *>(it->second.get());
+      auto [cur, end] = uses_.equal_range(slot_ptr->base());
+      for (; cur != end; ++cur) {
+        if (cur->second == real) {
+          uses_.erase(cur);
+          break;
+        }
+      }
+      // remove from definitions
+      slots_.erase(it);
+    }
+  }
+
+  void RemoveUsedByDef(const OprPtr &base) {
+    auto [begin, end] = uses_.equal_range(GetRealReg(base));
+    // remove all definitions with specific value
+    for (auto it = begin; it != end; ++it) {
+      slots_.erase(it->second);
+    }
+    // remove expired uses
+    uses_.erase(begin, end);
   }
 
   AArch32InstGen &gen_;
   std::unordered_map<OprPtr, OprPtr> slots_;
+  std::unordered_multimap<OprPtr, OprPtr> uses_;
   std::unordered_map<OprPtr, InstPtr> leas_;
   std::vector<InstPtr> dead_leas_;
 };
