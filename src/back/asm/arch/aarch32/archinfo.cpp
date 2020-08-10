@@ -1,6 +1,7 @@
 #include "back/asm/arch/archinfo.h"
 
 #include "back/asm/arch/aarch32/instgen.h"
+#include "back/asm/arch/aarch32/passes/brcomb.h"
 #include "back/asm/arch/aarch32/passes/brelim.h"
 #include "back/asm/arch/aarch32/passes/leacomb.h"
 #include "back/asm/arch/aarch32/passes/leaelim.h"
@@ -31,6 +32,7 @@ class AArch32ArchInfo : public ArchInfoBase {
 
   PassPtrList GetPassList(std::size_t opt_level) override {
     PassPtrList list;
+    list.push_back(MakePass<BranchCombiningPass>(inst_gen_));
     list.push_back(MakePass<BranchEliminationPass>());
     if (opt_level) {
       list.push_back(MakePass<LeaCombiningPass>(inst_gen_));
