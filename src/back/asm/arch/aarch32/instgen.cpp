@@ -173,15 +173,16 @@ OprPtr AArch32InstGen::GenerateOn(AccessSSA &ssa) {
     }
     else {
       assert(index->IsReg() && size);
+      auto temp = vreg_fact_.GetReg();
       if (!(size & (size - 1))) {
         // 'size' is not zero && is power of 2
-        PushInst(OpCode::LSL, dest, index, GetImm(std::log2(size)));
+        PushInst(OpCode::LSL, temp, index, GetImm(std::log2(size)));
       }
       else {
         // generate multiplication
-        PushInst(OpCode::MUL, dest, index, GetImm(size));
+        PushInst(OpCode::MUL, temp, index, GetImm(size));
       }
-      index = dest;
+      index = temp;
     }
   }
   // get effective address
