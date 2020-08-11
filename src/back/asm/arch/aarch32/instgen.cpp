@@ -58,7 +58,7 @@ void AArch32InstGen::GenerateMemCpy(const OprPtr &dest, const OprPtr &src,
   PushInst(OpCode::LEA, GetReg(RegName::R0), dest, GetImm(0));
   PushInst(OpCode::LEA, GetReg(RegName::R1), src, GetImm(0));
   PushInst(OpCode::MOV, GetReg(RegName::R2), GetImm(size));
-  PushInst(OpCode::BL, label_fact_.GetLabel("memcpy"));
+  PushInst(OpCode::BL, label_fact_.GetLabel("__memcpy_neon"));
 }
 
 void AArch32InstGen::DumpSeqs(std::ostream &os,
