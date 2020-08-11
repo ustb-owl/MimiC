@@ -51,15 +51,37 @@ class AArch32ArchInfo : public ArchInfoBase {
     list.push_back(MakePass<ImmNormalizePass>(inst_gen_));
     if (opt_level) {
       list.push_back(MakePass<LoadStorePropagationPass>());
-      list.push_back(MakePass<MoveEliminatePass>());
+      list.push_back(MakePass<MovePropagationPass>(IsAvaliableMove));
       list.push_back(MakePass<InstSchedulingPass>());
     }
     return list;
   }
 
  private:
+  using RegName = AArch32Reg::RegName;
+
+  void AddAvaliableReg(const std::unique_ptr<RegAllocatorBase> &alloc) {
+    for (int i = static_cast<int>(RegName::R4);
+         i <= static_cast<int>(RegName::R10); ++i) {
+      alloc->AddAvaliableReg(inst_gen_.GetReg(static_cast<RegName>(i)));
+    }
+  }
+
+  static bool IsAvaliableReg(const OprPtr &opr) {
+    if (opr->IsReg() && !opr->IsVirtual()) {
+      auto reg = static_cast<AArch32Reg *>(opr.get())->name();
+      return static_cast<int>(reg) >= static_cast<int>(RegName::R4) &&
+             static_cast<int>(reg) <= static_cast<int>(RegName::R10);
+    }
+    return false;
+  }
+
+  static bool IsAvaliableMove(const InstPtr &mov) {
+    return IsAvaliableReg(mov->dest()) &&
+           IsAvaliableReg(mov->oprs()[0].value());
+  }
+
   void InitRegAlloc(std::size_t opt_level, PassPtrList &list) {
-    using RegName = AArch32Reg::RegName;
     // create register allocator
     std::unique_ptr<RegAllocatorBase> reg_alloc;
     if (opt_level) {
@@ -73,11 +95,7 @@ class AArch32ArchInfo : public ArchInfoBase {
       reg_alloc = MakePass<FastRegAllocPass>();
     }
     // initialize register allocator
-    for (int i = static_cast<int>(RegName::R4);
-         i <= static_cast<int>(RegName::R10); ++i) {
-      reg_alloc->AddAvaliableReg(
-          inst_gen_.GetReg(static_cast<RegName>(i)));
-    }
+    AddAvaliableReg(reg_alloc);
     reg_alloc->set_allocator(inst_gen_.GetSlotAllocator());
     list.push_back(std::move(reg_alloc));
   }
