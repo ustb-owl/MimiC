@@ -20,6 +20,11 @@ class MoveOverridingPass : public PassInterface {
         it = CheckAndRemove(insts, it, last);
         last = cur;
       }
+      else if ((*it)->IsMove() &&
+               ((*it)->dest() == (*it)->oprs()[0].value())) {
+        // redundant move, just remove
+        it = insts.erase(it);
+      }
       else {
         last = *it;
         ++it;

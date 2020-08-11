@@ -89,7 +89,10 @@ class AArch32ArchInfo : public ArchInfoBase {
     if (opt_level) {
       auto lsra = MakePass<LinearScanRegAllocPass>();
       auto la = MakePass<LivenessAnalysisPass>();
+      lsra->AddAvaliableTempReg(inst_gen_.GetReg(RegName::R0));
+      lsra->AddAvaliableTempReg(inst_gen_.GetReg(RegName::R1));
       lsra->set_func_live_intervals(&la->func_live_intervals());
+      lsra->set_temp_checker(la->temp_checker());
       list.push_back(std::move(la));
       reg_alloc = std::move(lsra);
     }
