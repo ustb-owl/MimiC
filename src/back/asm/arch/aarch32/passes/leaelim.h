@@ -71,6 +71,7 @@ class LeaEliminationPass : public PassInterface {
     }
     // add offset to result if offset is not zero
     if (!ofs_zero) {
+      assert(offset != dest);
       pos = InsertBefore(insts, pos, OpCode::ADD, dest, dest, offset);
     }
     // erase the original LEA
