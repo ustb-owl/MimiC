@@ -129,8 +129,13 @@ class InstSchedulingPass : public PassInterface {
   }
 
   void UpdateDef(const OprPtr &dest, const InstPtr &inst) {
-    if (dest->IsReg() || dest->IsSlot()) {
+    if (dest->IsReg()) {
       defs_[dest] = inst;
+    }
+    else if (dest->IsSlot()) {
+      auto slot = static_cast<AArch32Slot *>(dest.get());
+      defs_[dest] = inst;
+      defs_[slot->base()] = inst;
     }
   }
 
