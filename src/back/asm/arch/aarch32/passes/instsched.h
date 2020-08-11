@@ -29,14 +29,13 @@ class InstSchedulingPass : public PassInterface {
     for (const auto &i : insts) {
       auto inst = static_cast<AArch32Inst *>(i.get());
       switch (inst->opcode()) {
-        case OpCode::LDR: case OpCode::LDRB: case OpCode::ADD:
-        case OpCode::SUB: case OpCode::SUBS: case OpCode::RSB:
-        case OpCode::MUL: case OpCode::MLS: case OpCode::SDIV:
-        case OpCode::UDIV: case OpCode::MOV: case OpCode::MOVW:
-        case OpCode::MOVT: case OpCode::MVN: case OpCode::AND:
-        case OpCode::ORR: case OpCode::EOR: case OpCode::LSL:
-        case OpCode::LSR: case OpCode::ASR: case OpCode::CLZ:
-        case OpCode::SXTB: case OpCode::UXTB: {
+        case OpCode::ADD: case OpCode::SUB: case OpCode::SUBS:
+        case OpCode::RSB: case OpCode::MUL: case OpCode::MLS:
+        case OpCode::SDIV: case OpCode::UDIV: case OpCode::MOV:
+        case OpCode::MOVW: case OpCode::MOVT: case OpCode::MVN:
+        case OpCode::AND: case OpCode::ORR: case OpCode::EOR:
+        case OpCode::LSL: case OpCode::LSR: case OpCode::ASR:
+        case OpCode::CLZ: case OpCode::SXTB: case OpCode::UXTB: {
           preds_.insert({i, {}});
           for (const auto &opr : inst->oprs()) {
             AddPred(i, opr.value());
@@ -47,13 +46,30 @@ class InstSchedulingPass : public PassInterface {
           UpdateDef(inst->dest(), i);
           break;
         }
+        case OpCode::LDR: case OpCode::LDRB: {
+          // special handling for load instructions
+          preds_.insert({i, {}});
+          // memory address
+          AddPred(i, inst->oprs()[0].value());
+          UpdateDef(inst->oprs()[0].value(), i);
+          // destination
+          AddPred(i, inst->dest());
+          UpdateDef(inst->dest(), i);
+          // last store instruction
+          AddLastStoreAsPred(i);
+          break;
+        }
         case OpCode::STR: case OpCode::STRB: {
           // special handling for store instructions
           preds_.insert({i, {}});
+          // memory address & value
           for (const auto &opr : inst->oprs()) {
             AddPred(i, opr.value());
             UpdateDef(opr.value(), i);
           }
+          // last store instruction
+          AddLastStoreAsPred(i);
+          last_store_ = i;
           break;
         }
         default: {
@@ -112,20 +128,27 @@ class InstSchedulingPass : public PassInterface {
 
   void ResetDefs() {
     defs_.clear();
+    last_store_ = nullptr;
     preds_.clear();
     remaining_.clear();
   }
 
   void AddPred(const InstPtr &inst, const OprPtr &val) {
-    auto it = defs_.find(val);
+    std::unordered_map<OprPtr, InstPtr>::iterator it;
+    if (val->IsSlot()) {
+      auto slot = static_cast<AArch32Slot *>(val.get());
+      it = defs_.find(slot->base());
+    }
+    else {
+      it = defs_.find(val);
+    }
     if (it != defs_.end() && it->second != inst) {
       preds_[inst].insert(it->second);
     }
-    // handle base register of stack slot
-    if (val->IsSlot()) {
-      auto slot = static_cast<AArch32Slot *>(val.get());
-      AddPred(inst, slot->base());
-    }
+  }
+
+  void AddLastStoreAsPred(const InstPtr &inst) {
+    if (last_store_) preds_[inst].insert(last_store_);
   }
 
   void UpdateDef(const OprPtr &dest, const InstPtr &inst) {
@@ -134,7 +157,6 @@ class InstSchedulingPass : public PassInterface {
     }
     else if (dest->IsSlot()) {
       auto slot = static_cast<AArch32Slot *>(dest.get());
-      defs_[dest] = inst;
       defs_[slot->base()] = inst;
     }
   }
@@ -286,6 +308,7 @@ class InstSchedulingPass : public PassInterface {
   }
 
   std::unordered_map<OprPtr, InstPtr> defs_;
+  InstPtr last_store_;
   InstMap<std::unordered_set<InstPtr>> preds_;
   InstMap<std::size_t> remaining_;
 };
