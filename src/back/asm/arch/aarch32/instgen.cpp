@@ -98,13 +98,12 @@ OprPtr AArch32InstGen::GenerateOn(LoadSSA &ssa) {
   else {
     assert(src->IsReg() || src->IsLabel());
     // load address to register if source operand is a label
+    dest = vreg_fact_.GetReg();
     if (src->IsLabel()) {
-      auto temp = GetReg(RegName::R0);
-      PushInst(OpCode::LEA, temp, src, GetImm(0));
-      src = temp;
+      PushInst(OpCode::LEA, dest, src, GetImm(0));
+      src = dest;
     }
     // generate memory load
-    dest = vreg_fact_.GetReg();
     auto opcode = type->GetSize() == 1 ? OpCode::LDRB : OpCode::LDR;
     PushInst(opcode, dest, src);
   }
@@ -132,7 +131,7 @@ OprPtr AArch32InstGen::GenerateOn(StoreSSA &ssa) {
     // generate pointer register
     auto ptr_reg = ptr;
     if (ptr->IsLabel()) {
-      ptr_reg = GetReg(RegName::R0);
+      ptr_reg = vreg_fact_.GetReg();
       PushInst(OpCode::LEA, ptr_reg, ptr, GetImm(0));
     }
     // generate memory store
@@ -174,16 +173,15 @@ OprPtr AArch32InstGen::GenerateOn(AccessSSA &ssa) {
     }
     else {
       assert(index->IsReg() && size);
-      auto temp = GetReg(RegName::R0);
       if (!(size & (size - 1))) {
         // 'size' is not zero && is power of 2
-        PushInst(OpCode::LSL, temp, index, GetImm(std::log2(size)));
+        PushInst(OpCode::LSL, dest, index, GetImm(std::log2(size)));
       }
       else {
         // generate multiplication
-        PushInst(OpCode::MUL, temp, index, GetImm(size));
+        PushInst(OpCode::MUL, dest, index, GetImm(size));
       }
-      index = temp;
+      index = dest;
     }
   }
   // get effective address
@@ -194,7 +192,7 @@ OprPtr AArch32InstGen::GenerateOn(AccessSSA &ssa) {
 OprPtr AArch32InstGen::GenerateOn(BinarySSA &ssa) {
   using Op = BinarySSA::Operator;
   auto lhs = GetOpr(ssa.lhs()), rhs = GetOpr(ssa.rhs());
-  auto dest = vreg_fact_.GetReg(), temp = GetReg(RegName::R0);
+  auto dest = vreg_fact_.GetReg();
   // get opcode by operator
   OpCode opcode;
   switch (ssa.op()) {
@@ -223,8 +221,8 @@ OprPtr AArch32InstGen::GenerateOn(BinarySSA &ssa) {
     // complex operations
     case Op::URem: case Op::SRem: {
       auto opcode = ssa.op() == Op::URem ? OpCode::UDIV : OpCode::SDIV;
-      PushInst(opcode, temp, lhs, rhs);
-      PushInst(OpCode::MLS, dest, temp, rhs, lhs);
+      PushInst(opcode, dest, lhs, rhs);
+      PushInst(OpCode::MLS, dest, dest, rhs, lhs);
       return dest;
     }
     default: assert(false);
@@ -240,9 +238,8 @@ OprPtr AArch32InstGen::GenerateOn(UnarySSA &ssa) {
   switch (ssa.op()) {
     case Op::Neg: PushInst(OpCode::RSB, dest, opr, GetImm(0)); break;
     case Op::LogicNot: {
-      auto temp = GetReg(RegName::R0);
-      PushInst(OpCode::CLZ, temp, opr);
-      PushInst(OpCode::LSR, dest, temp, GetImm(5));
+      PushInst(OpCode::CLZ, dest, opr);
+      PushInst(OpCode::LSR, dest, dest, GetImm(5));
       break;
     }
     case Op::Not: PushInst(OpCode::MVN, dest, opr); break;
@@ -493,7 +490,7 @@ OprPtr AArch32InstGen::GenerateOn(ConstZeroSSA &ssa) {
 OprPtr AArch32InstGen::GenerateOn(SelectSSA &ssa) {
   auto dest = vreg_fact_.GetReg(), cond = GetOpr(ssa.cond());
   auto tv = GetOpr(ssa.true_val()), fv = GetOpr(ssa.false_val());
-  auto t0 = GetReg(RegName::R0), t1 = GetReg(RegName::R1);
+  auto t0 = vreg_fact_.GetReg(), t1 = vreg_fact_.GetReg();
   PushInst(OpCode::MOV, t0, tv);
   PushInst(OpCode::MOV, t1, fv);
   PushInst(OpCode::CMP, cond, GetImm(0));
