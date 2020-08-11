@@ -37,9 +37,13 @@ class LivenessAnalysisPass : public PassInterface {
       const {
     return func_live_intervals_;
   }
+  LinearScanRegAllocPass::TempRegChecker temp_checker() const {
+    return IsTempReg;
+  }
 
  private:
   using OpCode = AArch32Inst::OpCode;
+  using RegName = AArch32Reg::RegName;
   using BlockId = std::size_t;
 
   // representation of basic block
@@ -57,6 +61,14 @@ class LivenessAnalysisPass : public PassInterface {
     // for liveness analysis
     std::unordered_set<OprPtr> live_out;
   };
+
+  // check if the specific operand is temporary register
+  static bool IsTempReg(const OprPtr &val) {
+    assert(!val->IsVirtual());
+    if (!val->IsReg()) return false;
+    auto name = static_cast<AArch32Reg *>(val.get())->name();
+    return name == RegName::R0 || name == RegName::R1;
+  }
 
   // reset internal status
   void Reset() {
@@ -291,40 +303,55 @@ class LivenessAnalysisPass : public PassInterface {
   }
 
   void LogLiveInterval(LinearScanRegAllocPass::LiveIntervals &lis,
-                       const OprPtr &vreg, std::size_t pos) {
+                       const OprPtr &vreg, std::size_t pos,
+                       std::size_t last_temp_pos) {
     assert(vreg->IsVirtual());
     // get live interval info
     auto it = lis.find(vreg);
     if (it != lis.end()) {
       // update end position
-      it->second.end_pos = pos;
+      auto &li = it->second;
+      li.end_pos = pos;
+      // check if there are usings of temporary register in interval
+      if (last_temp_pos > li.start_pos && last_temp_pos < pos) {
+        li.can_alloc_temp = false;
+      }
     }
     else {
       // add new live interval info
-      lis.insert({vreg, {pos, pos}});
+      lis.insert({vreg, {pos, pos, true}});
     }
   }
 
   // generate live intervals for register allocator
   void GenerateLiveIntervals(const OprPtr &func_label) {
     auto &live_intervals = func_live_intervals_[func_label];
-    std::size_t pos = 0;
+    std::size_t last_temp_pos = 0, pos = 0;
     for (const auto &bid : order_) {
       const auto &bb = bbs_[bid];
       // traverse all instructions
       for (const auto &i : bb.insts) {
         for (const auto &opr : i->oprs()) {
           if (!opr.value()->IsVirtual()) continue;
-          LogLiveInterval(live_intervals, opr.value(), pos);
+          LogLiveInterval(live_intervals, opr.value(), pos, last_temp_pos);
         }
-        if (i->dest() && i->dest()->IsVirtual()) {
-          LogLiveInterval(live_intervals, i->dest(), pos);
+        if (i->dest() && i->dest()->IsReg()) {
+          const auto &dest = i->dest();
+          if (dest->IsVirtual()) {
+            LogLiveInterval(live_intervals, dest, pos, last_temp_pos);
+          }
+          else if (IsTempReg(dest)) {
+            // update 'last_temp_pos'
+            last_temp_pos = pos;
+          }
         }
+        // update 'last_temp_pos' if current is a call instruction
+        if (i->IsCall()) last_temp_pos = pos;
         ++pos;
       }
       // log virtual registers in 'live out' set
       for (const auto &vreg : bb.live_out) {
-        LogLiveInterval(live_intervals, vreg, pos);
+        LogLiveInterval(live_intervals, vreg, pos, last_temp_pos);
       }
     }
   }
