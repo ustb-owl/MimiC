@@ -4,6 +4,7 @@
 #include <map>
 #include <vector>
 #include <unordered_map>
+#include <functional>
 #include <cstddef>
 #include <cassert>
 
@@ -21,11 +22,14 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
   struct LiveInterval {
     std::size_t start_pos;
     std::size_t end_pos;
+    bool can_alloc_temp;
   };
   // live intervals in function
   using LiveIntervals = std::unordered_map<OprPtr, LiveInterval>;
   // live intervals of all functions
   using FuncLiveIntervals = std::unordered_map<OprPtr, LiveIntervals>;
+  // type of temporary register checker
+  using TempRegChecker = std::function<bool(const OprPtr &)>;
 
   LinearScanRegAllocPass() {}
 
@@ -46,6 +50,10 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
     }
   }
 
+  void AddAvaliableTempReg(const OprPtr &reg) {
+    avaliable_temps_.push_back(reg);
+  }
+
   void AddAvaliableReg(const OprPtr &reg) override {
     avaliable_regs_.push_back(reg);
   }
@@ -54,6 +62,9 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
   void set_func_live_intervals(
       const FuncLiveIntervals *func_live_intervals) {
     func_live_intervals_ = func_live_intervals;
+  }
+  void set_temp_checker(TempRegChecker temp_checker) {
+    temp_checker_ = temp_checker;
   }
 
  private:
@@ -80,12 +91,17 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
   // reset for next run
   void Reset() {
     // clear free register/slot pool
+    free_temps_.clear();
     free_regs_.clear();
     free_slots_.clear();
     // initialize free registers
+    for (auto it = avaliable_temps_.rbegin(); it != avaliable_temps_.rend();
+         ++it) {
+      free_temps_.push_back(*it);
+    }
     for (auto it = avaliable_regs_.rbegin(); it != avaliable_regs_.rend();
          ++it) {
-      free_slots_.push_back(*it);
+      free_regs_.push_back(*it);
     }
     // reset other stuffs
     vregs_.clear();
@@ -104,7 +120,15 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
     // perform allocation
     for (const auto &i : start_map) {
       ExpireOldIntervals(active, i.first);
-      if (!free_regs_.empty()) {
+      if (i.first->can_alloc_temp && !free_temps_.empty()) {
+        // allocate a free temporary register
+        auto temp = free_temps_.back();
+        free_temps_.pop_back();
+        vregs_[i.second] = temp;
+        // add to active
+        active.insert({i.first, i.second});
+      }
+      else if (!free_regs_.empty()) {
         // allocate a free register
         auto reg = free_regs_.back();
         free_regs_.pop_back();
@@ -132,7 +156,10 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
       if (it->first->end_pos >= i->start_pos) return;
       // free current element's register/slot
       const auto &opr = vregs_[it->second];
-      if (opr->IsReg()) {
+      if (temp_checker_(opr)) {
+        free_temps_.push_back(opr);
+      }
+      else if (opr->IsReg()) {
         free_regs_.push_back(opr);
       }
       else {
@@ -172,11 +199,13 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
   }
 
   // all avaliable registers
-  std::vector<OprPtr> avaliable_regs_;
+  std::vector<OprPtr> avaliable_temps_, avaliable_regs_;
   // free register/slot pool
-  std::vector<OprPtr> free_regs_, free_slots_;
+  std::vector<OprPtr> free_temps_, free_regs_, free_slots_;
   // reference of live intervals
   const FuncLiveIntervals *func_live_intervals_;
+  // temporary register checker
+  TempRegChecker temp_checker_;
   // allocated registers/slots of all virtual registers
   std::unordered_map<OprPtr, OprPtr> vregs_;
 };
