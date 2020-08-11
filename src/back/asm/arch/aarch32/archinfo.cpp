@@ -8,6 +8,7 @@
 #include "back/asm/arch/aarch32/passes/lsprop.h"
 #include "back/asm/mir/passes/movprop.h"
 #include "back/asm/mir/passes/movelim.h"
+#include "back/asm/arch/aarch32/passes/instsched.h"
 #include "back/asm/arch/aarch32/passes/liveness.h"
 #include "back/asm/mir/passes/fastalloc.h"
 #include "back/asm/mir/passes/linearscan.h"
@@ -50,6 +51,8 @@ class AArch32ArchInfo : public ArchInfoBase {
     list.push_back(MakePass<ImmNormalizePass>(inst_gen_));
     if (opt_level) {
       list.push_back(MakePass<LoadStorePropagationPass>());
+      list.push_back(MakePass<MoveEliminatePass>());
+      list.push_back(MakePass<InstSchedulingPass>());
     }
     return list;
   }
