@@ -2,6 +2,8 @@
 #define MIMIC_BACK_ASM_MIR_PASSES_MOVPROP_H_
 
 #include <unordered_map>
+#include <functional>
+#include <cassert>
 
 #include "back/asm/mir/pass.h"
 
@@ -10,6 +12,8 @@ namespace mimic::back::asmgen {
 class MovePropagationPass : public PassInterface {
  public:
   MovePropagationPass() {}
+  MovePropagationPass(std::function<bool(const InstPtr &)> predicate)
+      : predicate_(predicate) {}
 
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
     Reset();
@@ -26,11 +30,7 @@ class MovePropagationPass : public PassInterface {
         const auto &dest = i->dest();
         RemoveDef(dest);
         RemoveUsedByDef(dest);
-        if (i->IsMove()) {
-          const auto &opr = i->oprs()[0].value();
-          // handle virtual registers only
-          if (dest->IsVirtual() && opr->IsVirtual()) AddDef(dest, opr);
-        }
+        if (i->IsMove()) AddDef(i);
       }
     }
   }
@@ -67,11 +67,18 @@ class MovePropagationPass : public PassInterface {
     uses_.erase(begin, end);
   }
 
-  void AddDef(const OprPtr &dest, const OprPtr &val) {
-    defs_.insert({dest, val});
-    uses_.insert({val, dest});
+  void AddDef(const InstPtr &mov) {
+    assert(mov->IsMove());
+    const auto &dest = mov->dest(), &val = mov->oprs()[0].value();
+    if ((dest->IsVirtual() && val->IsVirtual()) ||
+        (predicate_ && predicate_(mov))) {
+      defs_.insert({dest, val});
+      uses_.insert({val, dest});
+    }
   }
 
+  // predicate for determing whether to add new definition
+  std::function<bool(const InstPtr &)> predicate_;
   // all value definitions
   std::unordered_map<OprPtr, OprPtr> defs_;
   // values used by definitons

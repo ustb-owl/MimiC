@@ -4,6 +4,7 @@
 #include <string>
 #include <initializer_list>
 #include <cstdint>
+#include <cassert>
 
 #include "back/asm/mir/mir.h"
 
@@ -112,11 +113,11 @@ class AArch32Str : public OperandBase {
   std::string str_;
 };
 
-// aarch32 stack slot
+// aarch32 slot
 class AArch32Slot : public OperandBase {
  public:
-  AArch32Slot(bool based_on_sp, std::int32_t offset)
-      : based_on_sp_(based_on_sp), offset_(offset) {}
+  AArch32Slot(const OprPtr &base, std::int32_t offset)
+      : base_(base), offset_(offset) {}
 
   bool IsReg() const override { return false; }
   bool IsVirtual() const override { return false; }
@@ -127,12 +128,12 @@ class AArch32Slot : public OperandBase {
   void Dump(std::ostream &os) const override;
 
   // getters
-  bool based_on_sp() const { return based_on_sp_; }
+  const OprPtr &base() const { return base_; }
   std::int32_t offset() const { return offset_; }
 
  private:
   // set if base register of slot is SP rather than FP
-  bool based_on_sp_;
+  OprPtr base_;
   std::int32_t offset_;
 };
 
@@ -145,7 +146,10 @@ class AArch32Inst : public InstBase {
     // arithmetic
     ADD, SUB, SUBS, RSB, MUL, MLS, SDIV, UDIV,
     // comparison/branch/jump
-    CMP, BEQ, B, BL, BX,
+    CMP, B, BL, BX,
+    BEQ, BNE,
+    BLO, BLT, BLS, BLE,
+    BHI, BGT, BHS, BGE,
     // data moving
     MOV, MOVW, MOVT, MVN,
     MOVEQ, MOVWNE,
@@ -161,6 +165,11 @@ class AArch32Inst : public InstBase {
     SXTB, UXTB,
     // just a label definition
     LABEL,
+    // pseudo instructions
+    LEA, BR,
+    SETEQ, SETNE,
+    SETULT, SETSLT, SETULE, SETSLE,
+    SETUGT, SETSGT, SETUGE, SETSGE,
     // assembler directives
     ZERO, ASCIZ, LONG, BYTE,
   };
@@ -184,7 +193,13 @@ class AArch32Inst : public InstBase {
   AArch32Inst(OpCode opcode, const OprPtr &dest, const OprPtr &opr1,
               const OprPtr &opr2)
       : opcode_(opcode) {
-    set_dest(dest);
+    if (opcode == OpCode::BR) {
+      set_dest(nullptr);
+      AddOpr(dest);
+    }
+    else {
+      set_dest(dest);
+    }
     AddOpr(opr1);
     AddOpr(opr2);
   }
@@ -196,12 +211,11 @@ class AArch32Inst : public InstBase {
       // CMP/STR/STRB does not have destination register
       set_dest(nullptr);
       AddOpr(dest);
-      AddOpr(opr);
     }
     else {
       set_dest(dest);
-      AddOpr(opr);
     }
+    AddOpr(opr);
   }
   // beq/label/...
   AArch32Inst(OpCode opcode, const OprPtr &opr)

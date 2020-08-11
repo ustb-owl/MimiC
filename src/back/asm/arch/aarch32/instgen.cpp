@@ -53,43 +53,10 @@ OprPtr AArch32InstGen::GenerateZeros(const TypePtr &type) {
   }
 }
 
-void AArch32InstGen::LoadEffAddr(const OprPtr &dest_reg, const OprPtr &ptr,
-                                 const OprPtr &offset) {
-  // check if 'offset' is immediate zero
-  bool ofs_zero = offset->IsImm() &&
-                  !static_cast<AArch32Imm *>(offset.get())->val();
-  if (ptr->IsSlot()) {
-    // get base register
-    auto p = static_cast<AArch32Slot *>(ptr.get());
-    auto base = p->based_on_sp() ? GetReg(RegName::SP) :
-                                   GetReg(RegName::R11);
-    PushInst(OpCode::MOV, dest_reg, base);
-    // calculate stack offset
-    auto ofs = p->offset();
-    if (ofs > 0) {
-      PushInst(OpCode::ADD, dest_reg, dest_reg, GetImm(ofs));
-    }
-    else if (ofs < 0) {
-      PushInst(OpCode::SUB, dest_reg, dest_reg, GetImm(-ofs));
-    }
-  }
-  else if (ptr->IsLabel()) {
-    // load label address
-    PushInst(OpCode::LDR, dest_reg, ptr);
-  }
-  else {
-    assert(ptr->IsReg());
-    // just move address to destination
-    PushInst(OpCode::MOV, dest_reg, ptr);
-  }
-  // add offset to result if offset is not zero
-  if (!ofs_zero) PushInst(OpCode::ADD, dest_reg, dest_reg, offset);
-}
-
 void AArch32InstGen::GenerateMemCpy(const OprPtr &dest, const OprPtr &src,
                                     std::size_t size) {
-  LoadEffAddr(GetReg(RegName::R0), dest, GetImm(0));
-  LoadEffAddr(GetReg(RegName::R1), src, GetImm(0));
+  PushInst(OpCode::LEA, GetReg(RegName::R0), dest, GetImm(0));
+  PushInst(OpCode::LEA, GetReg(RegName::R1), src, GetImm(0));
   PushInst(OpCode::MOV, GetReg(RegName::R2), GetImm(size));
   PushInst(OpCode::BL, label_fact_.GetLabel("memcpy"));
 }
@@ -99,7 +66,7 @@ void AArch32InstGen::DumpSeqs(std::ostream &os,
   for (const auto &[label, info] : seqs) {
     // dump '.globl' if is global
     if (info.link != LinkageTypes::Internal) {
-      os << '\t' << ".globl ";
+      os << '\t' << ".globl\t";
       label->Dump(os);
       os << std::endl;
     }
@@ -133,7 +100,7 @@ OprPtr AArch32InstGen::GenerateOn(LoadSSA &ssa) {
     // load address to register if source operand is a label
     if (src->IsLabel()) {
       auto temp = GetReg(RegName::R0);
-      LoadEffAddr(temp, src, GetImm(0));
+      PushInst(OpCode::LEA, temp, src, GetImm(0));
       src = temp;
     }
     // generate memory load
@@ -166,7 +133,7 @@ OprPtr AArch32InstGen::GenerateOn(StoreSSA &ssa) {
     auto ptr_reg = ptr;
     if (ptr->IsLabel()) {
       ptr_reg = GetReg(RegName::R0);
-      LoadEffAddr(ptr_reg, ptr, GetImm(0));
+      PushInst(OpCode::LEA, ptr_reg, ptr, GetImm(0));
     }
     // generate memory store
     auto opcode = type->GetSize() == 1 ? OpCode::STRB : OpCode::STR;
@@ -220,7 +187,7 @@ OprPtr AArch32InstGen::GenerateOn(AccessSSA &ssa) {
     }
   }
   // get effective address
-  LoadEffAddr(dest, ptr, index);
+  PushInst(OpCode::LEA, dest, ptr, index);
   return dest;
 }
 
@@ -237,6 +204,16 @@ OprPtr AArch32InstGen::GenerateOn(BinarySSA &ssa) {
     case Op::Mul: opcode = OpCode::MUL; break;
     case Op::UDiv: opcode = OpCode::UDIV; break;
     case Op::SDiv: opcode = OpCode::SDIV; break;
+    case Op::Equal: opcode = OpCode::SETEQ; break;
+    case Op::NotEq: opcode = OpCode::SETNE; break;
+    case Op::ULess: opcode = OpCode::SETULT; break;
+    case Op::SLess: opcode = OpCode::SETSLT; break;
+    case Op::ULessEq: opcode = OpCode::SETULE; break;
+    case Op::SLessEq: opcode = OpCode::SETSLE; break;
+    case Op::UGreat: opcode = OpCode::SETUGT; break;
+    case Op::SGreat: opcode = OpCode::SETSGT; break;
+    case Op::UGreatEq: opcode = OpCode::SETUGE; break;
+    case Op::SGreatEq: opcode = OpCode::SETSGE; break;
     case Op::And: opcode = OpCode::AND; break;
     case Op::Or: opcode = OpCode::ORR; break;
     case Op::Xor: opcode = OpCode::EOR; break;
@@ -248,41 +225,6 @@ OprPtr AArch32InstGen::GenerateOn(BinarySSA &ssa) {
       auto opcode = ssa.op() == Op::URem ? OpCode::UDIV : OpCode::SDIV;
       PushInst(opcode, temp, lhs, rhs);
       PushInst(OpCode::MLS, dest, temp, rhs, lhs);
-      return dest;
-    }
-    case Op::Equal: {
-      PushInst(OpCode::SUB, temp, lhs, rhs);
-      PushInst(OpCode::CLZ, temp, temp);
-      PushInst(OpCode::LSR, dest, temp, GetImm(5));
-      return dest;
-    }
-    case Op::NotEq: {
-      auto temp = GetReg(RegName::R0);
-      PushInst(OpCode::SUBS, temp, lhs, rhs);
-      PushInst(OpCode::MOVWNE, temp, GetImm(1));
-      PushInst(OpCode::MOV, dest, temp);
-      return dest;
-    }
-    case Op::ULess: case Op::SLess: case Op::ULessEq: case Op::SLessEq:
-    case Op::UGreat: case Op::SGreat: case Op::UGreatEq:
-    case Op::SGreatEq: {
-      auto temp = GetReg(RegName::R0);
-      PushInst(OpCode::MOV, temp, GetImm(0));
-      PushInst(OpCode::CMP, lhs, rhs);
-      OpCode opcode;
-      switch (ssa.op()) {
-        case Op::ULess: opcode = OpCode::MOVWLO; break;
-        case Op::SLess: opcode = OpCode::MOVWLT; break;
-        case Op::ULessEq: opcode = OpCode::MOVWLS; break;
-        case Op::SLessEq: opcode = OpCode::MOVWLE; break;
-        case Op::UGreat: opcode = OpCode::MOVWHI; break;
-        case Op::SGreat: opcode = OpCode::MOVWGT; break;
-        case Op::UGreatEq: opcode = OpCode::MOVWHS; break;
-        case Op::SGreatEq: opcode = OpCode::MOVWGE; break;
-        default: assert(false);
-      }
-      PushInst(opcode, temp, GetImm(1));
-      PushInst(OpCode::MOV, dest, temp);
       return dest;
     }
     default: assert(false);
@@ -330,7 +272,7 @@ OprPtr AArch32InstGen::GenerateOn(CastSSA &ssa) {
     if (opr->IsLabel() || opr->IsSlot()) {
       assert(src_ty->IsPointer() && dst_ty->IsPointer());
       // load address to dest
-      LoadEffAddr(dest, opr, GetImm(0));
+      PushInst(OpCode::LEA, dest, opr, GetImm(0));
     }
     else {
       assert(opr->IsReg() || opr->IsImm());
@@ -376,11 +318,9 @@ OprPtr AArch32InstGen::GenerateOn(CallSSA &ssa) {
 }
 
 OprPtr AArch32InstGen::GenerateOn(BranchSSA &ssa) {
-  // generate condition
-  PushInst(OpCode::CMP, GetOpr(ssa.cond()), GetImm(0));
-  // generate branchs
-  PushInst(OpCode::BEQ, GetOpr(ssa.false_block()));
-  PushInst(OpCode::B, GetOpr(ssa.true_block()));
+  // generate branch (pseudo-instruction)
+  PushInst(OpCode::BR, GetOpr(ssa.cond()), GetOpr(ssa.true_block()),
+           GetOpr(ssa.false_block()));
   return nullptr;
 }
 
