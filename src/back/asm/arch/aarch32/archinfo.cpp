@@ -8,13 +8,14 @@
 #include "back/asm/arch/aarch32/passes/lsprop.h"
 #include "back/asm/mir/passes/movprop.h"
 #include "back/asm/mir/passes/movelim.h"
-#include "back/asm/arch/aarch32/passes/instsched.h"
 #include "back/asm/arch/aarch32/passes/liveness.h"
 #include "back/asm/mir/passes/fastalloc.h"
 #include "back/asm/mir/passes/linearscan.h"
 #include "back/asm/arch/aarch32/passes/slotspill.h"
 #include "back/asm/arch/aarch32/passes/funcdeco.h"
 #include "back/asm/arch/aarch32/passes/immnorm.h"
+#include "back/asm/mir/passes/movoverride.h"
+#include "back/asm/arch/aarch32/passes/instsched.h"
 
 using namespace mimic::back::asmgen;
 using namespace mimic::back::asmgen::aarch32;
@@ -52,6 +53,7 @@ class AArch32ArchInfo : public ArchInfoBase {
     if (opt_level) {
       list.push_back(MakePass<LoadStorePropagationPass>());
       list.push_back(MakePass<MovePropagationPass>(IsAvaliableMove));
+      list.push_back(MakePass<MoveOverridingPass>());
       list.push_back(MakePass<InstSchedulingPass>());
     }
     return list;
