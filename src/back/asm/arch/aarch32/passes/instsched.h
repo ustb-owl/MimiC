@@ -121,6 +121,11 @@ class InstSchedulingPass : public PassInterface {
     if (it != defs_.end() && it->second != inst) {
       preds_[inst].insert(it->second);
     }
+    // handle base register of stack slot
+    if (val->IsSlot()) {
+      auto slot = static_cast<AArch32Slot *>(val.get());
+      AddPred(inst, slot->base());
+    }
   }
 
   void UpdateDef(const OprPtr &dest, const InstPtr &inst) {
