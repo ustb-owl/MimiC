@@ -395,8 +395,9 @@ class LivenessAnalysisPass : public PassInterface {
     for (const auto &bid : order_) {
       const auto &bb = bbs_[bid];
       auto live_now = bb.live_out;
-      // traverse all instructions
-      for (const auto &i : bb.insts) {
+      // traverse all instructions in reverse order
+      for (auto it = bb.insts.rbegin(); it != bb.insts.rend(); ++it) {
+        const auto &i = *it;
         // check for destination register
         if (i->dest() && i->dest()->IsVirtual()) {
           // add edges
@@ -410,15 +411,21 @@ class LivenessAnalysisPass : public PassInterface {
         for (const auto &opr : i->oprs()) {
           if (!opr.value()->IsVirtual()) continue;
           live_now.insert(opr.value());
-          UpdateCanAllocTemp(can_alloc_temp, opr.value(), pos,
-                             last_temp_pos);
         }
         // update 'suggest_same'
         if (i->IsMove()) {
           const auto &dest = i->dest(), &src = i->oprs()[0].value();
           AddSuggestSame(if_graph, dest, src);
         }
+      }
+      // update 'can_alloc_temp' flag for all instructions
+      for (const auto &i : bb.insts) {
         // update 'can_alloc_temp'
+        for (const auto &opr : i->oprs()) {
+          if (!opr.value()->IsVirtual()) continue;
+          UpdateCanAllocTemp(can_alloc_temp, opr.value(), pos,
+                             last_temp_pos);
+        }
         if (i->dest() && i->dest()->IsVirtual()) {
           UpdateCanAllocTemp(can_alloc_temp, i->dest(), pos, last_temp_pos);
         }
@@ -428,12 +435,12 @@ class LivenessAnalysisPass : public PassInterface {
         }
         ++pos;
       }
-      // update 'can_alloc_temp' for all live out vregs
+      // update 'can_alloc_temp' flag for all live out vregs
       for (const auto &vreg : bb.live_out) {
         UpdateCanAllocTemp(can_alloc_temp, vreg, pos, last_temp_pos);
       }
     }
-    // update 'can_alloc_temp' of all nodes in graph
+    // apply 'can_alloc_temp' flag of all nodes in graph
     for (const auto &[vreg, pos_and_cat] : can_alloc_temp) {
       if_graph[vreg].can_alloc_temp = pos_and_cat.second;
     }
