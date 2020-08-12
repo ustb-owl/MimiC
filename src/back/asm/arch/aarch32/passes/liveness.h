@@ -27,8 +27,9 @@ class LivenessAnalysisPass : public PassInterface {
     LiveIntervals, InterferenceGraph,
   };
 
-  LivenessAnalysisPass(LivenessInfoType info_type)
-      : info_type_(info_type) {}
+  LivenessAnalysisPass(LivenessInfoType info_type,
+                       TempRegChecker temp_checker)
+      : info_type_(info_type), temp_checker_(temp_checker) {}
 
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
     Reset();
@@ -45,16 +46,14 @@ class LivenessAnalysisPass : public PassInterface {
     }
   }
 
-  // getter
+  // getters
   const FuncLiveIntervals &func_live_intervals() const {
     return func_live_intervals_;
   }
   const FuncIfGraphs &func_if_graphs() const { return func_if_graphs_; }
-  TempRegChecker temp_checker() const { return IsTempReg; }
 
  private:
   using OpCode = AArch32Inst::OpCode;
-  using RegName = AArch32Reg::RegName;
   using BlockId = std::size_t;
 
   // representation of basic block
@@ -72,14 +71,6 @@ class LivenessAnalysisPass : public PassInterface {
     // for liveness analysis
     std::unordered_set<OprPtr> live_out;
   };
-
-  // check if the specific operand is temporary register
-  static bool IsTempReg(const OprPtr &val) {
-    assert(!val->IsVirtual());
-    if (!val->IsReg()) return false;
-    auto name = static_cast<AArch32Reg *>(val.get())->name();
-    return name == RegName::R0 || name == RegName::R1;
-  }
 
   // reset internal status
   void Reset() {
@@ -348,7 +339,7 @@ class LivenessAnalysisPass : public PassInterface {
           if (dest->IsVirtual()) {
             LogLiveInterval(live_intervals, dest, pos, last_temp_pos);
           }
-          else if (IsTempReg(dest)) {
+          else if (temp_checker_(dest)) {
             // update 'last_temp_pos'
             last_temp_pos = pos;
           }
@@ -432,7 +423,7 @@ class LivenessAnalysisPass : public PassInterface {
           UpdateCanAllocTemp(can_alloc_temp, i->dest(), pos, last_temp_pos);
         }
         // update 'last_temp_pos'
-        if ((i->dest() && IsTempReg(i->dest())) || i->IsCall()) {
+        if ((i->dest() && temp_checker_(i->dest())) || i->IsCall()) {
           last_temp_pos = pos;
         }
         ++pos;
@@ -458,6 +449,8 @@ class LivenessAnalysisPass : public PassInterface {
   std::vector<BlockId> order_;
   // liveness info type
   LivenessInfoType info_type_;
+  // temporary register checker
+  TempRegChecker temp_checker_;
   // live intervals of all functions
   FuncLiveIntervals func_live_intervals_;
   // interference graph of all functions
