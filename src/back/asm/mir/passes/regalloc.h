@@ -65,12 +65,18 @@ class RegAllocatorBase : public PassInterface {
  public:
   virtual ~RegAllocatorBase() = default;
 
+  // add avaliable architecture temporary register
+  virtual void AddAvaliableTempReg(const OprPtr &reg) = 0;
   // add avaliable architecture register
   virtual void AddAvaliableReg(const OprPtr &reg) = 0;
 
   // setters
   // specify stack slot allocator
   void set_allocator(SlotAllocator allocator) { allocator_ = allocator; }
+  // specify temporary register checker
+  void set_temp_checker(TempRegChecker temp_checker) {
+    temp_checker_ = temp_checker;
+  }
 
  protected:
   // specify 'alloc_to' property of the specific
@@ -80,11 +86,15 @@ class RegAllocatorBase : public PassInterface {
     static_cast<VirtRegOperand *>(vreg.get())->set_alloc_to(dest);
   }
 
+  // check if the specific operand is a temporary register
+  bool IsTempReg(const OprPtr &opr) const { return temp_checker_(opr); }
+
   // getters
   const SlotAllocator &allocator() const { return allocator_; }
 
  private:
   SlotAllocator allocator_;
+  TempRegChecker temp_checker_;
 };
 
 }  // namespace mimic::back::asmgen
