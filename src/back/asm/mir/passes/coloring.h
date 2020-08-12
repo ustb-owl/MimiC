@@ -164,9 +164,8 @@ class GraphColoringRegAllocPass : public RegAllocatorBase {
       return it->second.neighbours.size();
     };
     auto compare = [&get_degree](const OprPtr &l, const OprPtr &r) {
-      auto lv = static_cast<float>(l->use_count()) / get_degree(l);
-      auto rv = static_cast<float>(r->use_count()) / get_degree(r);
-      return lv < rv;
+      return l->use_count() * get_degree(r) <
+             r->use_count() * get_degree(l);
     };
     auto it = std::min_element(nodes_.begin(), nodes_.end(), compare);
     SpillNode(func_label, *it);
