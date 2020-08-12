@@ -2,6 +2,7 @@
 #define MIMIC_BACK_ASM_MIR_PASSES_REGALLOC_H_
 
 #include <functional>
+#include <unordered_map>
 #include <unordered_set>
 #include <cassert>
 
@@ -9,6 +10,35 @@
 #include "back/asm/mir/virtreg.h"
 
 namespace mimic::back::asmgen {
+
+// live interval information
+struct LiveInterval {
+  std::size_t start_pos;
+  std::size_t end_pos;
+  bool can_alloc_temp;
+};
+
+// live intervals in function
+using LiveIntervals = std::unordered_map<OprPtr, LiveInterval>;
+
+// live intervals of all functions
+using FuncLiveIntervals = std::unordered_map<OprPtr, LiveIntervals>;
+
+// information of graph's node
+struct IfGraphNodeInfo {
+  std::unordered_set<OprPtr> neighbour;
+  std::unordered_set<OprPtr> suggest_same;
+  bool can_alloc_temp;
+};
+
+// interference graph of a function
+using IfGraph = std::unordered_map<OprPtr, IfGraphNodeInfo>;
+
+// interference graph of all functions
+using FuncIfGraphs = std::unordered_map<OprPtr, IfGraph>;
+
+// type of temporary register checker
+using TempRegChecker = std::function<bool(const OprPtr &)>;
 
 // slot allocator
 class SlotAllocator {

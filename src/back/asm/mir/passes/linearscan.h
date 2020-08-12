@@ -4,7 +4,6 @@
 #include <map>
 #include <vector>
 #include <unordered_map>
-#include <functional>
 #include <cstddef>
 #include <cassert>
 
@@ -18,19 +17,6 @@ namespace mimic::back::asmgen {
 */
 class LinearScanRegAllocPass : public RegAllocatorBase {
  public:
-  // live interval information
-  struct LiveInterval {
-    std::size_t start_pos;
-    std::size_t end_pos;
-    bool can_alloc_temp;
-  };
-  // live intervals in function
-  using LiveIntervals = std::unordered_map<OprPtr, LiveInterval>;
-  // live intervals of all functions
-  using FuncLiveIntervals = std::unordered_map<OprPtr, LiveIntervals>;
-  // type of temporary register checker
-  using TempRegChecker = std::function<bool(const OprPtr &)>;
-
   LinearScanRegAllocPass() {}
 
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
