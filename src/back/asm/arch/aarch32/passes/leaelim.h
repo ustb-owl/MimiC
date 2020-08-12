@@ -42,10 +42,12 @@ class LeaEliminationPass : public PassInterface {
 
   InstIt HandleLea(InstPtrList &insts, InstIt pos, AArch32Inst *lea) {
     auto &ptr = lea->oprs()[0].value(), &offset = lea->oprs()[1].value();
-    const auto &dest = lea->dest(), &temp = gen_.GetReg(RegName::R12);
+    const auto &dest = lea->dest();
     // check if 'offset' is immediate zero
     bool ofs_zero = offset->IsImm() &&
                     !static_cast<AArch32Imm *>(offset.get())->val();
+    const auto &temp = ofs_zero ? dest : gen_.GetReg(RegName::R12);
+    // handle by pointer type
     if (ptr->IsSlot()) {
       // get base register
       auto p = static_cast<AArch32Slot *>(ptr.get());
