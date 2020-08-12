@@ -20,7 +20,7 @@ namespace {
 // threshold of loop's basic block count
 constexpr std::size_t kBlockCountThreshold = 4;
 // threshold of loop's trip count
-constexpr std::size_t kTripCountThreshold = 100;
+constexpr std::size_t kTripCountThreshold = 80;
 
 
 // information required by loop unroller
