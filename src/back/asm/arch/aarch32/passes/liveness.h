@@ -357,8 +357,8 @@ class LivenessAnalysisPass : public PassInterface {
 
   void AddEdge(IfGraph &if_graph, const OprPtr &n1, const OprPtr &n2) {
     if (n1 != n2) {
-      if_graph[n1].neighbour.insert(n2);
-      if_graph[n2].neighbour.insert(n1);
+      if_graph[n1].neighbours.insert(n2);
+      if_graph[n2].neighbours.insert(n1);
     }
   }
 

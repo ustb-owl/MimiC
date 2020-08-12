@@ -26,7 +26,7 @@ using FuncLiveIntervals = std::unordered_map<OprPtr, LiveIntervals>;
 
 // information of graph's node
 struct IfGraphNodeInfo {
-  std::unordered_set<OprPtr> neighbour;
+  std::unordered_set<OprPtr> neighbours;
   std::unordered_set<OprPtr> suggest_same;
   bool can_alloc_temp;
 };
