@@ -23,7 +23,7 @@ namespace {
 // threshold of callee's instruction count
 constexpr std::size_t kCalleeInstThreshold = 1 << 7;
 // threshold of caller's instruction count
-constexpr std::size_t kCallerInstThreshold = 1 << 10;
+constexpr std::size_t kCallerInstThreshold = 768;
 // threshold of recursive function's instruction count
 constexpr std::size_t kRecFuncInstThreshold = 1 << 7;
 // threshold of recursive function's inline count
