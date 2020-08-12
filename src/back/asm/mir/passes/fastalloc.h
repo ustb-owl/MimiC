@@ -35,6 +35,8 @@ class FastRegAllocPass : public RegAllocatorBase {
     }
   }
 
+  void AddAvaliableTempReg(const OprPtr &reg) override {}
+
   void AddAvaliableReg(const OprPtr &reg) override {
     avaliable_regs_.push_back(reg);
   }
