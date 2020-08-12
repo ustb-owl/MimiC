@@ -1,8 +1,9 @@
 #ifndef MIMIC_BACK_ASM_MIR_PASSES_REGALLOC_H_
 #define MIMIC_BACK_ASM_MIR_PASSES_REGALLOC_H_
 
-#include <functional>
+#include <map>
 #include <unordered_map>
+#include <functional>
 #include <unordered_set>
 #include <cassert>
 
@@ -31,8 +32,17 @@ struct IfGraphNodeInfo {
   bool can_alloc_temp;
 };
 
+// comparator for graph nodes (virtual registers)
+struct NodeCompare {
+  bool operator()(const OprPtr &n1, const OprPtr &n2) const {
+    auto p1 = static_cast<VirtRegOperand *>(n1.get());
+    auto p2 = static_cast<VirtRegOperand *>(n2.get());
+    return p1->id() < p2->id();
+  }
+};
+
 // interference graph of a function
-using IfGraph = std::unordered_map<OprPtr, IfGraphNodeInfo>;
+using IfGraph = std::map<OprPtr, IfGraphNodeInfo, NodeCompare>;
 
 // interference graph of all functions
 using FuncIfGraphs = std::unordered_map<OprPtr, IfGraph>;
