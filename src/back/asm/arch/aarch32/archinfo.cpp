@@ -11,6 +11,7 @@
 #include "back/asm/arch/aarch32/passes/liveness.h"
 #include "back/asm/mir/passes/fastalloc.h"
 #include "back/asm/mir/passes/linearscan.h"
+#include "back/asm/mir/passes/coloring.h"
 #include "back/asm/arch/aarch32/passes/slotspill.h"
 #include "back/asm/arch/aarch32/passes/funcdeco.h"
 #include "back/asm/arch/aarch32/passes/immnorm.h"
@@ -62,13 +63,6 @@ class AArch32ArchInfo : public ArchInfoBase {
  private:
   using RegName = AArch32Reg::RegName;
 
-  void AddAvaliableReg(const std::unique_ptr<RegAllocatorBase> &alloc) {
-    for (int i = static_cast<int>(RegName::R4);
-         i <= static_cast<int>(RegName::R10); ++i) {
-      alloc->AddAvaliableReg(inst_gen_.GetReg(static_cast<RegName>(i)));
-    }
-  }
-
   static bool IsAvaliableReg(const OprPtr &opr) {
     if (opr->IsReg() && !opr->IsVirtual()) {
       auto reg = static_cast<AArch32Reg *>(opr.get())->name();
@@ -83,16 +77,41 @@ class AArch32ArchInfo : public ArchInfoBase {
            IsAvaliableReg(mov->oprs()[0].value());
   }
 
+  static bool IsTempReg(const OprPtr &opr) {
+    if (!opr->IsReg() || opr->IsVirtual()) return false;
+    auto name = static_cast<AArch32Reg *>(opr.get())->name();
+    return name == RegName::R0 || name == RegName::R1;
+  }
+
+  void AddAvaliableTempReg(const std::unique_ptr<RegAllocatorBase> &alloc) {
+    alloc->AddAvaliableTempReg(inst_gen_.GetReg(RegName::R0));
+    alloc->AddAvaliableTempReg(inst_gen_.GetReg(RegName::R1));
+  }
+
+  void AddAvaliableReg(const std::unique_ptr<RegAllocatorBase> &alloc) {
+    for (int i = static_cast<int>(RegName::R4);
+         i <= static_cast<int>(RegName::R10); ++i) {
+      alloc->AddAvaliableReg(inst_gen_.GetReg(static_cast<RegName>(i)));
+    }
+  }
+
   void InitRegAlloc(std::size_t opt_level, PassPtrList &list) {
+    using LIType = LivenessAnalysisPass::LivenessInfoType;
     // create register allocator
     std::unique_ptr<RegAllocatorBase> reg_alloc;
-    if (opt_level) {
+    if (opt_level >= 2) {
+      auto gcra = MakePass<GraphColoringRegAllocPass>();
+      auto la = MakePass<LivenessAnalysisPass>(LIType::InterferenceGraph,
+                                               IsTempReg);
+      gcra->set_func_if_graphs(&la->func_if_graphs());
+      list.push_back(std::move(la));
+      reg_alloc = std::move(gcra);
+    }
+    else if (opt_level >= 1) {
       auto lsra = MakePass<LinearScanRegAllocPass>();
-      auto la = MakePass<LivenessAnalysisPass>();
-      lsra->AddAvaliableTempReg(inst_gen_.GetReg(RegName::R0));
-      lsra->AddAvaliableTempReg(inst_gen_.GetReg(RegName::R1));
+      auto la = MakePass<LivenessAnalysisPass>(LIType::LiveIntervals,
+                                               IsTempReg);
       lsra->set_func_live_intervals(&la->func_live_intervals());
-      lsra->set_temp_checker(la->temp_checker());
       list.push_back(std::move(la));
       reg_alloc = std::move(lsra);
     }
@@ -100,8 +119,10 @@ class AArch32ArchInfo : public ArchInfoBase {
       reg_alloc = MakePass<FastRegAllocPass>();
     }
     // initialize register allocator
+    AddAvaliableTempReg(reg_alloc);
     AddAvaliableReg(reg_alloc);
     reg_alloc->set_allocator(inst_gen_.GetSlotAllocator());
+    reg_alloc->set_temp_checker(IsTempReg);
     list.push_back(std::move(reg_alloc));
   }
 
