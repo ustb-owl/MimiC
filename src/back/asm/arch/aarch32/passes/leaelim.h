@@ -31,6 +31,7 @@ class LeaEliminationPass : public PassInterface {
 
  private:
   using OpCode = AArch32Inst::OpCode;
+  using RegName = AArch32Reg::RegName;
   using InstIt = InstPtrList::iterator;
 
   template <typename... Args>
@@ -45,34 +46,35 @@ class LeaEliminationPass : public PassInterface {
     // check if 'offset' is immediate zero
     bool ofs_zero = offset->IsImm() &&
                     !static_cast<AArch32Imm *>(offset.get())->val();
+    const auto &temp = ofs_zero ? dest : gen_.GetReg(RegName::R12);
+    // handle by pointer type
     if (ptr->IsSlot()) {
       // get base register
       auto p = static_cast<AArch32Slot *>(ptr.get());
-      pos = InsertBefore(insts, pos, OpCode::MOV, dest, p->base());
+      pos = InsertBefore(insts, pos, OpCode::MOV, temp, p->base());
       // calculate stack offset
       auto ofs = p->offset();
       if (ofs > 0) {
-        pos = InsertBefore(insts, pos, OpCode::ADD, dest, dest,
+        pos = InsertBefore(insts, pos, OpCode::ADD, temp, temp,
                            gen_.GetImm(ofs));
       }
       else if (ofs < 0) {
-        pos = InsertBefore(insts, pos, OpCode::SUB, dest, dest,
+        pos = InsertBefore(insts, pos, OpCode::SUB, temp, temp,
                            gen_.GetImm(-ofs));
       }
     }
     else if (ptr->IsLabel()) {
       // load label address
-      pos = InsertBefore(insts, pos, OpCode::LDR, dest, ptr);
+      pos = InsertBefore(insts, pos, OpCode::LDR, temp, ptr);
     }
     else {
       assert(ptr->IsReg());
       // just move address to destination
-      pos = InsertBefore(insts, pos, OpCode::MOV, dest, ptr);
+      pos = InsertBefore(insts, pos, OpCode::MOV, temp, ptr);
     }
     // add offset to result if offset is not zero
     if (!ofs_zero) {
-      assert(offset != dest);
-      pos = InsertBefore(insts, pos, OpCode::ADD, dest, dest, offset);
+      pos = InsertBefore(insts, pos, OpCode::ADD, dest, temp, offset);
     }
     // erase the original LEA
     return insts.erase(pos);

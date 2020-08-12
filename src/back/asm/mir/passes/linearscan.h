@@ -4,7 +4,6 @@
 #include <map>
 #include <vector>
 #include <unordered_map>
-#include <functional>
 #include <cstddef>
 #include <cassert>
 
@@ -18,19 +17,6 @@ namespace mimic::back::asmgen {
 */
 class LinearScanRegAllocPass : public RegAllocatorBase {
  public:
-  // live interval information
-  struct LiveInterval {
-    std::size_t start_pos;
-    std::size_t end_pos;
-    bool can_alloc_temp;
-  };
-  // live intervals in function
-  using LiveIntervals = std::unordered_map<OprPtr, LiveInterval>;
-  // live intervals of all functions
-  using FuncLiveIntervals = std::unordered_map<OprPtr, LiveIntervals>;
-  // type of temporary register checker
-  using TempRegChecker = std::function<bool(const OprPtr &)>;
-
   LinearScanRegAllocPass() {}
 
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
@@ -50,7 +36,7 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
     }
   }
 
-  void AddAvaliableTempReg(const OprPtr &reg) {
+  void AddAvaliableTempReg(const OprPtr &reg) override {
     avaliable_temps_.push_back(reg);
   }
 
@@ -62,9 +48,6 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
   void set_func_live_intervals(
       const FuncLiveIntervals *func_live_intervals) {
     func_live_intervals_ = func_live_intervals;
-  }
-  void set_temp_checker(TempRegChecker temp_checker) {
-    temp_checker_ = temp_checker;
   }
 
  private:
@@ -156,7 +139,7 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
       if (it->first->end_pos >= i->start_pos) return;
       // free current element's register/slot
       const auto &opr = vregs_[it->second];
-      if (temp_checker_(opr)) {
+      if (IsTempReg(opr)) {
         free_temps_.push_back(opr);
       }
       else if (opr->IsReg()) {
@@ -204,8 +187,6 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
   std::vector<OprPtr> free_temps_, free_regs_, free_slots_;
   // reference of live intervals
   const FuncLiveIntervals *func_live_intervals_;
-  // temporary register checker
-  TempRegChecker temp_checker_;
   // allocated registers/slots of all virtual registers
   std::unordered_map<OprPtr, OprPtr> vregs_;
 };

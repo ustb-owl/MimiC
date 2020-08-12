@@ -1,7 +1,7 @@
 #ifndef MIMIC_BACK_ASM_ARCH_AARCH32_PASSES_LIVENESS_H_
 #define MIMIC_BACK_ASM_ARCH_AARCH32_PASSES_LIVENESS_H_
 
-#include <list>
+#include <vector>
 #include <unordered_map>
 #include <unordered_set>
 #include <cstddef>
@@ -10,7 +10,7 @@
 #include "back/asm/mir/pass.h"
 #include "back/asm/mir/label.h"
 #include "back/asm/arch/aarch32/instdef.h"
-#include "back/asm/mir/passes/linearscan.h"
+#include "back/asm/mir/passes/regalloc.h"
 
 namespace mimic::back::asmgen::aarch32 {
 
@@ -18,32 +18,42 @@ namespace mimic::back::asmgen::aarch32 {
   liveness analysis on MIR (aarch32 architecture)
   this pass will:
   1.  calculate the CFG of input function
-  2.  analysis live intervals of all virtual registers in function
+  2.  analysis liveness information of all virtual registers in function
 */
 class LivenessAnalysisPass : public PassInterface {
  public:
-  LivenessAnalysisPass() {}
+  // liveness information type
+  enum class LivenessInfoType {
+    LiveIntervals, InterferenceGraph,
+  };
+
+  LivenessAnalysisPass(LivenessInfoType info_type,
+                       TempRegChecker temp_checker)
+      : info_type_(info_type), temp_checker_(temp_checker) {}
 
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
     Reset();
     BuildCFG(insts);
     InitDefUseInfo();
     RunLivenessAnalysis();
-    GenerateLiveIntervals(func_label);
+    // generate liveness info
+    if (info_type_ == LivenessInfoType::LiveIntervals) {
+      GenerateLiveIntervals(func_label);
+    }
+    else {
+      assert(info_type_ == LivenessInfoType::InterferenceGraph);
+      GenerateInterferenceGraph(func_label);
+    }
   }
 
-  // getter
-  const LinearScanRegAllocPass::FuncLiveIntervals &func_live_intervals()
-      const {
+  // getters
+  const FuncLiveIntervals &func_live_intervals() const {
     return func_live_intervals_;
   }
-  LinearScanRegAllocPass::TempRegChecker temp_checker() const {
-    return IsTempReg;
-  }
+  const FuncIfGraphs &func_if_graphs() const { return func_if_graphs_; }
 
  private:
   using OpCode = AArch32Inst::OpCode;
-  using RegName = AArch32Reg::RegName;
   using BlockId = std::size_t;
 
   // representation of basic block
@@ -61,14 +71,6 @@ class LivenessAnalysisPass : public PassInterface {
     // for liveness analysis
     std::unordered_set<OprPtr> live_out;
   };
-
-  // check if the specific operand is temporary register
-  static bool IsTempReg(const OprPtr &val) {
-    assert(!val->IsVirtual());
-    if (!val->IsReg()) return false;
-    auto name = static_cast<AArch32Reg *>(val.get())->name();
-    return name == RegName::R0 || name == RegName::R1;
-  }
 
   // reset internal status
   void Reset() {
@@ -302,9 +304,8 @@ class LivenessAnalysisPass : public PassInterface {
     }
   }
 
-  void LogLiveInterval(LinearScanRegAllocPass::LiveIntervals &lis,
-                       const OprPtr &vreg, std::size_t pos,
-                       std::size_t last_temp_pos) {
+  void LogLiveInterval(LiveIntervals &lis, const OprPtr &vreg,
+                       std::size_t pos, std::size_t last_temp_pos) {
     assert(vreg->IsVirtual());
     // get live interval info
     auto it = lis.find(vreg);
@@ -313,9 +314,7 @@ class LivenessAnalysisPass : public PassInterface {
       auto &li = it->second;
       li.end_pos = pos;
       // check if there are usings of temporary register in interval
-      if (last_temp_pos > li.start_pos && last_temp_pos < pos) {
-        li.can_alloc_temp = false;
-      }
+      if (last_temp_pos > li.start_pos) li.can_alloc_temp = false;
     }
     else {
       // add new live interval info
@@ -323,10 +322,10 @@ class LivenessAnalysisPass : public PassInterface {
     }
   }
 
-  // generate live intervals for register allocator
+  // generate live intervals for linear scan register allocator
   void GenerateLiveIntervals(const OprPtr &func_label) {
     auto &live_intervals = func_live_intervals_[func_label];
-    std::size_t last_temp_pos = 0, pos = 0;
+    std::size_t pos = 0, last_temp_pos = 0;
     for (const auto &bid : order_) {
       const auto &bb = bbs_[bid];
       // traverse all instructions
@@ -340,7 +339,7 @@ class LivenessAnalysisPass : public PassInterface {
           if (dest->IsVirtual()) {
             LogLiveInterval(live_intervals, dest, pos, last_temp_pos);
           }
-          else if (IsTempReg(dest)) {
+          else if (temp_checker_(dest)) {
             // update 'last_temp_pos'
             last_temp_pos = pos;
           }
@@ -356,6 +355,97 @@ class LivenessAnalysisPass : public PassInterface {
     }
   }
 
+  void AddEdge(IfGraph &if_graph, const OprPtr &n1, const OprPtr &n2) {
+    if (n1 != n2) {
+      if_graph[n1].neighbours.insert(n2);
+      if_graph[n2].neighbours.insert(n1);
+    }
+  }
+
+  void AddSuggestSame(IfGraph &if_graph, const OprPtr &n1,
+                      const OprPtr &n2) {
+    if (n1 != n2 && n1->IsVirtual() && n2->IsVirtual()) {
+      if_graph[n1].suggest_same.insert(n2);
+      if_graph[n2].suggest_same.insert(n1);
+    }
+  }
+
+  void UpdateCanAllocTemp(
+      std::unordered_map<OprPtr, std::pair<std::size_t, bool>>
+          &can_alloc_temp,
+      const OprPtr &reg, std::size_t pos, std::size_t last_temp_pos) {
+    auto it = can_alloc_temp.find(reg);
+    if (it != can_alloc_temp.end()) {
+      // update current entry
+      auto &pos_and_cat = it->second;
+      if (last_temp_pos > pos_and_cat.first) pos_and_cat.second = false;
+    }
+    else {
+      // insert new entry
+      can_alloc_temp.insert({reg, {pos, true}});
+    }
+  }
+
+  // generate interference graph for graph coloring register allocator
+  void GenerateInterferenceGraph(const OprPtr &func_label) {
+    auto &if_graph = func_if_graphs_[func_label];
+    std::unordered_map<OprPtr, std::pair<std::size_t, bool>> can_alloc_temp;
+    std::size_t pos = 0, last_temp_pos = 0;
+    // traverse all blocks
+    for (const auto &bid : order_) {
+      const auto &bb = bbs_[bid];
+      auto live_now = bb.live_out;
+      // traverse all instructions in reverse order
+      for (auto it = bb.insts.rbegin(); it != bb.insts.rend(); ++it) {
+        const auto &i = *it;
+        // check for destination register
+        if (i->dest() && i->dest()->IsVirtual()) {
+          // add edges
+          for (const auto &val : live_now) {
+            AddEdge(if_graph, val, i->dest());
+          }
+          // remove from set
+          live_now.erase(i->dest());
+        }
+        // add operands to set
+        for (const auto &opr : i->oprs()) {
+          if (!opr.value()->IsVirtual()) continue;
+          live_now.insert(opr.value());
+        }
+        // update 'suggest_same'
+        if (i->IsMove()) {
+          const auto &dest = i->dest(), &src = i->oprs()[0].value();
+          AddSuggestSame(if_graph, dest, src);
+        }
+      }
+      // update 'can_alloc_temp' flag for all instructions
+      for (const auto &i : bb.insts) {
+        // update 'can_alloc_temp'
+        for (const auto &opr : i->oprs()) {
+          if (!opr.value()->IsVirtual()) continue;
+          UpdateCanAllocTemp(can_alloc_temp, opr.value(), pos,
+                             last_temp_pos);
+        }
+        if (i->dest() && i->dest()->IsVirtual()) {
+          UpdateCanAllocTemp(can_alloc_temp, i->dest(), pos, last_temp_pos);
+        }
+        // update 'last_temp_pos'
+        if ((i->dest() && temp_checker_(i->dest())) || i->IsCall()) {
+          last_temp_pos = pos;
+        }
+        ++pos;
+      }
+      // update 'can_alloc_temp' flag for all live out vregs
+      for (const auto &vreg : bb.live_out) {
+        UpdateCanAllocTemp(can_alloc_temp, vreg, pos, last_temp_pos);
+      }
+    }
+    // apply 'can_alloc_temp' flag of all nodes in graph
+    for (const auto &[vreg, pos_and_cat] : can_alloc_temp) {
+      if_graph[vreg].can_alloc_temp = pos_and_cat.second;
+    }
+  }
+
   // map of labels to basic block id
   std::unordered_map<const OperandBase *, BlockId> labels_;
   // next basic block id
@@ -363,9 +453,15 @@ class LivenessAnalysisPass : public PassInterface {
   // all basic blocks, id of entry block is zero
   std::unordered_map<BlockId, BasicBlock> bbs_;
   // original order of all basic blocks
-  std::list<BlockId> order_;
+  std::vector<BlockId> order_;
+  // liveness info type
+  LivenessInfoType info_type_;
+  // temporary register checker
+  TempRegChecker temp_checker_;
   // live intervals of all functions
-  LinearScanRegAllocPass::FuncLiveIntervals func_live_intervals_;
+  FuncLiveIntervals func_live_intervals_;
+  // interference graph of all functions
+  FuncIfGraphs func_if_graphs_;
 };
 
 }  // namespace mimic::back::asmgen::aarch32

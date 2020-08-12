@@ -39,7 +39,7 @@ class LoadStorePropagationPass : public PassInterface {
           }
           else {
             // try to replace with move
-            const auto &mem = GetMemOpr(mem_opr);
+            auto mem = GetMemOpr(mem_opr);
             if (auto val = GetDef(mem)) {
               if (val != inst->dest()) {
                 *it = std::make_shared<AArch32Inst>(OpCode::MOV,

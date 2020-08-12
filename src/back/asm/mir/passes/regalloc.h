@@ -1,6 +1,8 @@
 #ifndef MIMIC_BACK_ASM_MIR_PASSES_REGALLOC_H_
 #define MIMIC_BACK_ASM_MIR_PASSES_REGALLOC_H_
 
+#include <map>
+#include <unordered_map>
 #include <functional>
 #include <unordered_set>
 #include <cassert>
@@ -9,6 +11,44 @@
 #include "back/asm/mir/virtreg.h"
 
 namespace mimic::back::asmgen {
+
+// live interval information
+struct LiveInterval {
+  std::size_t start_pos;
+  std::size_t end_pos;
+  bool can_alloc_temp;
+};
+
+// live intervals in function
+using LiveIntervals = std::unordered_map<OprPtr, LiveInterval>;
+
+// live intervals of all functions
+using FuncLiveIntervals = std::unordered_map<OprPtr, LiveIntervals>;
+
+// information of graph's node
+struct IfGraphNodeInfo {
+  std::unordered_set<OprPtr> neighbours;
+  std::unordered_set<OprPtr> suggest_same;
+  bool can_alloc_temp;
+};
+
+// comparator for graph nodes (virtual registers)
+struct NodeCompare {
+  bool operator()(const OprPtr &n1, const OprPtr &n2) const {
+    auto p1 = static_cast<VirtRegOperand *>(n1.get());
+    auto p2 = static_cast<VirtRegOperand *>(n2.get());
+    return p1->id() < p2->id();
+  }
+};
+
+// interference graph of a function
+using IfGraph = std::map<OprPtr, IfGraphNodeInfo, NodeCompare>;
+
+// interference graph of all functions
+using FuncIfGraphs = std::unordered_map<OprPtr, IfGraph>;
+
+// type of temporary register checker
+using TempRegChecker = std::function<bool(const OprPtr &)>;
 
 // slot allocator
 class SlotAllocator {
@@ -35,12 +75,18 @@ class RegAllocatorBase : public PassInterface {
  public:
   virtual ~RegAllocatorBase() = default;
 
+  // add avaliable architecture temporary register
+  virtual void AddAvaliableTempReg(const OprPtr &reg) = 0;
   // add avaliable architecture register
   virtual void AddAvaliableReg(const OprPtr &reg) = 0;
 
   // setters
   // specify stack slot allocator
   void set_allocator(SlotAllocator allocator) { allocator_ = allocator; }
+  // specify temporary register checker
+  void set_temp_checker(TempRegChecker temp_checker) {
+    temp_checker_ = temp_checker;
+  }
 
  protected:
   // specify 'alloc_to' property of the specific
@@ -50,11 +96,15 @@ class RegAllocatorBase : public PassInterface {
     static_cast<VirtRegOperand *>(vreg.get())->set_alloc_to(dest);
   }
 
+  // check if the specific operand is a temporary register
+  bool IsTempReg(const OprPtr &opr) const { return temp_checker_(opr); }
+
   // getters
   const SlotAllocator &allocator() const { return allocator_; }
 
  private:
   SlotAllocator allocator_;
+  TempRegChecker temp_checker_;
 };
 
 }  // namespace mimic::back::asmgen

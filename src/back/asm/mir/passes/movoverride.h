@@ -15,15 +15,14 @@ class MoveOverridingPass : public PassInterface {
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
     InstPtr last;
     for (auto it = insts.begin(); it != insts.end();) {
-      if (last && last->IsMove()) {
+      if ((*it)->IsMove() && ((*it)->dest() == (*it)->oprs()[0].value())) {
+        // redundant move, just remove
+        it = insts.erase(it);
+      }
+      else if (last && last->IsMove()) {
         auto cur = *it;
         it = CheckAndRemove(insts, it, last);
         last = cur;
-      }
-      else if ((*it)->IsMove() &&
-               ((*it)->dest() == (*it)->oprs()[0].value())) {
-        // redundant move, just remove
-        it = insts.erase(it);
       }
       else {
         last = *it;
