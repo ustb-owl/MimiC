@@ -67,15 +67,15 @@ class FuncDecoratePass : public PassInterface {
     }
     // generate instructions for stack pointer update
     if (neg_slot_size) UpdateSP(insts, neg_slot_size);
+    // update all positive-offset in-frame slots
     if (add_pos_offset) {
-      // update all positive-offset in-frame slots
       for (const auto &[inst, slot] : poif_slots_) {
         auto new_slot = gen_.GetSlot(slot->offset() + add_pos_offset);
         inst->oprs()[inst->opcode() == OpCode::STR].set_value(new_slot);
       }
     }
-    else {
-      // convert all positive-offset in-frame slots to sp-based slots
+    // convert all positive-offset in-frame slots to sp-based slots
+    if (!neg_slot_size) {
       for (const auto &[inst, slot] : poif_slots_) {
         assert(slot->base() == gen_.GetReg(RegName::R11));
         auto new_slot = gen_.GetSlot(true, slot->offset());
