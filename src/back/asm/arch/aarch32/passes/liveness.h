@@ -2,6 +2,7 @@
 #define MIMIC_BACK_ASM_ARCH_AARCH32_PASSES_LIVENESS_H_
 
 #include <vector>
+#include <list>
 #include <unordered_map>
 #include <unordered_set>
 #include <cstddef>
@@ -28,14 +29,21 @@ class LivenessAnalysisPass : public PassInterface {
   };
 
   LivenessAnalysisPass(LivenessInfoType info_type,
-                       TempRegChecker temp_checker)
-      : info_type_(info_type), temp_checker_(temp_checker) {}
+                       TempRegChecker temp_checker,
+                       const RegList &temp_regs,
+                       const RegList &temp_regs_with_lr,
+                       const RegList &regs)
+      : info_type_(info_type), temp_checker_(temp_checker),
+        temp_regs_(temp_regs), temp_regs_with_lr_(temp_regs_with_lr),
+        regs_(regs) {}
 
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
     Reset();
     BuildCFG(insts);
     InitDefUseInfo();
     RunLivenessAnalysis();
+    // generate avaliable registers
+    GenerateAvaliableRegs(func_label, insts);
     // generate liveness info
     if (info_type_ == LivenessInfoType::LiveIntervals) {
       GenerateLiveIntervals(func_label);
@@ -47,6 +55,8 @@ class LivenessAnalysisPass : public PassInterface {
   }
 
   // getters
+  const FuncRegList &func_temp_regs() const { return func_temp_regs_; }
+  const FuncRegList &func_regs() const { return func_regs_; }
   const FuncLiveIntervals &func_live_intervals() const {
     return func_live_intervals_;
   }
@@ -61,9 +71,9 @@ class LivenessAnalysisPass : public PassInterface {
     // instructions in current basic block
     InstPtrList insts;
     // label of predecessors
-    std::list<BlockId> preds;
+    std::vector<BlockId> preds;
     // label of successors
-    std::list<BlockId> succs;
+    std::vector<BlockId> succs;
     // all defined (killed) virtual registers
     std::unordered_set<OprPtr> var_kill;
     // all upward-exposed virtual registers
@@ -177,7 +187,7 @@ class LivenessAnalysisPass : public PassInterface {
 
   // for debugging
   void DumpCFG(std::ostream &os) {
-    auto dump_id_list = [&os](const std::list<BlockId> &ids,
+    auto dump_id_list = [&os](const std::vector<BlockId> &ids,
                               const char *name) {
       os << "  " << name << ": ";
       if (ids.empty()) {
@@ -302,6 +312,23 @@ class LivenessAnalysisPass : public PassInterface {
         }
       }
     }
+  }
+
+  // generate avaliable registers
+  void GenerateAvaliableRegs(const OprPtr &func_label,
+                             const InstPtrList &insts) {
+    // check if there is function call in current function
+    bool has_call = false;
+    for (const auto &i : insts) {
+      if (i->IsCall()) {
+        has_call = true;
+        break;
+      }
+    }
+    // initialize register list reference of current function
+    func_temp_regs_[func_label] = has_call ? &temp_regs_with_lr_
+                                           : &temp_regs_;
+    func_regs_[func_label] = &regs_;
   }
 
   void LogLiveInterval(LiveIntervals &lis, const OprPtr &vreg,
@@ -458,6 +485,10 @@ class LivenessAnalysisPass : public PassInterface {
   LivenessInfoType info_type_;
   // temporary register checker
   TempRegChecker temp_checker_;
+  // architecture register list
+  const RegList &temp_regs_, &temp_regs_with_lr_, &regs_;
+  // avaliable registers of all functions
+  FuncRegList func_temp_regs_, func_regs_;
   // live intervals of all functions
   FuncLiveIntervals func_live_intervals_;
   // interference graph of all functions

@@ -1,7 +1,6 @@
 #ifndef MIMIC_BACK_ASM_MIR_PASSES_FASTALLOC_H_
 #define MIMIC_BACK_ASM_MIR_PASSES_FASTALLOC_H_
 
-#include <list>
 #include <queue>
 #include <unordered_map>
 #include <cassert>
@@ -20,7 +19,7 @@ class FastRegAllocPass : public RegAllocatorBase {
   FastRegAllocPass() {}
 
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
-    Reset();
+    Reset(func_label);
     for (const auto &i : insts) {
       for (auto &&use : i->oprs()) {
         if (use.value()->IsVirtual()) {
@@ -35,16 +34,10 @@ class FastRegAllocPass : public RegAllocatorBase {
     }
   }
 
-  void AddAvaliableTempReg(const OprPtr &reg) override {}
-
-  void AddAvaliableReg(const OprPtr &reg) override {
-    avaliable_regs_.push_back(reg);
-  }
-
  private:
-  void Reset() {
+  void Reset(const OprPtr &func_label) {
     while (!unused_regs_.empty()) unused_regs_.pop();
-    for (const auto &i : avaliable_regs_) unused_regs_.push(i);
+    for (const auto &i : GetRegList(func_label)) unused_regs_.push(i);
     allocated_vregs_.clear();
   }
 
@@ -70,8 +63,6 @@ class FastRegAllocPass : public RegAllocatorBase {
     }
   }
 
-  // all avaliable architecture registers
-  std::list<OprPtr> avaliable_regs_;
   // unused architecture regsters
   std::queue<OprPtr> unused_regs_;
   // allocated virtual registers

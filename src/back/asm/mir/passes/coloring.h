@@ -20,9 +20,11 @@ namespace mimic::back::asmgen {
 */
 class GraphColoringRegAllocPass : public RegAllocatorBase {
  public:
-  GraphColoringRegAllocPass() {}
+  GraphColoringRegAllocPass(const FuncIfGraphs &func_if_graphs)
+      : func_if_graphs_(func_if_graphs) {}
 
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
+    InitRegListRef(func_label);
     // perform allocation
     RunAllocator(func_label);
     // apply colored nodes
@@ -31,24 +33,17 @@ class GraphColoringRegAllocPass : public RegAllocatorBase {
     }
   }
 
-  void AddAvaliableTempReg(const OprPtr &reg) override {
-    avaliable_temps_.push_back(reg);
-  }
-
-  void AddAvaliableReg(const OprPtr &reg) override {
-    avaliable_regs_.push_back(reg);
-  }
-
-  // setter
-  void set_func_if_graphs(const FuncIfGraphs *func_if_graphs) {
-    func_if_graphs_ = func_if_graphs;
-  }
-
  private:
   struct NodeInfo {
     OprPtr node;
     std::size_t degree;
   };
+
+  // initialize register list references
+  void InitRegListRef(const OprPtr &func_label) {
+    avaliable_temps_ = &GetTempRegList(func_label);
+    avaliable_regs_ = &GetRegList(func_label);
+  }
 
   // check if the specific node is spilled
   bool IsNodeSpilled(const OprPtr &node) {
@@ -64,8 +59,8 @@ class GraphColoringRegAllocPass : public RegAllocatorBase {
 
   // get interference graph of the specific function
   const IfGraph &GetIfGraph(const OprPtr &func_label) {
-    auto it = func_if_graphs_->find(func_label);
-    assert(it != func_if_graphs_->end());
+    auto it = func_if_graphs_.find(func_label);
+    assert(it != func_if_graphs_.end());
     return it->second;
   }
 
@@ -131,14 +126,16 @@ class GraphColoringRegAllocPass : public RegAllocatorBase {
     // try to use the hint colors
     for (const auto &n : info.suggest_same) {
       auto it = colored_nodes_.find(n);
-      if (it != colored_nodes_.end() && !used_color.count(it->second)) {
-        SetNodeColor(node, it->second, used_color);
+      const auto &color = it->second;
+      if (it != colored_nodes_.end() && !used_color.count(color)) {
+        if (IsTempReg(color) && !info.can_alloc_temp) continue;
+        SetNodeColor(node, color, used_color);
         return true;
       }
     }
     // try to colorize with temporary registers
     if (info.can_alloc_temp) {
-      for (const auto &i : avaliable_temps_) {
+      for (const auto &i : *avaliable_temps_) {
         if (!used_color.count(i)) {
           SetNodeColor(node, i, used_color);
           return true;
@@ -146,7 +143,7 @@ class GraphColoringRegAllocPass : public RegAllocatorBase {
       }
     }
     // colorize with avaliable registers
-    for (const auto &i : avaliable_regs_) {
+    for (const auto &i : *avaliable_regs_) {
       if (!used_color.count(i)) {
         SetNodeColor(node, i, used_color);
         return true;
@@ -237,10 +234,10 @@ class GraphColoringRegAllocPass : public RegAllocatorBase {
     os << "}" << std::endl;
   }
 
-  // all avaliable registers
-  std::vector<OprPtr> avaliable_temps_, avaliable_regs_;
   // reference of interference graph
-  const FuncIfGraphs *func_if_graphs_;
+  const FuncIfGraphs &func_if_graphs_;
+  // reference of register lists
+  const RegList *avaliable_temps_, *avaliable_regs_;
   // stack of nodes that need to be colored
   std::vector<OprPtr> nodes_;
   // all colored nodes (node -> reg)
