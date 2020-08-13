@@ -375,6 +375,7 @@ REGISTER_PASS(NaiveLoopUnrollingPass, naive_unroll)
     .set_min_opt_level(2)
     .set_stages(PassStage::Opt)
     .Requires("loop_info")
+    .Requires("licm")
     .Invalidates("dom_info");
 
 
