@@ -69,9 +69,10 @@ class FuncDecoratePass : public PassInterface {
     if (neg_slot_size) UpdateSP(insts, neg_slot_size);
     // update all positive-offset in-frame slots
     if (add_pos_offset) {
-      for (const auto &[inst, slot] : poif_slots_) {
+      for (auto &&[inst, slot] : poif_slots_) {
         auto new_slot = gen_.GetSlot(slot->offset() + add_pos_offset);
         inst->oprs()[inst->opcode() == OpCode::STR].set_value(new_slot);
+        slot = static_cast<AArch32Slot *>(new_slot.get());
       }
     }
     // convert all positive-offset in-frame slots to sp-based slots
