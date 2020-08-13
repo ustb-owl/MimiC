@@ -9,7 +9,6 @@
 #include "back/asm/mir/passes/movprop.h"
 #include "back/asm/mir/passes/movelim.h"
 #include "back/asm/arch/aarch32/passes/liveness.h"
-#include "back/asm/mir/passes/fastalloc.h"
 #include "back/asm/mir/passes/linearscan.h"
 #include "back/asm/mir/passes/coloring.h"
 #include "back/asm/arch/aarch32/passes/slotspill.h"
@@ -80,12 +79,14 @@ class AArch32ArchInfo : public ArchInfoBase {
   static bool IsTempReg(const OprPtr &opr) {
     if (!opr->IsReg() || opr->IsVirtual()) return false;
     auto name = static_cast<AArch32Reg *>(opr.get())->name();
-    return name == RegName::R0 || name == RegName::R1;
+    return name == RegName::R0 || name == RegName::R1 ||
+           name == RegName::R2;
   }
 
   void AddAvaliableTempReg(const std::unique_ptr<RegAllocatorBase> &alloc) {
     alloc->AddAvaliableTempReg(inst_gen_.GetReg(RegName::R0));
     alloc->AddAvaliableTempReg(inst_gen_.GetReg(RegName::R1));
+    alloc->AddAvaliableTempReg(inst_gen_.GetReg(RegName::R2));
   }
 
   void AddAvaliableReg(const std::unique_ptr<RegAllocatorBase> &alloc) {
@@ -107,16 +108,13 @@ class AArch32ArchInfo : public ArchInfoBase {
       list.push_back(std::move(la));
       reg_alloc = std::move(gcra);
     }
-    else if (opt_level >= 1) {
+    else {
       auto lsra = MakePass<LinearScanRegAllocPass>();
       auto la = MakePass<LivenessAnalysisPass>(LIType::LiveIntervals,
                                                IsTempReg);
       lsra->set_func_live_intervals(&la->func_live_intervals());
       list.push_back(std::move(la));
       reg_alloc = std::move(lsra);
-    }
-    else {
-      reg_alloc = MakePass<FastRegAllocPass>();
     }
     // initialize register allocator
     AddAvaliableTempReg(reg_alloc);
