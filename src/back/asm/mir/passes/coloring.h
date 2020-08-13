@@ -131,8 +131,10 @@ class GraphColoringRegAllocPass : public RegAllocatorBase {
     // try to use the hint colors
     for (const auto &n : info.suggest_same) {
       auto it = colored_nodes_.find(n);
-      if (it != colored_nodes_.end() && !used_color.count(it->second)) {
-        SetNodeColor(node, it->second, used_color);
+      const auto &color = it->second;
+      if (it != colored_nodes_.end() && !used_color.count(color)) {
+        if (IsTempReg(color) && !info.can_alloc_temp) continue;
+        SetNodeColor(node, color, used_color);
         return true;
       }
     }
