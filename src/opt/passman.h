@@ -21,8 +21,8 @@ class PassInfo {
  public:
   using PassNameSet = std::unordered_set<std::string_view>;
 
-  PassInfo(PassPtr pass)
-      : pass_(std::move(pass)), is_analysis_(false),
+  PassInfo(PassPtr pass, std::string_view name)
+      : pass_(std::move(pass)), name_(name), is_analysis_(false),
         min_opt_level_(0), stages_(PassStage::None) {}
 
   // add required pass by name for current pass
@@ -52,6 +52,7 @@ class PassInfo {
 
   // getters
   const PassPtr &pass() const { return pass_; }
+  std::string_view name() const { return name_; }
   bool is_analysis() const { return is_analysis_; }
   std::size_t min_opt_level() const { return min_opt_level_; }
   PassStage stages() const { return stages_; }
@@ -62,6 +63,7 @@ class PassInfo {
 
  private:
   PassPtr pass_;
+  std::string_view name_;
   bool is_analysis_;
   std::size_t min_opt_level_;
   PassStage stages_;
@@ -80,12 +82,12 @@ class PassManager {
                   "helper pass is unregisterable");
     auto &passes = GetPasses();
     assert(!passes.count(name) && "pass has already been registered");
-    return passes.insert({name, PassInfo(std::make_unique<T>())})
+    return passes.insert({name, PassInfo(std::make_unique<T>(), name)})
         .first->second;
   }
 
   // update 'required by' relationship
-  static void RequiredBy(std::string_view parent, const PassInfo *child) {
+  static void RequiredBy(std::string_view parent, std::string_view child) {
     GetRequiredBy()[parent].insert(child);
   }
 
@@ -116,8 +118,8 @@ class PassManager {
  private:
   using PassInfoMap = std::unordered_map<std::string_view, PassInfo>;
   using PassPtrList = std::vector<const PassInfo *>;
-  using PassPtrSet = std::unordered_set<const PassInfo *>;
-  using RequirementMap = std::unordered_map<std::string_view, PassPtrSet>;
+  using PassNameSet = std::unordered_set<std::string_view>;
+  using RequirementMap = std::unordered_map<std::string_view, PassNameSet>;
 
   // get pass info list
   static PassInfoMap &GetPasses();
@@ -129,11 +131,11 @@ class PassManager {
   bool RunPass(const PassPtr &pass) const;
   // run a specific pass if it's not valid
   // returns true if changed
-  bool RunPass(PassPtrSet &valid, const PassInfo *info) const;
+  bool RunPass(PassNameSet &valid, const PassInfo *info) const;
   // run required passes
-  bool RunRequiredPasses(PassPtrSet &valid, const PassInfo *info) const;
+  bool RunRequiredPasses(PassNameSet &valid, const PassInfo *info) const;
   // invalidate the specific pass
-  void InvalidatePass(PassPtrSet &valid, const PassInfo *info) const;
+  void InvalidatePass(PassNameSet &valid, std::string_view name) const;
   // run all passes in specific list
   void RunPasses(const PassPtrList &passes) const;
 

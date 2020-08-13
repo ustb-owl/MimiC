@@ -38,7 +38,7 @@ std::ostream &operator<<(std::ostream &os, PassStage stage) {
 
 PassInfo &PassInfo::Requires(std::string_view pass_name) {
   required_passes_.insert(pass_name);
-  PassManager::RequiredBy(pass_name, this);
+  PassManager::RequiredBy(pass_name, name_);
   return *this;
 }
 
@@ -102,21 +102,23 @@ bool PassManager::RunPass(const PassPtr &pass) const {
   return changed;
 }
 
-bool PassManager::RunPass(PassPtrSet &valid, const PassInfo *info) const {
+bool PassManager::RunPass(PassNameSet &valid, const PassInfo *info) const {
   bool changed = false;
-  if (!valid.insert(info).second) return changed;
+  if (!valid.insert(info->name()).second) return changed;
   // check dependencies, run required passes first
   if (RunRequiredPasses(valid, info)) changed = true;
   // run current pass
   if (RunPass(info->pass())) {
     changed = true;
     // invalidate passes
-    InvalidatePass(valid, info);
+    for (const auto &name : info->invalidated_passes()) {
+      InvalidatePass(valid, name);
+    }
   }
   return changed;
 }
 
-bool PassManager::RunRequiredPasses(PassPtrSet &valid,
+bool PassManager::RunRequiredPasses(PassNameSet &valid,
                                     const PassInfo *info) const {
   bool changed = false, rerun = true;
   while (rerun) {
@@ -127,7 +129,7 @@ bool PassManager::RunRequiredPasses(PassPtrSet &valid,
       auto it = passes.find(name);
       assert(it != passes.end());
       // run if not valid
-      if (!valid.count(&it->second) && RunPass(valid, &it->second)) {
+      if (!valid.count(name) && RunPass(valid, &it->second)) {
         changed = true;
         rerun = !it->second.invalidated_passes().empty();
       }
@@ -136,26 +138,18 @@ bool PassManager::RunRequiredPasses(PassPtrSet &valid,
   return changed;
 }
 
-void PassManager::InvalidatePass(PassPtrSet &valid,
-                                 const PassInfo *info) const {
-  for (const auto &name : info->invalidated_passes()) {
-    // get pointer to pass
-    const auto &passes = GetPasses();
-    auto it = passes.find(name);
-    assert(it != passes.end());
-    // erase from valid set
-    if (!valid.erase(&it->second)) continue;
-    // invalidate all passes that required current pass
-    for (const auto &child : GetRequiredBy()[name]) {
-      valid.erase(child);
-      InvalidatePass(valid, child);
-    }
+void PassManager::InvalidatePass(PassNameSet &valid,
+                                 std::string_view name) const {
+  if (!valid.erase(name)) return;
+  // invalidate all passes that required current pass
+  for (const auto &child : GetRequiredBy()[name]) {
+    InvalidatePass(valid, child);
   }
 }
 
 void PassManager::RunPasses(const PassPtrList &passes) const {
   bool changed = true;
-  PassPtrSet valid;
+  PassNameSet valid;
   // run until nothing changes
   while (changed) {
     changed = false;
