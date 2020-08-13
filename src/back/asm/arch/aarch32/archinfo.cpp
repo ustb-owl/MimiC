@@ -81,22 +81,24 @@ class AArch32ArchInfo : public ArchInfoBase {
     if (!opr->IsReg() || opr->IsVirtual()) return false;
     auto name = static_cast<AArch32Reg *>(opr.get())->name();
     return name == RegName::R0 || name == RegName::R1 ||
-           name == RegName::R2;
+           name == RegName::R2 || name == RegName::LR;
   }
 
   static void InitTempRegs() {
-    temp_regs_.push_back(inst_gen_.GetReg(RegName::R0));
-    temp_regs_.push_back(inst_gen_.GetReg(RegName::R1));
-    temp_regs_.push_back(inst_gen_.GetReg(RegName::R2));
+    for (int i = static_cast<int>(RegName::R0);
+         i <= static_cast<int>(RegName::R2); ++i) {
+      const auto &reg = inst_gen_.GetReg(static_cast<RegName>(i));
+      temp_regs_.push_back(reg);
+      temp_regs_with_lr_.push_back(reg);
+    }
+    temp_regs_with_lr_.push_back(inst_gen_.GetReg(RegName::LR));
   }
 
   static void InitRegs() {
     for (int i = static_cast<int>(RegName::R4);
          i <= static_cast<int>(RegName::R10); ++i) {
       regs_.push_back(inst_gen_.GetReg(static_cast<RegName>(i)));
-      regs_with_lr_.push_back(inst_gen_.GetReg(static_cast<RegName>(i)));
     }
-    regs_with_lr_.push_back(inst_gen_.GetReg(RegName::LR));
   }
 
   void InitRegAlloc(std::size_t opt_level, PassPtrList &list) {
@@ -105,7 +107,7 @@ class AArch32ArchInfo : public ArchInfoBase {
     auto li_type = opt_level >= 2 ? LIType::InterferenceGraph
                                   : LIType::LiveIntervals;
     auto la = MakePass<LivenessAnalysisPass>(li_type, IsTempReg, temp_regs_,
-                                             regs_, regs_with_lr_);
+                                             temp_regs_with_lr_, regs_);
     // create register allocator
     RegAllocPtr reg_alloc;
     if (opt_level >= 2) {
@@ -132,7 +134,7 @@ class AArch32ArchInfo : public ArchInfoBase {
   }
 
   static AArch32InstGen inst_gen_;
-  static RegList temp_regs_, regs_, regs_with_lr_;
+  static RegList temp_regs_, temp_regs_with_lr_, regs_;
 };
 
 }  // namespace
@@ -144,5 +146,5 @@ REGISTER_ARCH(AArch32ArchInfo, aarch32);
 // definitions of static class members
 AArch32InstGen AArch32ArchInfo::inst_gen_;
 RegList AArch32ArchInfo::temp_regs_;
+RegList AArch32ArchInfo::temp_regs_with_lr_;
 RegList AArch32ArchInfo::regs_;
-RegList AArch32ArchInfo::regs_with_lr_;

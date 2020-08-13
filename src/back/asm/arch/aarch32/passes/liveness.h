@@ -30,10 +30,12 @@ class LivenessAnalysisPass : public PassInterface {
 
   LivenessAnalysisPass(LivenessInfoType info_type,
                        TempRegChecker temp_checker,
-                       const RegList &temp_regs, const RegList &regs,
-                       const RegList &regs_with_lr)
+                       const RegList &temp_regs,
+                       const RegList &temp_regs_with_lr,
+                       const RegList &regs)
       : info_type_(info_type), temp_checker_(temp_checker),
-        temp_regs_(temp_regs), regs_(regs), regs_with_lr_(regs_with_lr) {}
+        temp_regs_(temp_regs), temp_regs_with_lr_(temp_regs_with_lr),
+        regs_(regs) {}
 
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
     Reset();
@@ -324,8 +326,9 @@ class LivenessAnalysisPass : public PassInterface {
       }
     }
     // initialize register list reference of current function
-    func_temp_regs_[func_label] = &temp_regs_;
-    func_regs_[func_label] = has_call ? &regs_with_lr_ : &regs_;
+    func_temp_regs_[func_label] = has_call ? &temp_regs_with_lr_
+                                           : &temp_regs_;
+    func_regs_[func_label] = &regs_;
   }
 
   void LogLiveInterval(LiveIntervals &lis, const OprPtr &vreg,
@@ -483,7 +486,7 @@ class LivenessAnalysisPass : public PassInterface {
   // temporary register checker
   TempRegChecker temp_checker_;
   // architecture register list
-  const RegList &temp_regs_, &regs_, &regs_with_lr_;
+  const RegList &temp_regs_, &temp_regs_with_lr_, &regs_;
   // avaliable registers of all functions
   FuncRegList func_temp_regs_, func_regs_;
   // live intervals of all functions
