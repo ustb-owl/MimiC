@@ -31,6 +31,7 @@ class LeaEliminationPass : public PassInterface {
 
  private:
   using OpCode = AArch32Inst::OpCode;
+  using ShiftOp = AArch32Inst::ShiftOp;
   using RegName = AArch32Reg::RegName;
   using InstIt = InstPtrList::iterator;
 
@@ -38,6 +39,11 @@ class LeaEliminationPass : public PassInterface {
   InstIt InsertBefore(InstPtrList &insts, InstIt pos, Args &&... args) {
     auto inst = std::make_shared<AArch32Inst>(std::forward<Args>(args)...);
     return ++insts.insert(pos, std::move(inst));
+  }
+
+  void AddShiftOpBefore(InstIt pos_after, ShiftOp op, std::uint8_t amt) {
+    auto inst = static_cast<AArch32Inst *>((--pos_after)->get());
+    inst->set_shift_op_amt(op, amt);
   }
 
   InstIt HandleLea(InstPtrList &insts, InstIt pos, AArch32Inst *lea) {
@@ -75,6 +81,7 @@ class LeaEliminationPass : public PassInterface {
     // add offset to result if offset is not zero
     if (!ofs_zero) {
       pos = InsertBefore(insts, pos, OpCode::ADD, dest, temp, offset);
+      AddShiftOpBefore(pos, lea->shift_op(), lea->shift_amt());
     }
     // erase the original LEA
     return insts.erase(pos);
