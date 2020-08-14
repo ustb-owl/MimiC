@@ -434,6 +434,8 @@ void ValueTable::RunOn(UnarySSA &ssa) {
     case Op::Not: expr.set_opcode(OpCode::Not); break;
     default: assert(false);
   }
+  // add operands
+  expr.oprs().push_back(LookupOrAdd(ssa.opr().get()));
   // get number of current expression
   gen_num_ = LookupOrAdd(expr);
 }
