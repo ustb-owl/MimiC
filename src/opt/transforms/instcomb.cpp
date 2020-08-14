@@ -57,8 +57,11 @@ class InstCombinePass : public FunctionPass {
  private:
   // erase instruction from it's parent block
   void RemoveFromParent(const UserPtr &inst) {
-    parent_[inst.get()]->insts().remove_if(
+    auto it = parent_.find(inst.get());
+    assert(it != parent_.end());
+    it->second->insts().remove_if(
         [&inst](const SSAPtr &i) { return i == inst; });
+    parent_.erase(it);
   }
 
   // remove instruction from worklist
@@ -77,10 +80,10 @@ class InstCombinePass : public FunctionPass {
     }
   }
 
-  // Insert an instruction New before instruction 'old'
+  // Insert an instruction 'new_inst' before instruction 'old'
   // in the program. Add the new instruction to the worklist.
   void InsertNewInstBefore(const UserPtr &new_inst, const UserPtr &old) {
-    assert(new_inst && !parent_.count(new_inst.get()));
+    assert(new_inst);
     auto &insts = parent_[old.get()]->insts();
     auto it = std::find(insts.begin(), insts.end(), old);
     insts.insert(it, new_inst);
@@ -198,6 +201,10 @@ class InstCombinePass : public FunctionPass {
   }
 
   std::vector<UserPtr> worklist_;
+  // holds mappings of instruction to its parent block
+  // NOTE: 'parent_' only saves instruction's pointer
+  //       it does not guarantee the pointer is valid
+  //       or not reused by another instruction
   std::unordered_map<Value *, BlockSSA *> parent_;
   UserPtr cur_, result_;
 };
