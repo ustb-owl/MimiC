@@ -94,20 +94,6 @@ class AArch32InstGen : public InstGenBase {
     return GetSlot(false, offset);
   }
 
-  // get a shifted operand
-  const OprPtr &GetShiftOpr(const OprPtr &base, AArch32ShiftOpr::ShiftOp op,
-                            std::uint8_t amt) {
-    ShiftOprInfo soi = {base, op, amt};
-    auto it = shift_oprs_.find(soi);
-    if (it != shift_oprs_.end()) {
-      return it->second;
-    }
-    else {
-      auto so = std::make_shared<AArch32ShiftOpr>(base, op, amt);
-      return shift_oprs_.insert({soi, std::move(so)}).first->second;
-    }
-  }
-
   // getters
   // size of all allocated negative-offset in-frame slots
   const std::unordered_map<OprPtr, std::size_t> &alloc_slots() const {
@@ -115,22 +101,6 @@ class AArch32InstGen : public InstGenBase {
   }
 
  private:
-  struct ShiftOprInfo {
-    bool operator==(const ShiftOprInfo &rhs) const {
-      return base == rhs.base && op == rhs.op && amt == rhs.amt;
-    }
-
-    OprPtr base;
-    AArch32ShiftOpr::ShiftOp op;
-    std::uint8_t amt;
-  };
-
-  struct ShiftOprInfoHasher {
-    bool operator()(const ShiftOprInfo &soi) const {
-      return utils::HashCombine(soi.base, soi.op, soi.amt);
-    }
-  };
-
   // allocate next in-frame stack slot
   const OprPtr &AllocNextSlot(const OprPtr &func_label, std::size_t size) {
     std::int32_t ofs = alloc_slots_[func_label] += (size + 3) / 4 * 4;
@@ -139,9 +109,12 @@ class AArch32InstGen : public InstGenBase {
 
   // push a new instruction to current function
   template <typename... Args>
-  void PushInst(AArch32Inst::OpCode opcode, Args &&... args) {
-    AddInst(std::make_shared<AArch32Inst>(opcode,
-                                          std::forward<Args>(args)...));
+  std::shared_ptr<AArch32Inst> PushInst(AArch32Inst::OpCode opcode,
+                                        Args &&... args) {
+    auto inst = std::make_shared<AArch32Inst>(opcode,
+                                              std::forward<Args>(args)...);
+    AddInst(inst);
+    return inst;
   }
 
   // linkage type conversion
@@ -165,8 +138,6 @@ class AArch32InstGen : public InstGenBase {
   std::unordered_map<std::pair<OprPtr, std::int32_t>, OprPtr> slots_;
   // size of allocated in-frame stack slots (per function)
   std::unordered_map<OprPtr, std::size_t> alloc_slots_;
-  // map for shifted operands
-  std::unordered_map<ShiftOprInfo, OprPtr, ShiftOprInfoHasher> shift_oprs_;
   // for creating virtual registers
   VirtRegFactory vreg_fact_;
   // for creating labels
