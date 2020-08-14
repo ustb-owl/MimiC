@@ -103,7 +103,8 @@ void AArch32Slot::Dump(std::ostream &os) const {
 }
 
 void AArch32ShiftOpr::Dump(std::ostream &os) const {
-  os << base_ << ", " << kShiftOp[static_cast<int>(op_)] << " #" << amt_;
+  os << base_ << ", " << kShiftOp[static_cast<int>(op_)];
+  os << " #" << static_cast<unsigned>(amt_);
 }
 
 void AArch32Inst::Dump(std::ostream &os) const {
