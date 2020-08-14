@@ -150,7 +150,7 @@ class AArch32ShiftOpr : public OperandBase {
   bool IsVirtual() const override { return false; }
   bool IsImm() const override { return false; }
   bool IsLabel() const override { return false; }
-  bool IsSlot() const override { return true; }
+  bool IsSlot() const override { return false; }
 
   void Dump(std::ostream &os) const override;
 
