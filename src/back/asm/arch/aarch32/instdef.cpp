@@ -16,6 +16,10 @@ const char *kRegNames[] = {
   "r12", "sp", "lr", "pc",
 };
 
+const char *kShiftOp[] = {
+  "lsl", "lsr", "asr", "ror",
+};
+
 const char *kOpCodes[] = {
   "ldr", "ldrb", "str", "strb", "push", "pop",
   "add", "sub", "subs", "rsb", "mul", "mls", "sdiv", "udiv",
@@ -96,6 +100,10 @@ void AArch32Str::Dump(std::ostream &os) const {
 
 void AArch32Slot::Dump(std::ostream &os) const {
   os << '[' << base_ << ", #" << offset_ << ']';
+}
+
+void AArch32ShiftOpr::Dump(std::ostream &os) const {
+  os << base_ << ", " << kShiftOp[static_cast<int>(op_)] << " #" << amt_;
 }
 
 void AArch32Inst::Dump(std::ostream &os) const {

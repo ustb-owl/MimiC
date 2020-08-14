@@ -132,9 +132,37 @@ class AArch32Slot : public OperandBase {
   std::int32_t offset() const { return offset_; }
 
  private:
-  // set if base register of slot is SP rather than FP
   OprPtr base_;
   std::int32_t offset_;
+};
+
+// aarch32 shifted operand
+class AArch32ShiftOpr : public OperandBase {
+ public:
+  enum class ShiftOp {
+    LSL, LSR, ASR, ROR,
+  };
+
+  AArch32ShiftOpr(const OprPtr &base, ShiftOp op, std::uint8_t amt)
+      : base_(base), op_(op), amt_(amt) {}
+
+  bool IsReg() const override { return false; }
+  bool IsVirtual() const override { return false; }
+  bool IsImm() const override { return false; }
+  bool IsLabel() const override { return false; }
+  bool IsSlot() const override { return true; }
+
+  void Dump(std::ostream &os) const override;
+
+  // getters
+  const OprPtr &base() const { return base_; }
+  ShiftOp op() const { return op_; }
+  std::uint8_t amt() const { return amt_; }
+
+ private:
+  OprPtr base_;
+  ShiftOp op_;
+  std::uint8_t amt_;
 };
 
 // aarch32 instruction
