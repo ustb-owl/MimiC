@@ -161,8 +161,11 @@ OprPtr AArch32InstGen::GenerateOn(StoreSSA &ssa) {
 
 OprPtr AArch32InstGen::GenerateOn(AccessSSA &ssa) {
   using AccTy = AccessSSA::AccessType;
+  using ShiftOp = AArch32Inst::ShiftOp;
   auto ptr = GetOpr(ssa.ptr()), index = GetOpr(ssa.index());
   auto dest = vreg_fact_.GetReg();
+  auto shift_op = ShiftOp::NOP;
+  std::uint8_t shift_amt = 0;
   // calculate index
   auto base_ty = ssa.ptr()->type()->GetDerefedType();
   if (base_ty->IsStruct()) {
@@ -193,8 +196,8 @@ OprPtr AArch32InstGen::GenerateOn(AccessSSA &ssa) {
       assert(index->IsReg() && size);
       if (!(size & (size - 1))) {
         // 'size' is not zero && is power of 2
-        auto op = AArch32ShiftOpr::ShiftOp::LSL;
-        index = GetShiftOpr(index, op, std::log2(size));
+        shift_op = ShiftOp::LSL;
+        shift_amt = std::log2(size);
       }
       else {
         // generate multiplication
@@ -205,7 +208,8 @@ OprPtr AArch32InstGen::GenerateOn(AccessSSA &ssa) {
     }
   }
   // get effective address
-  PushInst(OpCode::LEA, dest, ptr, index);
+  PushInst(OpCode::LEA, dest, ptr, index)
+      ->set_shift_op_amt(shift_op, shift_amt);
   return dest;
 }
 
