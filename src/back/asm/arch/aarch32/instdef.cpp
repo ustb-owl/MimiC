@@ -40,7 +40,7 @@ const char *kOpCodes[] = {
 };
 
 const char *kShiftOp[] = {
-  "lsl", "lsr", "asr", "ror",
+  "", "lsl", "lsr", "asr", "ror",
 };
 
 std::ostream &operator<<(std::ostream &os, AArch32Reg::RegName name) {
