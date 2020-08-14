@@ -117,7 +117,9 @@ class AArch32Str : public OperandBase {
 class AArch32Slot : public OperandBase {
  public:
   AArch32Slot(const OprPtr &base, std::int32_t offset)
-      : base_(base), offset_(offset) {}
+      : base_(base), offset_(offset) {
+    assert(base->IsReg());
+  }
 
   bool IsReg() const override { return false; }
   bool IsVirtual() const override { return false; }
@@ -134,35 +136,6 @@ class AArch32Slot : public OperandBase {
  private:
   OprPtr base_;
   std::int32_t offset_;
-};
-
-// aarch32 shifted operand
-class AArch32ShiftOpr : public OperandBase {
- public:
-  enum class ShiftOp {
-    LSL, LSR, ASR, ROR,
-  };
-
-  AArch32ShiftOpr(const OprPtr &base, ShiftOp op, std::uint8_t amt)
-      : base_(base), op_(op), amt_(amt) {}
-
-  bool IsReg() const override { return false; }
-  bool IsVirtual() const override { return false; }
-  bool IsImm() const override { return false; }
-  bool IsLabel() const override { return false; }
-  bool IsSlot() const override { return false; }
-
-  void Dump(std::ostream &os) const override;
-
-  // getters
-  const OprPtr &base() const { return base_; }
-  ShiftOp op() const { return op_; }
-  std::uint8_t amt() const { return amt_; }
-
- private:
-  OprPtr base_;
-  ShiftOp op_;
-  std::uint8_t amt_;
 };
 
 // aarch32 instruction
@@ -202,16 +175,21 @@ class AArch32Inst : public InstBase {
     ZERO, ASCIZ, LONG, BYTE,
   };
 
+  // shift opcode for shifted operands
+  enum class ShiftOp {
+    NOP, LSL, LSR, ASR, ROR,
+  };
+
   // push/pop/...
   AArch32Inst(OpCode opcode, std::initializer_list<OprPtr> oprs)
-      : opcode_(opcode) {
+      : opcode_(opcode), shift_op_(ShiftOp::NOP) {
     set_dest(nullptr);
     for (const auto &i : oprs) AddOpr(i);
   }
   // mls/...
   AArch32Inst(OpCode opcode, const OprPtr &dest, const OprPtr &opr1,
               const OprPtr &opr2, const OprPtr &opr3)
-      : opcode_(opcode) {
+      : opcode_(opcode), shift_op_(ShiftOp::NOP) {
     set_dest(dest);
     AddOpr(opr1);
     AddOpr(opr2);
@@ -220,7 +198,7 @@ class AArch32Inst : public InstBase {
   // add/sub/...
   AArch32Inst(OpCode opcode, const OprPtr &dest, const OprPtr &opr1,
               const OprPtr &opr2)
-      : opcode_(opcode) {
+      : opcode_(opcode), shift_op_(ShiftOp::NOP) {
     if (opcode == OpCode::BR) {
       set_dest(nullptr);
       AddOpr(dest);
@@ -233,7 +211,7 @@ class AArch32Inst : public InstBase {
   }
   // ldr/mov/cmp/...
   AArch32Inst(OpCode opcode, const OprPtr &dest, const OprPtr &opr)
-      : opcode_(opcode) {
+      : opcode_(opcode), shift_op_(ShiftOp::NOP) {
     if (opcode_ == OpCode::CMP || opcode_ == OpCode::STR ||
         opcode_ == OpCode::STRB) {
       // CMP/STR/STRB does not have destination register
@@ -247,23 +225,35 @@ class AArch32Inst : public InstBase {
   }
   // beq/label/...
   AArch32Inst(OpCode opcode, const OprPtr &opr)
-      : opcode_(opcode) {
+      : opcode_(opcode), shift_op_(ShiftOp::NOP) {
     set_dest(nullptr);
     AddOpr(opr);
   }
   // nop/...
-  AArch32Inst(OpCode opcode) : opcode_(opcode) { set_dest(nullptr); }
+  AArch32Inst(OpCode opcode) : opcode_(opcode), shift_op_(ShiftOp::NOP) {
+    set_dest(nullptr);
+  }
 
   bool IsMove() const override { return opcode_ == OpCode::MOV; }
   bool IsLabel() const override { return opcode_ == OpCode::LABEL; }
   bool IsCall() const override { return opcode_ == OpCode::BL; }
   void Dump(std::ostream &os) const override;
 
+  // setters
+  void set_shift_op_amt(ShiftOp op, std::uint8_t amt) {
+    shift_op_ = op;
+    shift_amt_ = amt;
+  }
+
   // getters
   OpCode opcode() const { return opcode_; }
+  ShiftOp shift_op() const { return shift_op_; }
+  std::uint8_t shift_amt() const { return shift_amt_; }
 
  private:
   OpCode opcode_;
+  ShiftOp shift_op_;
+  std::uint8_t shift_amt_;
 };
 
 }  // namespace mimic::back::asmgen::aarch32
