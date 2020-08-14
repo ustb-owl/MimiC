@@ -37,13 +37,13 @@ std::ostream &operator<<(std::ostream &os, PassStage stage) {
 }  // namespace
 
 PassInfo &PassInfo::Requires(std::string_view pass_name) {
-  required_passes_.insert(pass_name);
+  required_passes_.push_back(pass_name);
   PassManager::RequiredBy(pass_name, name_);
   return *this;
 }
 
 PassInfo &PassInfo::Invalidates(std::string_view pass_name) {
-  invalidated_passes_.insert(pass_name);
+  invalidated_passes_.push_back(pass_name);
   return *this;
 }
 
