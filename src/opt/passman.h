@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <memory>
 #include <ostream>
+#include <map>
 #include <unordered_map>
 #include <unordered_set>
 #include <cstddef>
@@ -19,7 +20,7 @@ namespace mimic::opt {
 // pass information
 class PassInfo {
  public:
-  using PassNameSet = std::unordered_set<std::string_view>;
+  using PassNameList = std::vector<std::string_view>;
 
   PassInfo(PassPtr pass, std::string_view name)
       : pass_(std::move(pass)), name_(name), is_analysis_(false),
@@ -56,8 +57,8 @@ class PassInfo {
   bool is_analysis() const { return is_analysis_; }
   std::size_t min_opt_level() const { return min_opt_level_; }
   PassStage stages() const { return stages_; }
-  const PassNameSet &required_passes() const { return required_passes_; }
-  const PassNameSet &invalidated_passes() const {
+  const PassNameList &required_passes() const { return required_passes_; }
+  const PassNameList &invalidated_passes() const {
     return invalidated_passes_;
   }
 
@@ -67,7 +68,7 @@ class PassInfo {
   bool is_analysis_;
   std::size_t min_opt_level_;
   PassStage stages_;
-  PassNameSet required_passes_, invalidated_passes_;
+  PassNameList required_passes_, invalidated_passes_;
 };
 
 // pass manager for all SSA IR passes
@@ -116,7 +117,7 @@ class PassManager {
   bool is_stage_last() const { return stage_ == kLastPassStage; }
 
  private:
-  using PassInfoMap = std::unordered_map<std::string_view, PassInfo>;
+  using PassInfoMap = std::map<std::string_view, PassInfo>;
   using PassPtrList = std::vector<const PassInfo *>;
   using PassNameSet = std::unordered_set<std::string_view>;
   using RequirementMap = std::unordered_map<std::string_view, PassNameSet>;
