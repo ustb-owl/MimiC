@@ -26,6 +26,8 @@ class ShiftCombiningPass : public PassInterface {
         auto inst = static_cast<AArch32Inst *>(i.get());
         switch (inst->opcode()) {
           case OpCode::LSL: case OpCode::LSR: case OpCode::ASR: {
+            RemoveDef(inst->dest());
+            RemoveUsedByDef(inst->dest());
             LogShiftInfo(inst);
             break;
           }
@@ -39,14 +41,24 @@ class ShiftCombiningPass : public PassInterface {
               inst->oprs()[1].set_value(temp);
               ApplyShiftInfo(inst);
             }
+            RemoveDef(inst->dest());
+            RemoveUsedByDef(inst->dest());
             break;
           }
           case OpCode::SUB: case OpCode::SUBS: case OpCode::RSB:
           case OpCode::CMP: case OpCode::MVN: case OpCode::MOVEQ: {
             ApplyShiftInfo(inst);
+            RemoveDef(inst->dest());
+            RemoveUsedByDef(inst->dest());
             break;
           }
-          default:;
+          default: {
+            if (inst->dest() && inst->dest()->IsVirtual()) {
+              RemoveDef(inst->dest());
+              RemoveUsedByDef(inst->dest());
+            }
+            break;
+          }
         }
       }
     }
@@ -73,7 +85,34 @@ class ShiftCombiningPass : public PassInterface {
   };
 
   void Reset() {
-    shift_info_.clear();
+    defs_.clear();
+    uses_.clear();
+  }
+
+  void RemoveDef(const OprPtr &dest) {
+    auto it = defs_.find(dest);
+    if (it != defs_.end()) {
+      // remove from uses map
+      auto [cur, end] = uses_.equal_range(it->second.base);
+      for (; cur != end; ++cur) {
+        if (cur->second == dest) {
+          uses_.erase(cur);
+          break;
+        }
+      }
+      // remove from definitions
+      defs_.erase(it);
+    }
+  }
+
+  void RemoveUsedByDef(const OprPtr &opr) {
+    auto [begin, end] = uses_.equal_range(opr);
+    // remove all definitions with specific value
+    for (auto it = begin; it != end; ++it) {
+      defs_.erase(it->second);
+    }
+    // remove expired uses
+    uses_.erase(begin, end);
   }
 
   void LogShiftInfo(AArch32Inst *shift) {
@@ -93,13 +132,14 @@ class ShiftCombiningPass : public PassInterface {
       default: assert(false);
     }
     // update shift info
-    shift_info_[dest] = {base, op, amt};
+    defs_.insert({dest, {base, op, amt}});
+    uses_.insert({base, dest});
   }
 
   bool ApplyShiftInfo(AArch32Inst *inst) {
     auto &opr = inst->oprs().back();
-    auto it = shift_info_.find(opr.value());
-    if (it == shift_info_.end()) return false;
+    auto it = defs_.find(opr.value());
+    if (it == defs_.end()) return false;
     // replace with base register
     opr.set_value(it->second.base);
     // update instruction's shift info
@@ -107,8 +147,10 @@ class ShiftCombiningPass : public PassInterface {
     return true;
   }
 
-  // VReg -> ShiftInfo
-  std::unordered_map<OprPtr, ShiftInfo> shift_info_;
+  // all shift info definitions (VReg -> ShiftInfo)
+  std::unordered_map<OprPtr, ShiftInfo> defs_;
+  // values used by definitions
+  std::unordered_multimap<OprPtr, OprPtr> uses_;
 };
 
 }  // namespace mimic::back::asmgen::aarch32
