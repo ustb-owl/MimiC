@@ -94,6 +94,9 @@ class AArch32InstGen : public InstGenBase {
     return GetSlot(false, offset);
   }
 
+  // get a virtual register
+  OprPtr GetVReg() { return vreg_fact_.GetReg(); }
+
   // getters
   // size of all allocated negative-offset in-frame slots
   const std::unordered_map<OprPtr, std::size_t> &alloc_slots() const {
