@@ -41,9 +41,9 @@ class AArch32ArchInfo : public ArchInfoBase {
     if (opt_level) {
       list.push_back(MakePass<LeaCombiningPass>(inst_gen_));
       list.push_back(MakePass<LoadStorePropagationPass>());
+      list.push_back(MakePass<DivisionOptimizationPass>(inst_gen_));
       list.push_back(MakePass<MovePropagationPass>());
       list.push_back(MakePass<MoveEliminatePass>());
-      list.push_back(MakePass<DivisionOptimizationPass>(inst_gen_));
       list.push_back(MakePass<ShiftCombiningPass>());
     }
     InitRegAlloc(opt_level, list);
