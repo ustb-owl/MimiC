@@ -119,6 +119,7 @@ class ShiftCombiningPass : public PassInterface {
     const auto &dest = shift->dest();
     const auto &base = shift->oprs()[0].value();
     const auto &imm = shift->oprs()[1].value();
+    if (dest == base) return;
     // check & get immediate value (shift amount)
     if (!imm->IsImm()) return;
     auto imm_ptr = static_cast<AArch32Imm *>(imm.get());
