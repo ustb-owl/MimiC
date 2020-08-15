@@ -85,12 +85,12 @@ class AArch32ArchInfo : public ArchInfoBase {
     if (!opr->IsReg() || opr->IsVirtual()) return false;
     auto name = static_cast<AArch32Reg *>(opr.get())->name();
     return name == RegName::R0 || name == RegName::R1 ||
-           name == RegName::R2 || name == RegName::LR;
+           name == RegName::LR;
   }
 
   static void InitTempRegs() {
     for (int i = static_cast<int>(RegName::R0);
-         i <= static_cast<int>(RegName::R2); ++i) {
+         i <= static_cast<int>(RegName::R1); ++i) {
       const auto &reg = inst_gen_.GetReg(static_cast<RegName>(i));
       temp_regs_.push_back(reg);
       temp_regs_with_lr_.push_back(reg);
