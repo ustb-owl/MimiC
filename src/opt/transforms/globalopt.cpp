@@ -106,7 +106,7 @@ class GlobalOptPass : public ModulePass {
   xstl::Guard UpdateLast(Value &val) {
     auto last_lv = last_visited_;
     last_visited_ = &val;
-    return xstl::Guard([this, &last_lv] { last_visited_ = last_lv; });
+    return xstl::Guard([this, last_lv] { last_visited_ = last_lv; });
   }
 
   // current value is not a constant
