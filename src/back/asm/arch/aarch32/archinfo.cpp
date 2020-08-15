@@ -8,6 +8,8 @@
 #include "back/asm/arch/aarch32/passes/lsprop.h"
 #include "back/asm/mir/passes/movprop.h"
 #include "back/asm/mir/passes/movelim.h"
+#include "back/asm/arch/aarch32/passes/divopt.h"
+#include "back/asm/arch/aarch32/passes/shiftcomb.h"
 #include "back/asm/arch/aarch32/passes/liveness.h"
 #include "back/asm/mir/passes/linearscan.h"
 #include "back/asm/mir/passes/coloring.h"
@@ -41,6 +43,8 @@ class AArch32ArchInfo : public ArchInfoBase {
       list.push_back(MakePass<LoadStorePropagationPass>());
       list.push_back(MakePass<MovePropagationPass>());
       list.push_back(MakePass<MoveEliminatePass>());
+      list.push_back(MakePass<DivisionOptimizationPass>(inst_gen_));
+      list.push_back(MakePass<ShiftCombiningPass>());
     }
     InitRegAlloc(opt_level, list);
     if (opt_level) {
