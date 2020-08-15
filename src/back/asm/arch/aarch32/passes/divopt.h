@@ -122,7 +122,7 @@ class DivisionOptimizationPass : public PassInterface {
     if (!d) return ++pos;
     Multiplier mp = ChooseMultiplier(d, N);
     auto m = mp.m_high;
-    int sh_post = mp.sh_post, l = mp.l, l_dummy, sh_pre;
+    int sh_post = mp.sh_post, l = mp.l, sh_pre;
     if (m >= (1ull << N) && d % 2 == 0) {
       int e = log2(d & ((1ull << N) - d));
       auto d_odd = d >> e;
@@ -130,7 +130,6 @@ class DivisionOptimizationPass : public PassInterface {
       mp = ChooseMultiplier(d_odd, N - e);
       m = mp.m_high;
       sh_post = mp.sh_post;
-      l_dummy = mp.l;
     }
     else {
       sh_pre = 0;
