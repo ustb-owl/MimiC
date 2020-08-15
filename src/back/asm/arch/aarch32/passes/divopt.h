@@ -55,53 +55,75 @@ class DivisionOptimizationPass : public PassInterface {
 
   // insert instruction before the specific position
   template <typename... Args>
-  InstIt InsertBefore(InstPtrList &insts, InstIt pos, Args &&... args) {
+  void InsertBefore(InstPtrList &insts, InstIt &pos, Args &&... args) {
     auto inst = std::make_shared<AArch32Inst>(std::forward<Args>(args)...);
-    return ++insts.insert(pos, std::move(inst));
+    pos = ++insts.insert(pos, std::move(inst));
   }
 
   // insert signed higher 32-bit multiplication
-  InstIt InsertMulSH(InstPtrList &insts, InstIt pos, const OprPtr &dest,
-                     const OprPtr &x, std::int32_t imm) {
-    auto y = gen_.GetVReg();
-    pos = InsertBefore(insts, pos, OpCode::MOV, y, gen_.GetImm(imm));
-    return InsertBefore(insts, pos, OpCode::SMMUL, dest, x, y);
+  OprPtr InsertMulSH(InstPtrList &insts, InstIt &pos, const OprPtr &x,
+                     std::int32_t imm) {
+    auto y = gen_.GetVReg(), dest = gen_.GetVReg();
+    InsertBefore(insts, pos, OpCode::MOV, y, gen_.GetImm(imm));
+    InsertBefore(insts, pos, OpCode::SMMUL, dest, x, y);
+    return dest;
   }
 
   // insert unsigned higher 32-bit multiplication
-  InstIt InsertMulUH(InstPtrList &insts, InstIt pos, const OprPtr &dest,
-                     const OprPtr &x, std::uint32_t imm) {
-    auto y = gen_.GetVReg();
-    pos = InsertBefore(insts, pos, OpCode::MOV, y, gen_.GetImm(imm));
-    return InsertBefore(insts, pos, OpCode::UMULL, y, dest, x, y);
+  OprPtr InsertMulUH(InstPtrList &insts, InstIt &pos, const OprPtr &x,
+                     std::uint32_t imm) {
+    auto y = gen_.GetVReg(), dest = gen_.GetVReg();
+    InsertBefore(insts, pos, OpCode::MOV, y, gen_.GetImm(imm));
+    InsertBefore(insts, pos, OpCode::UMULL, y, dest, x, y);
+    return dest;
   }
 
   // insert logical right shift
-  InstIt InsertLSR(InstPtrList &insts, InstIt pos, const OprPtr &dest,
-                   const OprPtr &x, std::int32_t amt) {
-    if (!amt) return pos;
+  OprPtr InsertLSR(InstPtrList &insts, InstIt &pos, const OprPtr &x,
+                   std::int32_t amt) {
+    if (!amt) return x;
     const auto &y = gen_.GetImm(amt);
-    return InsertBefore(insts, pos, OpCode::LSR, dest, x, y);
+    auto dest = gen_.GetVReg();
+    InsertBefore(insts, pos, OpCode::LSR, dest, x, y);
+    return dest;
   }
 
   // insert arithmetic right shift
-  InstIt InsertASR(InstPtrList &insts, InstIt pos, const OprPtr &dest,
-                   const OprPtr &x, std::int32_t amt) {
-    if (!amt) return pos;
+  OprPtr InsertASR(InstPtrList &insts, InstIt &pos, const OprPtr &x,
+                   std::int32_t amt) {
+    if (!amt) return x;
     const auto &y = gen_.GetImm(amt);
-    return InsertBefore(insts, pos, OpCode::ASR, dest, x, y);
+    auto dest = gen_.GetVReg();
+    InsertBefore(insts, pos, OpCode::ASR, dest, x, y);
+    return dest;
   }
 
   // insert XSIGN
-  InstIt InsertXSign(InstPtrList &insts, InstIt pos, const OprPtr &dest,
-                     const OprPtr &x) {
-    return InsertASR(insts, pos, dest, x, N - 1);
+  OprPtr InsertXSign(InstPtrList &insts, InstIt &pos, const OprPtr &x) {
+    return InsertASR(insts, pos, x, N - 1);
+  }
+
+  // insert add
+  OprPtr InsertAdd(InstPtrList &insts, InstIt pos, const OprPtr &x,
+                   const OprPtr &y) {
+    auto dest = gen_.GetVReg();
+    InsertBefore(insts, pos, OpCode::ADD, dest, x, y);
+    return dest;
+  }
+
+  // insert sub
+  OprPtr InsertSub(InstPtrList &insts, InstIt pos, const OprPtr &x,
+                   const OprPtr &y) {
+    auto dest = gen_.GetVReg();
+    InsertBefore(insts, pos, OpCode::SUB, dest, x, y);
+    return dest;
   }
 
   // insert negate
-  InstIt InsertNeg(InstPtrList &insts, InstIt pos, const OprPtr &dest,
-                   const OprPtr &x) {
-    return InsertBefore(insts, pos, OpCode::RSB, dest, x, gen_.GetImm(0));
+  OprPtr InsertNeg(InstPtrList &insts, InstIt pos, const OprPtr &x) {
+    auto dest = gen_.GetVReg();
+    InsertBefore(insts, pos, OpCode::RSB, dest, x, gen_.GetImm(0));
+    return dest;
   }
 
   Multiplier ChooseMultiplier(std::uint32_t d, int prec) {
@@ -135,23 +157,25 @@ class DivisionOptimizationPass : public PassInterface {
       sh_pre = 0;
     }
     // generate code
+    OprPtr ans;
     if (d == (1ull << l)) {
-      pos = InsertLSR(insts, pos, dest, n, l);
+      ans = InsertLSR(insts, pos, n, l);
     }
     else if (m >= (1ull << N)) {
       assert(sh_pre == 0);
-      auto t1 = gen_.GetVReg(), t2 = gen_.GetVReg();
-      pos = InsertMulUH(insts, pos, t1, n, m - (1ull << N));
-      pos = InsertBefore(insts, pos, OpCode::SUB, dest, n, t1);
-      pos = InsertLSR(insts, pos, t2, dest, 1);
-      pos = InsertBefore(insts, pos, OpCode::ADD, dest, t1, t2);
-      pos = InsertLSR(insts, pos, dest, dest, sh_post - 1);
+      auto t1 = InsertMulUH(insts, pos, n, m - (1ull << N));
+      ans = InsertSub(insts, pos, n, t1);
+      ans = InsertLSR(insts, pos, ans, 1);
+      ans = InsertAdd(insts, pos, t1, ans);
+      ans = InsertLSR(insts, pos, ans, sh_post - 1);
     }
     else {
-      pos = InsertLSR(insts, pos, dest, n, sh_pre);
-      pos = InsertMulUH(insts, pos, dest, dest, m);
-      pos = InsertLSR(insts, pos, dest, dest, sh_post);
+      ans = InsertLSR(insts, pos, n, sh_pre);
+      ans = InsertMulUH(insts, pos, ans, m);
+      ans = InsertLSR(insts, pos, ans, sh_post);
     }
+    // insert move
+    InsertBefore(insts, pos, OpCode::MOV, dest, ans);
     // remove current instruction
     return insts.erase(pos);
   }
@@ -163,32 +187,37 @@ class DivisionOptimizationPass : public PassInterface {
     auto abs_d = d > 0 ? d : -d;
     Multiplier m = ChooseMultiplier(abs_d, N - 1);
     // generate code
+    OprPtr ans;
     if (abs_d == 1) {
-      pos = InsertBefore(insts, pos, OpCode::MOV, dest, n);
+      ans = gen_.GetVReg();
+      InsertBefore(insts, pos, OpCode::MOV, ans, n);
     }
     else if (abs_d == (1 << m.l)) {
-      pos = InsertASR(insts, pos, dest, n, m.l - 1);
-      auto t = gen_.GetVReg();
-      pos = InsertLSR(insts, pos, t, dest, N - m.l);
-      pos = InsertBefore(insts, pos, OpCode::ADD, dest, n, t);
-      pos = InsertASR(insts, pos, dest, dest, m.l);
+      ans = InsertASR(insts, pos, n, m.l - 1);
+      ans = InsertLSR(insts, pos, ans, N - m.l);
+      ans = InsertAdd(insts, pos, n, ans);
+      ans = InsertASR(insts, pos, ans, m.l);
     }
     else if (m.m_high < (1ull << (N - 1))) {
-      pos = InsertMulSH(insts, pos, dest, n, m.m_high);
-      pos = InsertASR(insts, pos, dest, dest, m.sh_post);
-      auto t = gen_.GetVReg();
-      pos = InsertXSign(insts, pos, t, n);
-      pos = InsertBefore(insts, pos, OpCode::SUB, dest, dest, t);
+      ans = InsertMulSH(insts, pos, n, m.m_high);
+      ans = InsertASR(insts, pos, ans, m.sh_post);
+      auto t = InsertXSign(insts, pos, n);
+      ans = InsertSub(insts, pos, ans, t);
     }
     else {
-      pos = InsertMulSH(insts, pos, dest, n, m.m_high - (1ull << N));
-      pos = InsertBefore(insts, pos, OpCode::ADD, dest, dest, n);
-      pos = InsertASR(insts, pos, dest, dest, m.sh_post);
-      auto t = gen_.GetVReg();
-      pos = InsertXSign(insts, pos, t, n);
-      pos = InsertBefore(insts, pos, OpCode::SUB, dest, dest, t);
+      ans = InsertMulSH(insts, pos, n, m.m_high - (1ull << N));
+      ans = InsertAdd(insts, pos, ans, n);
+      ans = InsertASR(insts, pos, ans, m.sh_post);
+      auto t = InsertXSign(insts, pos, n);
+      ans = InsertSub(insts, pos, ans, t);
     }
-    if (d < 0) pos = InsertNeg(insts, pos, dest, dest);
+    // generate move or negate
+    if (d < 0) {
+      InsertBefore(insts, pos, OpCode::RSB, dest, ans, gen_.GetImm(0));
+    }
+    else {
+      InsertBefore(insts, pos, OpCode::MOV, dest, ans);
+    }
     // remove current instruction
     return insts.erase(pos);
   }
