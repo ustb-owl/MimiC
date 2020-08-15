@@ -27,7 +27,7 @@ class StoreCombiningPass : public BlockPass {
       if (auto store = SSADynCast<StoreSSA>(it->get())) {
         it = HandleStores(insts, it, *store);
       }
-      else if (IsSSA<LoadSSA>(it->get())) {
+      else if (IsSSA<LoadSSA>(it->get()) || IsSSA<CallSSA>(it->get())) {
         it = CheckAndEmit(insts, it);
       }
       else {
@@ -61,22 +61,29 @@ class StoreCombiningPass : public BlockPass {
     // handle constant stores only
     if (!store.value()->IsConst()) return CheckAndEmit(insts, pos);
     // handle if pointer is an access instruction
-    if (auto acc = SSADynCast<AccessSSA>(store.ptr())) {
-      // handle array access only
-      if (!acc->ptr()->type()->GetDerefedType()->IsArray() ||
-          !acc->index()->IsConst()) {
+    auto acc = SSADynCast<AccessSSA>(store.ptr());
+    if (!acc) {
+      if (IsSSA<CastSSA>(store.ptr())) {
+        // avoid pointer alias
         return CheckAndEmit(insts, pos);
       }
-      // get index of access
-      assert(acc->index()->type()->IsInteger());
-      auto index = ConstantHelper::Fold(acc->index())->value();
-      // update array info
-      auto &info = arrays_[acc->ptr()];
-      info.elems[index] = store.value();
-      info.stores.push_back(&store);
-      return ++pos;
+      else {
+        return ++pos;
+      }
     }
-    return CheckAndEmit(insts, pos);
+    // handle local array access only
+    if (!acc->ptr()->type()->GetDerefedType()->IsArray() ||
+        !acc->index()->IsConst()) {
+      return CheckAndEmit(insts, pos);
+    }
+    // get index of access
+    assert(acc->index()->type()->IsInteger());
+    auto index = ConstantHelper::Fold(acc->index())->value();
+    // update array info
+    auto &info = arrays_[acc->ptr()];
+    info.elems[index] = store.value();
+    info.stores.push_back(&store);
+    return ++pos;
   }
 
   // check all tracked arrays, emit if there is
