@@ -2,6 +2,7 @@
 #define MIMIC_BACK_ASM_MIR_PASSES_REGALLOC_H_
 
 #include <map>
+#include <set>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -27,13 +28,6 @@ using LiveIntervals = std::unordered_map<OprPtr, LiveInterval>;
 // live intervals of all functions
 using FuncLiveIntervals = std::unordered_map<OprPtr, LiveIntervals>;
 
-// information of graph's node
-struct IfGraphNodeInfo {
-  std::unordered_set<OprPtr> neighbours;
-  std::unordered_set<OprPtr> suggest_same;
-  bool can_alloc_temp;
-};
-
 // comparator for graph nodes (virtual registers)
 struct NodeCompare {
   bool operator()(const OprPtr &n1, const OprPtr &n2) const {
@@ -41,6 +35,13 @@ struct NodeCompare {
     auto p2 = static_cast<VirtRegOperand *>(n2.get());
     return p1->id() < p2->id();
   }
+};
+
+// information of graph's node
+struct IfGraphNodeInfo {
+  std::set<OprPtr, NodeCompare> neighbours;
+  std::set<OprPtr, NodeCompare> suggest_same;
+  bool can_alloc_temp;
 };
 
 // interference graph of a function
