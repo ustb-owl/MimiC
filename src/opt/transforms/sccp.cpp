@@ -339,7 +339,25 @@ These methods makes sure to do the following actions:
 */
 
 void SparseCondConstPropagationPass::RunOn(LoadSSA &ssa) {
-  MarkOverdefined(&ssa);
+  auto &ssa_val = values_[&ssa];
+  if (ssa_val.is_overdefined()) return;
+  // if is not a load of an integer, just mark as overdefined
+  if (!ssa.type()->IsInteger()) return MarkOverdefined(ssa_val, &ssa);
+  // check if is loading a constant global (or it's pointer)
+  if (auto gvar = SSADynCast<GlobalVarSSA>(ssa.ptr().get())) {
+    if (gvar->is_var()) return MarkOverdefined(ssa_val, &ssa);
+    // loading from constant global variable
+    SSAPtr val;
+    if (gvar->init()) {
+      val = gvar->init();
+    }
+    else {
+      val = MakeModule(gvar->logger()).GetInt(0, ssa.type());
+    }
+    return MarkConst(ssa_val, &ssa, val);
+  }
+  // otherwise, treat as overdefined
+  MarkOverdefined(ssa_val, &ssa);
 }
 
 void SparseCondConstPropagationPass::RunOn(StoreSSA &ssa) {
