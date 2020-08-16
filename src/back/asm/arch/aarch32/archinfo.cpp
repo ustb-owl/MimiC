@@ -6,16 +6,17 @@
 #include "back/asm/arch/aarch32/passes/leacomb.h"
 #include "back/asm/arch/aarch32/passes/leaelim.h"
 #include "back/asm/arch/aarch32/passes/lsprop.h"
+#include "back/asm/arch/aarch32/passes/divopt.h"
 #include "back/asm/mir/passes/movprop.h"
 #include "back/asm/mir/passes/movelim.h"
-#include "back/asm/arch/aarch32/passes/divopt.h"
 #include "back/asm/arch/aarch32/passes/shiftcomb.h"
+#include "back/asm/arch/aarch32/passes/immnorm.h"
+#include "back/asm/arch/aarch32/passes/setcelim.h"
 #include "back/asm/arch/aarch32/passes/liveness.h"
 #include "back/asm/mir/passes/linearscan.h"
 #include "back/asm/mir/passes/coloring.h"
 #include "back/asm/arch/aarch32/passes/slotspill.h"
 #include "back/asm/arch/aarch32/passes/funcdeco.h"
-#include "back/asm/arch/aarch32/passes/immnorm.h"
 #include "back/asm/mir/passes/movoverride.h"
 #include "back/asm/arch/aarch32/passes/instsched.h"
 
@@ -47,6 +48,7 @@ class AArch32ArchInfo : public ArchInfoBase {
       list.push_back(MakePass<ShiftCombiningPass>());
     }
     list.push_back(MakePass<ImmNormalizePass>(inst_gen_, true));
+    list.push_back(MakePass<SetCondEliminationPass>(inst_gen_));
     InitRegAlloc(opt_level, list);
     if (opt_level) {
       list.push_back(MakePass<LeaCombiningPass>(inst_gen_));
