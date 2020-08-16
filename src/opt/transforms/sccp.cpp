@@ -339,68 +339,7 @@ These methods makes sure to do the following actions:
 */
 
 void SparseCondConstPropagationPass::RunOn(LoadSSA &ssa) {
-  auto &ssa_val = values_[&ssa];
-  if (ssa_val.is_overdefined()) return;
-  // if is not a load of an integer, just mark as overdefined
-  if (!ssa.type()->IsInteger()) return MarkOverdefined(ssa_val, &ssa);
-  // check if is loading a constant global (or it's pointer)
-  if (auto gvar = SSADynCast<GlobalVarSSA>(ssa.ptr().get())) {
-    if (gvar->is_var()) return MarkOverdefined(ssa_val, &ssa);
-    // loading from constant global variable
-    SSAPtr val;
-    if (gvar->init()) {
-      val = gvar->init();
-    }
-    else {
-      val = MakeModule(gvar->logger()).GetInt(0, ssa.type());
-    }
-    return MarkConst(ssa_val, &ssa, val);
-  }
-  else if (auto acc = SSADynCast<AccessSSA>(ssa.ptr().get())) {
-    // loading from pointer
-    // fetch indices
-    std::list<std::uint32_t> indices;
-    do {
-      // get index
-      const auto &index = GetValue(acc->index());
-      if (index.is_unknown()) return;
-      if (index.is_overdefined()) break;
-      indices.push_front(*index);
-      // check if is an access of const global variable
-      if (auto gvar = SSADynCast<GlobalVarSSA>(acc->ptr().get())) {
-        if (gvar->is_var()) break;
-        // handle arrays only
-        auto type = gvar->type()->GetDerefedType();
-        if (!type->IsArray()) break;
-        // check if access is out of range
-        for (const auto &i : indices) {
-          if (i >= type->GetLength()) return;
-          type = type->GetDerefedType();
-        }
-        // read constant from initial value
-        auto val = gvar->init();
-        if (val) {
-          for (const auto &i : indices) {
-            if (auto arr = SSADynCast<ConstArraySSA>(val.get())) {
-              val = (*arr)[i].value();
-            }
-            else {
-              assert(IsSSA<ConstZeroSSA>(val));
-              val = MakeModule(gvar->logger()).GetInt(0, ssa.type());
-              break;
-            }
-          }
-          assert(IsSSA<ConstIntSSA>(val));
-        }
-        else {
-          val = MakeModule(gvar->logger()).GetInt(0, ssa.type());
-        }
-        return MarkConst(ssa_val, &ssa, val);
-      }
-    } while ((acc = SSADynCast<AccessSSA>(acc->ptr().get())));
-  }
-  // otherwise, treat as overdefined
-  MarkOverdefined(ssa_val, &ssa);
+  MarkOverdefined(&ssa);
 }
 
 void SparseCondConstPropagationPass::RunOn(StoreSSA &ssa) {
