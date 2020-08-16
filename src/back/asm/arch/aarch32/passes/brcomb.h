@@ -13,7 +13,7 @@ namespace mimic::back::asmgen::aarch32 {
 /*
   this pass will:
   1.  combine SETC and BR
-  2.  convert all SETCs and BRs to real instructions
+  2.  convert all BRs to real instructions
 */
 class BranchCombiningPass : public PassInterface {
  public:
@@ -49,21 +49,6 @@ class BranchCombiningPass : public PassInterface {
           }
           break;
         }
-      }
-      ++it;
-    }
-    // handle remaining SETCs
-    for (auto it = insts.begin(); it != insts.end();) {
-      auto inst = static_cast<AArch32Inst *>(it->get());
-      switch (inst->opcode()) {
-        case OpCode::SETEQ: case OpCode::SETNE: case OpCode::SETULT:
-        case OpCode::SETSLT: case OpCode::SETULE: case OpCode::SETSLE:
-        case OpCode::SETUGT: case OpCode::SETSGT: case OpCode::SETUGE:
-        case OpCode::SETSGE: {
-          it = HandleSetCond(insts, it, inst);
-          continue;
-        }
-        default:;
       }
       ++it;
     }
@@ -166,52 +151,6 @@ class BranchCombiningPass : public PassInterface {
     }
     else {
       pos = GenerateBranch(insts, pos, br);
-    }
-    // remove current instruction
-    return insts.erase(pos);
-  }
-
-  InstIt HandleSetCond(InstPtrList &insts, InstIt pos, AArch32Inst *setc) {
-    if (setc->dest()->use_count()) {
-      const auto &lhs = setc->oprs()[0].value();
-      const auto &rhs = setc->oprs()[1].value();
-      const auto &dest = setc->dest();
-      auto temp = gen_.GetVReg();
-      switch (setc->opcode()) {
-        case OpCode::SETEQ: {
-          pos = InsertInst(insts, pos, OpCode::SUB, temp, lhs, rhs);
-          pos = InsertInst(insts, pos, OpCode::CLZ, temp, temp);
-          pos = InsertInst(insts, pos, OpCode::LSR, dest, temp,
-                           gen_.GetImm(5));
-          break;
-        }
-        case OpCode::SETNE: {
-          pos = InsertInst(insts, pos, OpCode::SUBS, temp, lhs, rhs);
-          pos = InsertInst(insts, pos, OpCode::MOVWNE, temp,
-                           gen_.GetImm(1));
-          pos = InsertInst(insts, pos, OpCode::MOV, dest, temp);
-          break;
-        }
-        default: {
-          pos = InsertInst(insts, pos, OpCode::MOV, temp, gen_.GetImm(0));
-          pos = InsertInst(insts, pos, OpCode::CMP, lhs, rhs);
-          OpCode opcode;
-          switch (setc->opcode()) {
-            case OpCode::SETULT: opcode = OpCode::MOVWLO; break;
-            case OpCode::SETSLT: opcode = OpCode::MOVWLT; break;
-            case OpCode::SETULE: opcode = OpCode::MOVWLS; break;
-            case OpCode::SETSLE: opcode = OpCode::MOVWLE; break;
-            case OpCode::SETUGT: opcode = OpCode::MOVWHI; break;
-            case OpCode::SETSGT: opcode = OpCode::MOVWGT; break;
-            case OpCode::SETUGE: opcode = OpCode::MOVWHS; break;
-            case OpCode::SETSGE: opcode = OpCode::MOVWGE; break;
-            default: assert(false);
-          }
-          pos = InsertInst(insts, pos, opcode, temp, gen_.GetImm(1));
-          pos = InsertInst(insts, pos, OpCode::MOV, dest, temp);
-          break;
-        }
-      }
     }
     // remove current instruction
     return insts.erase(pos);
