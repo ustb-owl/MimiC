@@ -18,8 +18,7 @@ namespace mimic::back::asmgen::aarch32 {
 */
 class ImmNormalizePass : public PassInterface {
  public:
-  ImmNormalizePass(AArch32InstGen &gen, bool use_vreg)
-      : gen_(gen), use_vreg_(use_vreg) {}
+  ImmNormalizePass(AArch32InstGen &gen) : gen_(gen) {}
 
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
     for (auto it = insts.begin(); it != insts.end(); ++it) {
@@ -102,7 +101,6 @@ class ImmNormalizePass : public PassInterface {
   using RegName = AArch32Reg::RegName;
 
   std::uint32_t GetRegMask(InstBase *inst) {
-    if (use_vreg_) return 0;
     std::uint32_t mask = 0;
     for (const auto &i : inst->oprs()) {
       const auto &opr = i.value();
@@ -116,7 +114,6 @@ class ImmNormalizePass : public PassInterface {
   }
 
   OprPtr SelectTempReg(std::uint32_t &reg_mask) {
-    if (use_vreg_) return gen_.GetVReg();
     // try to use 'r12' first
     OprPtr temp;
     if (!(reg_mask & (1 << static_cast<int>(RegName::R12)))) {
@@ -191,7 +188,6 @@ class ImmNormalizePass : public PassInterface {
   }
 
   AArch32InstGen &gen_;
-  bool use_vreg_;
 };
 
 }  // namespace mimic::back::asmgen::aarch32
