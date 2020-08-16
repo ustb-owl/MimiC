@@ -46,7 +46,7 @@ class AArch32ArchInfo : public ArchInfoBase {
       list.push_back(MakePass<MoveEliminatePass>());
       list.push_back(MakePass<ShiftCombiningPass>());
     }
-    list.push_back(MakePass<ImmNormalizePass>(inst_gen_));
+    list.push_back(MakePass<ImmNormalizePass>(inst_gen_, true));
     InitRegAlloc(opt_level, list);
     if (opt_level) {
       list.push_back(MakePass<LeaCombiningPass>(inst_gen_));
@@ -54,6 +54,7 @@ class AArch32ArchInfo : public ArchInfoBase {
     list.push_back(MakePass<LeaEliminationPass>(inst_gen_));
     list.push_back(MakePass<SlotSpillingPass>(inst_gen_));
     list.push_back(MakePass<FuncDecoratePass>(inst_gen_));
+    list.push_back(MakePass<ImmNormalizePass>(inst_gen_, false));
     if (opt_level) {
       list.push_back(MakePass<LoadStorePropagationPass>());
       list.push_back(MakePass<MovePropagationPass>(IsAvaliableMove));
