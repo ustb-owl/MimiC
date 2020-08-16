@@ -71,8 +71,7 @@ class LeaEliminationPass : public PassInterface {
     }
     else if (ptr->IsLabel()) {
       // load label address
-      pos = InsertBefore(insts, pos, OpCode::MOVW, temp, ptr);
-      pos = InsertBefore(insts, pos, OpCode::MOVT, temp, ptr);
+      pos = InsertBefore(insts, pos, OpCode::LDR, temp, ptr);
     }
     else {
       assert(ptr->IsReg());
