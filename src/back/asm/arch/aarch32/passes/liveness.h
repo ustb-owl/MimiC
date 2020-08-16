@@ -397,27 +397,10 @@ class LivenessAnalysisPass : public PassInterface {
     }
   }
 
-  void UpdateCanAllocTemp(
-      std::unordered_map<OprPtr, std::pair<std::size_t, bool>>
-          &can_alloc_temp,
-      const OprPtr &reg, std::size_t pos, std::size_t last_temp_pos) {
-    auto it = can_alloc_temp.find(reg);
-    if (it != can_alloc_temp.end()) {
-      // update current entry
-      auto &pos_and_cat = it->second;
-      if (last_temp_pos > pos_and_cat.first) pos_and_cat.second = false;
-    }
-    else {
-      // insert new entry
-      can_alloc_temp.insert({reg, {pos, true}});
-    }
-  }
-
   // generate interference graph for graph coloring register allocator
   void GenerateInterferenceGraph(const OprPtr &func_label) {
     auto &if_graph = func_if_graphs_[func_label];
-    std::unordered_map<OprPtr, std::pair<std::size_t, bool>> can_alloc_temp;
-    std::size_t pos = 0, last_temp_pos = 0;
+    std::unordered_set<OprPtr> can_not_alloc_temp;
     // traverse all blocks
     for (const auto &bid : order_) {
       const auto &bb = bbs_[bid];
@@ -425,6 +408,12 @@ class LivenessAnalysisPass : public PassInterface {
       // traverse all instructions in reverse order
       for (auto it = bb.insts.rbegin(); it != bb.insts.rend(); ++it) {
         const auto &i = *it;
+        // update 'can_not_alloc_temp'
+        if ((i->dest() && temp_checker_(i->dest())) || i->IsCall()) {
+          for (const auto &val : live_now) {
+            can_not_alloc_temp.insert(val);
+          }
+        }
         // check for destination register
         if (i->dest() && i->dest()->IsVirtual()) {
           // add edges
@@ -445,31 +434,10 @@ class LivenessAnalysisPass : public PassInterface {
           AddSuggestSame(if_graph, dest, src);
         }
       }
-      // update 'can_alloc_temp' flag for all instructions
-      for (const auto &i : bb.insts) {
-        // update 'can_alloc_temp'
-        for (const auto &opr : i->oprs()) {
-          if (!opr.value()->IsVirtual()) continue;
-          UpdateCanAllocTemp(can_alloc_temp, opr.value(), pos,
-                             last_temp_pos);
-        }
-        if (i->dest() && i->dest()->IsVirtual()) {
-          UpdateCanAllocTemp(can_alloc_temp, i->dest(), pos, last_temp_pos);
-        }
-        // update 'last_temp_pos'
-        if ((i->dest() && temp_checker_(i->dest())) || i->IsCall()) {
-          last_temp_pos = pos;
-        }
-        ++pos;
-      }
-      // update 'can_alloc_temp' flag for all live out vregs
-      for (const auto &vreg : bb.live_out) {
-        UpdateCanAllocTemp(can_alloc_temp, vreg, pos, last_temp_pos);
-      }
     }
     // apply 'can_alloc_temp' flag of all nodes in graph
-    for (const auto &[vreg, pos_and_cat] : can_alloc_temp) {
-      if_graph[vreg].can_alloc_temp = pos_and_cat.second;
+    for (auto &&[vreg, info] : if_graph) {
+      info.can_alloc_temp = !can_not_alloc_temp.count(vreg);
     }
   }
 
