@@ -11,7 +11,6 @@
 #include "back/asm/mir/passes/movelim.h"
 #include "back/asm/arch/aarch32/passes/shiftcomb.h"
 #include "back/asm/arch/aarch32/passes/immnorm.h"
-#include "back/asm/arch/aarch32/passes/setcelim.h"
 #include "back/asm/arch/aarch32/passes/liveness.h"
 #include "back/asm/mir/passes/linearscan.h"
 #include "back/asm/mir/passes/coloring.h"
@@ -38,7 +37,6 @@ class AArch32ArchInfo : public ArchInfoBase {
   PassPtrList GetPassList(std::size_t opt_level) override {
     PassPtrList list;
     list.push_back(MakePass<BranchCombiningPass>(inst_gen_));
-    list.push_back(MakePass<SetCondEliminationPass>(inst_gen_));
     list.push_back(MakePass<BranchEliminationPass>());
     if (opt_level) {
       list.push_back(MakePass<LeaCombiningPass>(inst_gen_));
@@ -48,7 +46,6 @@ class AArch32ArchInfo : public ArchInfoBase {
       list.push_back(MakePass<MoveEliminatePass>());
       list.push_back(MakePass<ShiftCombiningPass>());
     }
-    // list.push_back(MakePass<ImmNormalizePass>(inst_gen_, true));
     InitRegAlloc(opt_level, list);
     if (opt_level) {
       list.push_back(MakePass<LeaCombiningPass>(inst_gen_));
@@ -56,7 +53,7 @@ class AArch32ArchInfo : public ArchInfoBase {
     list.push_back(MakePass<LeaEliminationPass>(inst_gen_));
     list.push_back(MakePass<SlotSpillingPass>(inst_gen_));
     list.push_back(MakePass<FuncDecoratePass>(inst_gen_));
-    list.push_back(MakePass<ImmNormalizePass>(inst_gen_, false));
+    list.push_back(MakePass<ImmNormalizePass>(inst_gen_));
     if (opt_level) {
       list.push_back(MakePass<LoadStorePropagationPass>());
       list.push_back(MakePass<MovePropagationPass>(IsAvaliableMove));
