@@ -37,10 +37,9 @@ class ImmNormalizePass : public PassInterface {
         case OpCode::MLS: case OpCode::SMMUL: case OpCode::UMULL:
         case OpCode::SDIV: case OpCode::UDIV: case OpCode::CLZ:
         case OpCode::SXTB: case OpCode::UXTB: {
-          auto mask = GetRegMask(inst);
           for (auto &&i : inst->oprs()) {
             if (i.value()->IsImm()) {
-              auto temp = SelectTempReg(mask);
+              auto temp = gen_.GetVReg();
               InsertMove(insts, it, i.value(), temp);
               i.set_value(temp);
             }
@@ -51,13 +50,12 @@ class ImmNormalizePass : public PassInterface {
         case OpCode::ADD: case OpCode::SUB:
         case OpCode::SUBS: case OpCode::RSB: case OpCode::CMP:
         case OpCode::AND: case OpCode::ORR: case OpCode::EOR: {
-          auto mask = GetRegMask(inst);
           for (std::size_t i = 0; i < inst->oprs().size(); ++i) {
             auto &cur = inst->oprs()[i];
             if ((i < inst->oprs().size() - 1 && cur.value()->IsImm()) ||
                 (i == inst->oprs().size() - 1 &&
                  !IsValidOpr8m(cur.value()))) {
-              auto temp = SelectTempReg(mask);
+              auto temp = gen_.GetVReg();
               InsertMove(insts, it, cur.value(), temp);
               cur.set_value(temp);
             }
@@ -66,13 +64,12 @@ class ImmNormalizePass : public PassInterface {
         }
         // instructions with only <Rs|sh> field
         case OpCode::LSL: case OpCode::LSR: case OpCode::ASR: {
-          auto mask = GetRegMask(inst);
           for (std::size_t i = 0; i < inst->oprs().size(); ++i) {
             auto &cur = inst->oprs()[i];
             if ((i < inst->oprs().size() - 1 && cur.value()->IsImm()) ||
                 (i == inst->oprs().size() - 1 &&
                  !IsValidOprSh(cur.value()))) {
-              auto temp = SelectTempReg(mask);
+              auto temp = gen_.GetVReg();
               InsertMove(insts, it, cur.value(), temp);
               cur.set_value(temp);
             }
@@ -99,41 +96,6 @@ class ImmNormalizePass : public PassInterface {
  private:
   using OpCode = AArch32Inst::OpCode;
   using RegName = AArch32Reg::RegName;
-
-  std::uint32_t GetRegMask(InstBase *inst) {
-    std::uint32_t mask = 0;
-    for (const auto &i : inst->oprs()) {
-      const auto &opr = i.value();
-      if (opr->IsReg()) {
-        assert(!opr->IsVirtual());
-        auto name = static_cast<AArch32Reg *>(opr.get())->name();
-        mask |= 1 << static_cast<int>(name);
-      }
-    }
-    return mask;
-  }
-
-  OprPtr SelectTempReg(std::uint32_t &reg_mask) {
-    OprPtr temp;
-    // try to use 'r12' first
-    if (!(reg_mask & (1 << static_cast<int>(RegName::R12)))) {
-      reg_mask |= 1 << static_cast<int>(RegName::R12);
-      temp = gen_.GetReg(RegName::R12);
-    }
-    else {
-      // select other scratch registers
-      for (int i = static_cast<int>(RegName::R2);
-          i <= static_cast<int>(RegName::R3); ++i) {
-        if (!(reg_mask & (1 << i))) {
-          reg_mask |= 1 << i;
-          temp = gen_.GetReg(static_cast<RegName>(i));
-          break;
-        }
-      }
-    }
-    assert(temp);
-    return temp;
-  }
 
   void InsertMove(InstPtrList &insts, InstPtrList::iterator &pos,
                   const OprPtr &opr, const OprPtr &dest) {
