@@ -387,13 +387,20 @@ class LivenessAnalysisPass : public PassInterface {
       if_graph[n1].neighbours.insert(n2);
       if_graph[n2].neighbours.insert(n1);
     }
+    else {
+      if_graph.insert({n1, {}});
+    }
   }
 
   void AddSuggestSame(IfGraph &if_graph, const OprPtr &n1,
                       const OprPtr &n2) {
-    if (n1 != n2 && n1->IsVirtual() && n2->IsVirtual()) {
+    if (!n1->IsVirtual() || !n2->IsVirtual()) return;
+    if (n1 != n2) {
       if_graph[n1].suggest_same.insert(n2);
       if_graph[n2].suggest_same.insert(n1);
+    }
+    else {
+      if_graph.insert({n1, {}});
     }
   }
 
