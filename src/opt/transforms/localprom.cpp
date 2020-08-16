@@ -7,12 +7,36 @@
 #include "opt/pass.h"
 #include "opt/passman.h"
 #include "opt/helper/cast.h"
+#include "opt/helper/ircopier.h"
 #include "mid/module.h"
 
 using namespace mimic::mid;
 using namespace mimic::opt;
 
 namespace {
+
+// helper class for copying constant array
+class ConstArrayCopyier : public IRCopier {
+ public:
+  using IRCopier::RunOn;
+
+  SSAPtr Copy(const SSAPtr &val) {
+    return GetCopy(val);
+  }
+
+  void RunOn(ConstArraySSA &ssa) override {
+    auto carr = CopyFromValue(ssa, SSAPtrList(ssa.size()));
+    CopyOperand(carr, ssa);
+  }
+
+  void RunOn(ConstIntSSA &ssa) override {
+    auto cint = std::make_shared<ConstIntSSA>(ssa.value());
+    cint->set_logger(ssa.logger());
+    cint->set_type(ssa.type());
+    AddCopiedValue(&ssa, cint);
+  }
+};
+
 
 /*
   this pass will promote all local arrays that has only been
@@ -78,11 +102,16 @@ class LocalArrayPromotionPass : public ModulePass {
     // key store instruction must be in entry block
     if (can_prom_ && entry_insts_.count(key_store_)) {
       assert(gvar_list_);
+      // make a copy of stored value
+      auto value = key_store_->value();
+      if (auto carr = SSADynCast<ConstArraySSA>(value)) {
+        value = ConstArrayCopyier().Copy(carr);
+      }
       // create a new global array constant
       auto name = "__garr" + std::to_string(global_id_++);
       auto mod = MakeModule(ssa.logger());
       auto gvar = mod.CreateGlobalVar(LinkageTypes::Internal, false, name,
-                                      arr_ty, key_store_->value());
+                                      arr_ty, value);
       gvar_list_->push_back(gvar);
       // replace with created value
       ssa.ReplaceBy(gvar);
