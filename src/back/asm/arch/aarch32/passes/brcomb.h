@@ -176,7 +176,7 @@ class BranchCombiningPass : public PassInterface {
       const auto &lhs = setc->oprs()[0].value();
       const auto &rhs = setc->oprs()[1].value();
       const auto &dest = setc->dest();
-      auto temp = gen_.GetVReg();
+      auto temp = gen_.GetReg(AArch32Reg::RegName::R0);
       switch (setc->opcode()) {
         case OpCode::SETEQ: {
           pos = InsertInst(insts, pos, OpCode::SUB, temp, lhs, rhs);
