@@ -74,6 +74,7 @@ class LeaEliminationPass : public PassInterface {
     }
     // add offset to result if offset is not zero
     if (!ofs_zero) {
+      assert(lea->shift_op() == AArch32Inst::ShiftOp::NOP);
       pos = InsertBefore(insts, pos, OpCode::ADD, dest, temp, offset);
     }
     // erase the original LEA
