@@ -29,6 +29,8 @@ struct LoopInfo {
   mid::BinarySSA *modifier;
   // the end condition of loop
   mid::BinarySSA *end_cond;
+  // block to jump when leaving loop entry
+  mid::BlockSSA *first_block;
   // block to jump to when the loop exits
   mid::BlockSSA *exit_block;
 };
