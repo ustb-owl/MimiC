@@ -128,6 +128,11 @@ bool PassManager::RunRequiredPasses(PassNameSet &valid,
       const auto &passes = GetPasses();
       auto it = passes.find(name);
       assert(it != passes.end());
+      // check if current pass can be run
+      if (!it->second.is_analysis() &&
+          it->second.min_opt_level() > opt_level_) {
+        continue;
+      }
       // run if not valid
       if (!valid.count(name) && RunPass(valid, &it->second)) {
         changed = true;
