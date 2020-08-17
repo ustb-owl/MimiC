@@ -34,7 +34,6 @@ class ShiftCombiningPass : public PassInterface {
           case OpCode::ADD: case OpCode::AND: case OpCode::ORR:
           case OpCode::EOR: {
             assert(inst->oprs().size() == 2);
-            if (inst->oprs().back().value()->IsImm()) break;
             if (!ApplyShiftInfo(inst)) {
               // swap operands and try again
               auto temp = inst->oprs()[0].value();
