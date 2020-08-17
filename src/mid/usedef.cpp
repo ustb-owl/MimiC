@@ -1,6 +1,7 @@
 #include "mid/usedef.h"
 
 #include <algorithm>
+#include <cassert>
 
 using namespace mimic::mid;
 
@@ -48,6 +49,11 @@ void Value::RemoveFromUser() {
   while (!uses_.empty()) {
     uses_.front()->user()->RemoveValue(this);
   }
+}
+
+SSAPtr Value::GetPointer() const {
+  assert(!uses_.empty());
+  return uses_.front()->value();
 }
 
 void User::RemoveValue(const SSAPtr &value) {
