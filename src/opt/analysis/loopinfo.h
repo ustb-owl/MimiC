@@ -21,6 +21,16 @@ struct LoopInfo {
   std::unordered_set<mid::BlockSSA *> body;
   // exit blocks
   std::unordered_set<mid::BlockSSA *> exit;
+  // induction variable
+  mid::PhiSSA *ind_var;
+  // initial value of induction variable
+  mid::Value *init_val;
+  // instruction to modify the induction variable in each loop
+  mid::BinarySSA *modifier;
+  // the end condition of loop
+  mid::BinarySSA *end_cond;
+  // block to jump to when the loop exits
+  mid::BlockSSA *exit_block;
 };
 
 // list of loop information
@@ -48,6 +58,9 @@ class LoopInfoPass : public FunctionPass {
   void ScanOn(const mid::FuncPtr &func);
   void ScanNaturalLoop(LoopInfoList &loops, mid::BlockSSA *be_tail,
                        mid::BlockSSA *be_head);
+  void ScanPreheader(LoopInfo &info);
+  void ScanExitBlocks(LoopInfo &info);
+  void ScanIndVarInfo(LoopInfo &info);
 
   // all detected loops
   std::unordered_map<mid::FunctionSSA *, LoopInfoList> loops_;
