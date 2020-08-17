@@ -42,7 +42,9 @@ class DeadGlobalValEliminationPass : public ModulePass {
         ssa.logger()->LogWarning("unused internal function definition");
       }
       // mark if need to be removed
-      remove_flag_ = ssa.is_decl() || is_internal;
+      // TODO: dirty hack! fixme?
+      remove_flag_ = (ssa.is_decl() && ssa.name() != "memset") ||
+                     is_internal;
       // release blocks if function will be removed
       // because there may be circular referenced caused by control flow
       if (remove_flag_) {
