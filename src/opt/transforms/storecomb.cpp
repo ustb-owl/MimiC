@@ -86,7 +86,22 @@ class StoreCombiningPass : public BlockPass {
     return ++pos;
   }
 
-  // check all tracked arrays, emit if there is
+  // check if the specific value is constant zero
+  bool IsZero(const SSAPtr &val) {
+    assert(val->IsConst());
+    if (auto cint = ConstantHelper::Fold(val)) {
+      return !cint->value();
+    }
+    else if (auto carr = SSADynCast<ConstArraySSA>(val.get())) {
+      for (const auto &elem : *carr) {
+        if (!IsZero(elem.value())) return false;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  // check all tracked arrays, emit if possible
   SSAIt CheckAndEmit(SSAPtrList &insts, SSAIt pos) {
     for (const auto &[ptr, info] : arrays_) {
       auto arr_ty = ptr->type()->GetDerefedType();
@@ -95,14 +110,18 @@ class StoreCombiningPass : public BlockPass {
         // all elements are constants, can be emitted
         // read all elements to list
         SSAPtrList elems;
+        bool all_zero = true;
         for (std::size_t i = 0; i < arr_len; ++i) {
           auto it = info.elems.find(i);
           assert(it != info.elems.end());
           elems.push_back(it->second);
+          // check if all elements are zero
+          if (all_zero && !IsZero(it->second)) all_zero = false;
         }
         // make constant array
         auto mod = MakeModule(ptr->logger());
-        auto carr = mod.GetArray(elems, arr_ty);
+        auto carr = all_zero ? mod.GetZero(arr_ty)
+                             : mod.GetArray(elems, arr_ty);
         // insert a store instruction before current position
         auto store = mod.CreateStore(carr, ptr);
         pos = ++insts.insert(pos, store);
