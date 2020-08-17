@@ -7,7 +7,6 @@
 #include "opt/helper/cast.h"
 #include "opt/analysis/loopinfo.h"
 #include "opt/helper/const.h"
-#include "mid/module.h"
 
 using namespace mimic::mid;
 using namespace mimic::opt;
@@ -352,15 +351,12 @@ class NaiveLoopUnrollingPass : public FunctionPass {
     // get pointer to current function
     if (func->is_decl()) return false;
     // run on loops
-    bool changed = false;
     const auto &li = PassManager::GetPass<LoopInfoPass>("loop_info");
     const auto &loops = li.GetLoopInfo(func.get());
     for (const auto &loop : loops) {
-      if (RunOnLoop(loop)) {
-        changed = true;
-      }
+      if (RunOnLoop(loop)) return true;
     }
-    return changed;
+    return false;
   }
 
  private:
