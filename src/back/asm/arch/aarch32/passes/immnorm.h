@@ -34,8 +34,9 @@ class ImmNormalizePass : public PassInterface {
         }
         // instructions that allow register operands only
         case OpCode::STR: case OpCode::STRB: case OpCode::MUL:
-        case OpCode::MLS: case OpCode::SDIV: case OpCode::UDIV:
-        case OpCode::CLZ: case OpCode::SXTB: case OpCode::UXTB: {
+        case OpCode::MLS: case OpCode::SMMUL: case OpCode::UMULL:
+        case OpCode::SDIV: case OpCode::UDIV: case OpCode::CLZ:
+        case OpCode::SXTB: case OpCode::UXTB: {
           auto mask = GetRegMask(inst);
           for (auto &&i : inst->oprs()) {
             if (i.value()->IsImm()) {
@@ -113,8 +114,8 @@ class ImmNormalizePass : public PassInterface {
   }
 
   OprPtr SelectTempReg(std::uint32_t &reg_mask) {
-    OprPtr temp;
     // try to use 'r12' first
+    OprPtr temp;
     if (!(reg_mask & (1 << static_cast<int>(RegName::R12)))) {
       reg_mask |= 1 << static_cast<int>(RegName::R12);
       temp = gen_.GetReg(RegName::R12);
