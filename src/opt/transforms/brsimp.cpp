@@ -23,6 +23,7 @@ class BranchSimplifyPass : public BlockPass {
     cur_block_ = block.get();
     // scan the last instruction
     replace_ = false;
+    scan_phi_ = false;
     block->insts().back()->RunPass(*this);
     // if can be replaced
     if (replace_) {
