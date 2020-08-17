@@ -85,7 +85,7 @@ class LoopConversionPass : public FunctionPass {
 
 // register current pass
 REGISTER_PASS(LoopConversionPass, loop_conv)
-    .set_min_opt_level(2)
+    .set_min_opt_level(3)
     .set_stages(PassStage::Opt)
     .Requires("create_memset")
     .Requires("loop_info")
