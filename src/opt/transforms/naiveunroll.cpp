@@ -158,7 +158,7 @@ class LoopUnrollerHelperPass : public IRCopier {
       // skip constant folded instructions
       if (inst->IsConst()) continue;
       // skip phi nodes in entry block
-      if (&ssa == loop_.entry && IsSSA<PhiSSA>(inst)) continue;
+      if (&ssa == loop_.entry && IsSSA<PhiSSA>(i)) continue;
       // insert to block
       block->insts().push_back(inst);
     }
