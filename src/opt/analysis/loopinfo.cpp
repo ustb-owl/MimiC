@@ -111,6 +111,7 @@ void LoopInfoPass::ScanIndVarInfo(LoopInfo &info) {
   auto tb = SSACast<BlockSSA>(branch->true_block().get());
   auto fb = SSACast<BlockSSA>(branch->false_block().get());
   info.exit_block = info.body.count(tb) ? fb : tb;
+  info.first_block = info.body.count(tb) ? tb : fb;
   // get induction variable
   for (const auto &i : info.entry->insts()) {
     if (auto phi = SSADynCast<PhiSSA>(i.get())) {
