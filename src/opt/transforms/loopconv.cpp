@@ -123,6 +123,7 @@ bool LoopConversionPass::CheckLoop(const LoopInfo &loop) {
 // perform conversion
 bool LoopConversionPass::RunOnLoop(const LoopInfo &loop) {
   SSAPtr ptr, zero, count;
+  std::size_t type_size;
   if (!CheckLoop(loop)) return false;
   count = loop.end_cond->rhs();
   // body block must contain only 4 instructions
@@ -141,6 +142,7 @@ bool LoopConversionPass::RunOnLoop(const LoopInfo &loop) {
         // index must be induction variable
         if (acc->index().get() != loop.ind_var) return false;
         ptr = acc->ptr();
+        type_size = acc->type()->GetDerefedType()->GetSize();
         break;
       }
       case 1: {
@@ -179,7 +181,9 @@ bool LoopConversionPass::RunOnLoop(const LoopInfo &loop) {
   auto mod = MakeModule(loop.entry->logger(), entry);
   const auto &cm = PassManager::GetPass<CreateMemSetPass>("create_memset");
   const auto &callee = cm.memset_decl();
-  SSAPtrList args = {std::move(ptr), std::move(zero), std::move(count)};
+  auto size_val = mod.GetInt(type_size, count->type());
+  auto size_cal = mod.CreateMul(count, size_val);
+  SSAPtrList args = {std::move(ptr), std::move(zero), std::move(size_cal)};
   mod.CreateCall(callee, std::move(args));
   // insert jump instruction
   auto jump = std::make_shared<JumpSSA>(loop.exit_block->GetPointer());
