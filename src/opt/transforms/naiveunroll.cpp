@@ -327,7 +327,6 @@ class NaiveLoopUnrollingPass : public FunctionPass {
   NaiveLoopUnrollingPass() {}
 
   bool RunOnFunction(const FuncPtr &func) override {
-    // get pointer to current function
     if (func->is_decl()) return false;
     // run on loops
     const auto &li = PassManager::GetPass<LoopInfoPass>("loop_info");
