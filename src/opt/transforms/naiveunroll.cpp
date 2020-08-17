@@ -22,34 +22,15 @@ constexpr std::size_t kBlockCountThreshold = 4;
 constexpr std::size_t kTripCountThreshold = 80;
 
 
-// information required by loop unroller
-struct UnrollInfo {
-  // indicates if current loop can be unrolled
-  bool can_unroll;
-  // induction variable
-  PhiSSA *ind_var;
-  // initial value of induction variable
-  std::uint32_t init_val;
-  // instruction to modify the induction variable in each loop
-  BinarySSA *modifier;
-  // the end condition of loop
-  BinarySSA *end_cond;
-  // block to jump to when the loop exits
-  BlockSSA *exit_block;
-};
-
-
 // helper pass that performs the actual unrolling operation on the loop
 class LoopUnrollerHelperPass : public IRCopier {
  public:
   using IRCopier::RunOn;
 
-  LoopUnrollerHelperPass(const LoopInfo &loop, const UnrollInfo &ui)
-      : loop_(loop), ui_(ui) {}
+  LoopUnrollerHelperPass(const LoopInfo &loop) : loop_(loop) {}
 
   // perform unrolling, returns false if failed
   bool Unroll() {
-    assert(ui_.can_unroll);
     // determine which instruction should be copied
     for (const auto &block : loop_.body) {
       for (const auto &inst : block->insts())  {
@@ -98,7 +79,7 @@ class LoopUnrollerHelperPass : public IRCopier {
       }
       // check if need to continue
       auto jump = SSACast<JumpSSA>(entry->insts().back().get());
-      if (jump->target().get() != ui_.exit_block) {
+      if (jump->target().get() != loop_.exit_block) {
         // update last entry and continue
         last_entry = entry;
       }
@@ -115,8 +96,8 @@ class LoopUnrollerHelperPass : public IRCopier {
           parent->RemoveValue(block);
         }
         // update exit block's predecessors
-        ui_.exit_block->RemoveValue(loop_.entry);
-        for (const auto &i : ui_.exit_block->insts()) {
+        loop_.exit_block->RemoveValue(loop_.entry);
+        for (const auto &i : loop_.exit_block->insts()) {
           if (auto phi = SSADynCast<PhiSSA>(i.get())) {
             for (const auto &opr : *phi) {
               auto opr_ptr = SSACast<PhiOperandSSA>(opr.value().get());
@@ -329,7 +310,6 @@ class LoopUnrollerHelperPass : public IRCopier {
   }
 
   const LoopInfo &loop_;
-  const UnrollInfo &ui_;
   std::unordered_set<Value *> should_copy_;
   std::list<BlockPtr> copied_blocks_;
 };
@@ -359,7 +339,7 @@ class NaiveLoopUnrollingPass : public FunctionPass {
   }
 
  private:
-  UnrollInfo CheckLoop(const LoopInfo &loop);
+  bool CheckLoop(const LoopInfo &loop);
   bool RunOnLoop(const LoopInfo &loop);
 };
 
@@ -376,79 +356,37 @@ REGISTER_PASS(NaiveLoopUnrollingPass, naive_unroll)
 
 // check if the specific loop can be unrolled
 // gather necessary information at the same time
-UnrollInfo NaiveLoopUnrollingPass::CheckLoop(const LoopInfo &loop) {
-  UnrollInfo ui = {false};
+bool NaiveLoopUnrollingPass::CheckLoop(const LoopInfo &loop) {
   // block count of loop can not exceed the threshold
-  if (loop.body.size() > kBlockCountThreshold) return ui;
-  // the entry of loop must have only two predecessors
-  if (loop.entry->size() != 2) return ui;
-  // loop must have only one exit block, and it must be entry block
-  if (loop.exit.size() != 1 || !loop.exit.count(loop.entry)) return ui;
-  // get condition
-  auto branch = SSACast<BranchSSA>(loop.entry->insts().back().get());
-  if (auto bin = SSADynCast<BinarySSA>(branch->cond().get())) {
-    // condition must be a constant comparison
-    if (!bin->IsCmp() ||
-        (!bin->lhs()->IsConst() && !bin->rhs()->IsConst())) {
-      return ui;
-    }
-    ui.end_cond = bin;
+  if (loop.body.size() > kBlockCountThreshold) return false;
+  // condition must be a constant comparison
+  if (!loop.end_cond) return false;
+  if (!loop.end_cond->IsCmp() || (!loop.end_cond->lhs()->IsConst() &&
+                                  !loop.end_cond->rhs()->IsConst())) {
+    return false;
   }
-  else {
-    // condition must be a binary instruction
-    return ui;
-  }
-  // get exit block
-  auto tb = SSACast<BlockSSA>(branch->true_block().get());
-  auto fb = SSACast<BlockSSA>(branch->false_block().get());
-  ui.exit_block = loop.body.count(tb) ? fb : tb;
+  // check exit block
+  if (!loop.exit_block) return false;
   // check induction variable
-  auto ind_var = ui.end_cond->lhs()->IsConst() ? ui.end_cond->rhs().get()
-                                               : ui.end_cond->lhs().get();
-  if (auto phi = SSADynCast<PhiSSA>(ind_var)) {
-    assert(phi->size() == 2);
-    ui.ind_var = phi;
-    // check for operands
-    for (const auto &i : *phi) {
-      auto opr = SSACast<PhiOperandSSA>(i.value().get());
-      if (opr->block().get() != loop.tail) {
-        // initial value must be a constant
-        if (auto cint = ConstantHelper::Fold(opr->value())) {
-          ui.init_val = cint->value();
-        }
-        else {
-          return ui;
-        }
-      }
-      else {
-        // modifier must be a binary instruction with a constant operand,
-        // another operand must be the induction variable
-        if (auto bin = SSADynCast<BinarySSA>(opr->value().get())) {
-          if (!((bin->lhs()->IsConst() && bin->rhs().get() == phi) ||
-                (bin->rhs()->IsConst() && bin->lhs().get() == phi))) {
-            return ui;
-          }
-          ui.modifier = bin;
-        }
-        else {
-          return ui;
-        }
-      }
-    }
-  }
-  else {
-    // induction variable must be a phi node
-    return ui;
+  if (!loop.ind_var) return false;
+  // initial value must be a constant
+  if (!ConstantHelper::Fold(loop.init_val->GetPointer())) return false;
+  // modifier must be a binary instruction with a constant operand,
+  // another operand must be the induction variable
+  if (!loop.modifier) return false;
+  if (!((loop.modifier->lhs()->IsConst() &&
+         loop.modifier->rhs().get() == loop.ind_var) ||
+        (loop.modifier->rhs()->IsConst() &&
+         loop.modifier->lhs().get() == loop.ind_var))) {
+    return false;
   }
   // this loop can be unrolled
-  ui.can_unroll = true;
-  return ui;
+  return true;
 }
 
 bool NaiveLoopUnrollingPass::RunOnLoop(const LoopInfo &loop) {
   // check if we can perform unrolling on current loop
-  auto ui = CheckLoop(loop);
-  if (!ui.can_unroll) return false;
-  // perform unroll
-  return LoopUnrollerHelperPass(loop, ui).Unroll();
+  if (!CheckLoop(loop)) return false;
+  // perform unrolling
+  return LoopUnrollerHelperPass(loop).Unroll();
 }
