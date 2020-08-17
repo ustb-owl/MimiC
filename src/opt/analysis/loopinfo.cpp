@@ -60,6 +60,16 @@ void LoopInfoPass::ScanNaturalLoop(LoopInfoList &loops, BlockSSA *be_tail,
     }
   }
   // scan for preheader
+  ScanPreheader(info);
+  // scan for exit blocks
+  ScanExitBlocks(info);
+  // scan for induction variable info
+  ScanIndVarInfo(info);
+  // add to list
+  loops.push_back(std::move(info));
+}
+
+void LoopInfoPass::ScanPreheader(LoopInfo &info) {
   if (info.entry->size() == 2) {
     if ((*info.entry)[0].value().get() == info.tail) {
       info.preheader = SSACast<BlockSSA>((*info.entry)[1].value().get());
@@ -72,7 +82,9 @@ void LoopInfoPass::ScanNaturalLoop(LoopInfoList &loops, BlockSSA *be_tail,
   else {
     info.preheader = nullptr;
   }
-  // scan for exit blocks
+}
+
+void LoopInfoPass::ScanExitBlocks(LoopInfo &info) {
   for (const auto &i : info.body) {
     assert(!i->insts().empty());
     if (auto branch = SSADynCast<BranchSSA>(i->insts().back())) {
@@ -83,8 +95,46 @@ void LoopInfoPass::ScanNaturalLoop(LoopInfoList &loops, BlockSSA *be_tail,
       }
     }
   }
-  // add to list
-  loops.push_back(std::move(info));
+}
+
+void LoopInfoPass::ScanIndVarInfo(LoopInfo &info) {
+  // the entry of loop must have only two predecessors
+  if (info.entry->size() != 2) return;
+  // loop must have only one exit block, and it must be entry block
+  if (info.exit.size() != 1 || !info.exit.count(info.entry)) return;
+  // get condition
+  auto branch = SSACast<BranchSSA>(info.entry->insts().back().get());
+  auto bin = SSADynCast<BinarySSA>(branch->cond().get());
+  if (!bin) return;
+  info.end_cond = bin;
+  // get exit block
+  auto tb = SSACast<BlockSSA>(branch->true_block().get());
+  auto fb = SSACast<BlockSSA>(branch->false_block().get());
+  info.exit_block = info.body.count(tb) ? fb : tb;
+  // get induction variable
+  for (const auto &i : info.entry->insts()) {
+    if (auto phi = SSADynCast<PhiSSA>(i.get())) {
+      for (const auto &use : phi->uses()) {
+        if (use->user() == info.end_cond) {
+          info.ind_var = phi;
+          break;
+        }
+      }
+    }
+  }
+  if (!info.ind_var) return;
+  // get initial value & modifier
+  assert(info.ind_var->size() == 2);
+  for (const auto &i : *info.ind_var) {
+    auto opr = SSACast<PhiOperandSSA>(i.value().get());
+    if (opr->block().get() != info.tail) {
+      info.init_val = opr->value().get();
+    }
+    else {
+      // modifier must be a binary instruction
+      info.modifier = SSADynCast<BinarySSA>(opr->value().get());
+    }
+  }
 }
 
 bool LoopInfoPass::RunOnFunction(const FuncPtr &func) {
