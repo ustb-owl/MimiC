@@ -187,6 +187,7 @@ bool LoopConversionPass::RunOnLoop(const LoopInfo &loop) {
   mod.CreateCall(callee, std::move(args));
   // insert jump instruction
   auto jump = std::make_shared<JumpSSA>(loop.exit_block->GetPointer());
+  jump->set_logger(loop.entry->logger());
   loop.entry->insts().push_back(std::move(jump));
   return true;
 }
