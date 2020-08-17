@@ -106,8 +106,7 @@ class LoopUnrollerHelperPass : public IRCopier {
         // unroll completed, stop copying
         ReroutePhiNodes();
         // prevent loop entry from released
-        assert(!loop_.entry->uses().empty());
-        auto loop_entry = loop_.entry->uses().front()->value();
+        auto loop_entry = loop_.entry->GetPointer();
         // remove blocks of the original loop from parent
         auto parent = loop_.entry->parent();
         for (const auto &block : loop_.body) {

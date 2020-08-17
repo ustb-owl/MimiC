@@ -175,8 +175,7 @@ class InstCombinePass : public FunctionPass {
         // Make what used to be the LHS of the root be
         // the user of the root...
         auto extra_operand = temp_bin->rhs();
-        assert(!root.uses().empty());
-        auto root_ptr = root.uses().front()->value();
+        auto root_ptr = root.GetPointer();
         root.ReplaceBy(temp_bin);     // Users now use temp_bin
         temp_bin->set_rhs(root_ptr);  // temp_bin now uses the root
         insts.remove(root_ptr);       // Remove root from the BB
@@ -538,8 +537,7 @@ struct FoldCmpLogical {
     auto rv = GetCmpValue(code, lhs, rhs);
     if (!rv->IsConst()) return InstCast(rv);
     // otherwise, it's a constant boolean value (int32 0/1)
-    assert(!log.uses().empty());
-    auto log_inst = InstCast(log.uses().front()->value());
+    auto log_inst = InstCast(log.GetPointer());
     return ic.ReplaceInstUsesWith(log_inst, rv);
   }
 

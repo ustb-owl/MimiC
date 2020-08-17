@@ -80,8 +80,7 @@ void LoopNormalizePass::CreatePreheader(const LoopInfo &loop) {
     pred->insts().back()->RunPass(*this);
   }
   // create jump to loop entry
-  assert(!loop.entry->uses().empty());
-  const auto &entry_ptr = loop.entry->uses().front()->value();
+  const auto &entry_ptr = loop.entry->GetPointer();
   auto jump = std::make_shared<JumpSSA>(entry_ptr);
   jump->set_logger(loop.entry->logger());
   preheader_->insts().push_back(std::move(jump));
