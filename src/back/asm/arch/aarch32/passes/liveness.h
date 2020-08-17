@@ -424,8 +424,13 @@ class LivenessAnalysisPass : public PassInterface {
         // check for destination register
         if (i->dest() && i->dest()->IsVirtual()) {
           // add edges
-          for (const auto &val : live_now) {
-            AddEdge(if_graph, val, i->dest());
+          if (!live_now.empty()) {
+            for (const auto &val : live_now) {
+              AddEdge(if_graph, val, i->dest());
+            }
+          }
+          else {
+            if_graph.insert({i->dest(), {}});
           }
           // remove from set
           live_now.erase(i->dest());
