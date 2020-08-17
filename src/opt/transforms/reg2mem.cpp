@@ -31,8 +31,7 @@ class CriticalEdgeBreakerHelperPass : public HelperPass {
   void RunOn(BlockSSA &ssa) override {
     pred_map_.clear();
     // get pointer to current block
-    assert(!ssa.uses().empty());
-    cur_block_ = ssa.uses().front()->value();
+    cur_block_ = ssa.GetPointer();
     // traverse all predecessors
     for (auto &&i : ssa) {
       // get terminator of current predecessor
@@ -233,8 +232,7 @@ REGISTER_PASS(RegToMemPass, reg2mem)
 RegToMemPass::InsertPoint RegToMemPass::GetInsertPoint(Value *inst) {
   // get pointer to parent block
   auto block = insts_->GetParent(inst);
-  assert(!block->uses().empty());
-  auto block_ptr = SSACast<BlockSSA>(block->uses().front()->value());
+  auto block_ptr = SSACast<BlockSSA>(block->GetPointer());
   // find current instruction
   SSAPtrList::iterator it;
   for (;;) {
