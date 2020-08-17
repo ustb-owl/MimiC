@@ -230,6 +230,7 @@ REGISTER_PASS(FunctionInliningPass, inliner)
     .set_stages(PassStage::Opt)
     .Requires("loop_info")
     .Requires("naive_unroll")
+    .Requires("loop_conv")
     .Invalidates("dom_info");
 
 
