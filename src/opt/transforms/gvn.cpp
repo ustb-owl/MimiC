@@ -238,7 +238,9 @@ class GlobalValueNumberingPass : public FunctionPass {
 // register current pass
 REGISTER_PASS(GlobalValueNumberingPass, gvn)
     .set_min_opt_level(2)
-    .set_stages(PassStage::Opt);
+    .set_stages(PassStage::Opt)
+    .Requires("inliner")
+    .Requires("naive_unroll");
 
 
 /*
