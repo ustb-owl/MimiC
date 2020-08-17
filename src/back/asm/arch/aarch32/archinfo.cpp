@@ -8,8 +8,6 @@
 #include "back/asm/arch/aarch32/passes/lsprop.h"
 #include "back/asm/mir/passes/movprop.h"
 #include "back/asm/mir/passes/movelim.h"
-#include "back/asm/arch/aarch32/passes/divopt.h"
-#include "back/asm/arch/aarch32/passes/shiftcomb.h"
 #include "back/asm/arch/aarch32/passes/liveness.h"
 #include "back/asm/mir/passes/linearscan.h"
 #include "back/asm/mir/passes/coloring.h"
@@ -41,10 +39,8 @@ class AArch32ArchInfo : public ArchInfoBase {
     if (opt_level) {
       list.push_back(MakePass<LeaCombiningPass>(inst_gen_));
       list.push_back(MakePass<LoadStorePropagationPass>());
-      list.push_back(MakePass<DivisionOptimizationPass>(inst_gen_));
       list.push_back(MakePass<MovePropagationPass>());
       list.push_back(MakePass<MoveEliminatePass>());
-      list.push_back(MakePass<ShiftCombiningPass>());
     }
     InitRegAlloc(opt_level, list);
     if (opt_level) {
@@ -85,12 +81,12 @@ class AArch32ArchInfo : public ArchInfoBase {
     if (!opr->IsReg() || opr->IsVirtual()) return false;
     auto name = static_cast<AArch32Reg *>(opr.get())->name();
     return name == RegName::R0 || name == RegName::R1 ||
-           name == RegName::LR;
+           name == RegName::R2 || name == RegName::LR;
   }
 
   static void InitTempRegs() {
     for (int i = static_cast<int>(RegName::R0);
-         i <= static_cast<int>(RegName::R1); ++i) {
+         i <= static_cast<int>(RegName::R2); ++i) {
       const auto &reg = inst_gen_.GetReg(static_cast<RegName>(i));
       temp_regs_.push_back(reg);
       temp_regs_with_lr_.push_back(reg);

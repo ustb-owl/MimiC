@@ -77,8 +77,8 @@ class AArch32InstGen : public InstGenBase {
       return it->second;
     }
     else {
-      auto slot = std::make_shared<AArch32Slot>(base, offset);
-      return slots_.insert({{base, offset}, std::move(slot)}).first->second;
+      auto addr = std::make_shared<AArch32Slot>(base, offset);
+      return slots_.insert({{base, offset}, std::move(addr)}).first->second;
     }
   }
 
@@ -93,9 +93,6 @@ class AArch32InstGen : public InstGenBase {
   const OprPtr &GetSlot(std::int32_t offset) {
     return GetSlot(false, offset);
   }
-
-  // get a virtual register
-  OprPtr GetVReg() { return vreg_fact_.GetReg(); }
 
   // getters
   // size of all allocated negative-offset in-frame slots
@@ -112,12 +109,9 @@ class AArch32InstGen : public InstGenBase {
 
   // push a new instruction to current function
   template <typename... Args>
-  std::shared_ptr<AArch32Inst> PushInst(AArch32Inst::OpCode opcode,
-                                        Args &&... args) {
-    auto inst = std::make_shared<AArch32Inst>(opcode,
-                                              std::forward<Args>(args)...);
-    AddInst(inst);
-    return inst;
+  void PushInst(AArch32Inst::OpCode opcode, Args &&... args) {
+    AddInst(std::make_shared<AArch32Inst>(opcode,
+                                          std::forward<Args>(args)...));
   }
 
   // linkage type conversion
@@ -126,9 +120,6 @@ class AArch32InstGen : public InstGenBase {
   OprPtr GenerateZeros(const define::TypePtr &type);
   // generate 'memcpy'
   void GenerateMemCpy(const OprPtr &dest, const OprPtr &src,
-                      std::size_t size);
-  // generate 'memset'
-  void GenerateMemSet(const OprPtr &dest, std::uint8_t data,
                       std::size_t size);
   // dump instruction sequences
   void DumpSeqs(std::ostream &os, const InstSeqMap &seqs) const;

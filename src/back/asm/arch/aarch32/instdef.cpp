@@ -18,8 +18,7 @@ const char *kRegNames[] = {
 
 const char *kOpCodes[] = {
   "ldr", "ldrb", "str", "strb", "push", "pop",
-  "add", "sub", "subs", "rsb",
-  "mul", "mls", "smmul", "umull", "sdiv", "udiv",
+  "add", "sub", "subs", "rsb", "mul", "mls", "sdiv", "udiv",
   "cmp", "b", "bl", "bx",
   "beq", "bne",
   "blo", "blt", "bls", "ble",
@@ -38,10 +37,6 @@ const char *kOpCodes[] = {
   "setult", "setslt", "setule", "setsle",
   "setugt", "setsgt", "setuge", "setsge",
   ".zero", ".asciz", ".long", ".byte",
-};
-
-const char *kShiftOp[] = {
-  "", "lsl", "lsr", "asr", "ror",
 };
 
 std::ostream &operator<<(std::ostream &os, AArch32Reg::RegName name) {
@@ -178,11 +173,6 @@ void AArch32Inst::Dump(std::ostream &os) const {
         break;
       }
     }
-  }
-  // dump shifted operand suffix
-  if (shift_op_ != ShiftOp::NOP) {
-    os << ", " << kShiftOp[static_cast<int>(shift_op_)];
-    os << " #" << static_cast<unsigned>(shift_amt_);
   }
   os << std::endl;
 }

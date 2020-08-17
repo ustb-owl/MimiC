@@ -5,7 +5,6 @@
 #include <memory>
 #include <vector>
 #include <list>
-#include <cstddef>
 
 namespace mimic::back::asmgen {
 

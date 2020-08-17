@@ -97,7 +97,6 @@ class InstSchedulingPass : public PassInterface {
 
  private:
   using OpCode = AArch32Inst::OpCode;
-  using ShiftOp = AArch32Inst::ShiftOp;
   // instruction map
   template <typename T>
   using InstMap = std::unordered_map<InstPtr, T>;
@@ -111,8 +110,7 @@ class InstSchedulingPass : public PassInterface {
   // latency of instructions
   // reference: Cortex-A72 Software Optimization Guide
   std::size_t GetLatency(const InstPtr &inst) {
-    auto inst_ptr = static_cast<AArch32Inst *>(inst.get());
-    auto opcode = inst_ptr->opcode();
+    auto opcode = static_cast<AArch32Inst *>(inst.get())->opcode();
     switch (opcode) {
       case OpCode::STR: case OpCode::STRB: case OpCode::ADD:
       case OpCode::SUB: case OpCode::SUBS: case OpCode::RSB:
@@ -120,9 +118,9 @@ class InstSchedulingPass : public PassInterface {
       case OpCode::MVN: case OpCode::AND: case OpCode::ORR:
       case OpCode::EOR: case OpCode::LSL: case OpCode::LSR:
       case OpCode::ASR: case OpCode::CLZ: case OpCode::SXTB:
-      case OpCode::UXTB: return 1 + (inst_ptr->shift_op() != ShiftOp::NOP);
-      case OpCode::MUL: case OpCode::MLS: case OpCode::SMMUL: return 3;
-      case OpCode::UMULL: case OpCode::LDR: case OpCode::LDRB: return 4;
+      case OpCode::UXTB: return 1;
+      case OpCode::MUL: case OpCode::MLS: return 3;
+      case OpCode::LDR: case OpCode::LDRB: return 4;
       case OpCode::SDIV: case OpCode::UDIV: return 12;
       default: assert(false); return 0;
     }
