@@ -95,6 +95,8 @@ class Value {
   void ReplaceBy(const SSAPtr &value);
   // remove current value from all users
   void RemoveFromUser();
+  // get SSA pointer of current value
+  SSAPtr GetPointer() const;
 
   // setters
   void set_logger(const front::LogPtr &logger) { logger_ = logger; }
