@@ -310,13 +310,16 @@ void CCodeGen::GenerateOn(ReturnSSA &ssa) {
 }
 
 void CCodeGen::GenerateOn(FunctionSSA &ssa) {
+  SetVal(ssa, ssa.name());
+  // skip if is declaration of 'memset'
+  // TODO: dirty hack!
+  if (ssa.is_decl() && ssa.name() == "memset") return;
   // generate function declaration
   const auto &type = ssa.type();
   auto args_ty = *type->GetArgsType();
   auto ret_ty = type->GetReturnType(args_ty);
   code_ << GetLinkType(ssa.link()) << GetTypeName(ret_ty) << ' ';
   code_ << ssa.name() << '(';
-  SetVal(ssa, ssa.name());
   // generate arguments
   for (std::size_t i = 0; i < args_ty.size(); ++i) {
     if (i) code_ << ", ";
