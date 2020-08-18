@@ -239,6 +239,7 @@ class GlobalValueNumberingPass : public FunctionPass {
 REGISTER_PASS(GlobalValueNumberingPass, gvn)
     .set_min_opt_level(2)
     .set_stages(PassStage::Opt)
+    .Requires("adce")
     .Requires("inliner")
     .Requires("naive_unroll");
 
