@@ -64,15 +64,25 @@ inline bool IsInstruction(const mid::SSAPtr &val) {
   return IsInstruction(val.get());
 }
 
+// check if intruction is critical
+inline bool IsInstCritical(const mid::Value *inst) {
+  if (!IsInstruction(inst)) return false;
+  return IsSSA<mid::StoreSSA>(inst) || IsSSA<mid::CallSSA>(inst) ||
+         IsSSA<mid::BranchSSA>(inst) || IsSSA<mid::JumpSSA>(inst) ||
+         IsSSA<mid::ReturnSSA>(inst);
+}
+inline bool IsInstCritical(const mid::Value &val) {
+  return IsInstCritical(&val);
+}
+inline bool IsInstCritical(const mid::SSAPtr &val) {
+  return IsInstCritical(val.get());
+}
+
 // check if instruction is dead
 inline bool IsInstDead(const mid::Value *inst) {
   if (!IsInstruction(inst)) return false;
   if (!inst->uses().empty()) return false;
-  if (IsSSA<mid::StoreSSA>(inst) || IsSSA<mid::CallSSA>(inst) ||
-      IsSSA<mid::BranchSSA>(inst) || IsSSA<mid::JumpSSA>(inst) ||
-      IsSSA<mid::ReturnSSA>(inst)) {
-    return false;
-  }
+  if (IsInstCritical(inst)) return false;
   return true;
 }
 inline bool IsInstDead(const mid::Value &val) {
