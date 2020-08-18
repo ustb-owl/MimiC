@@ -84,9 +84,13 @@ void AggressiveDeadCodeElimPass::Mark(FunctionSSA *func) {
       }
       else if (auto phi_opr = SSADynCast<PhiOperandSSA>(val.get())) {
         if (auto i = InstDynCast(phi_opr->value().get())) {
+          if (liveset_.count(i)) continue;
           worklist_.push_back(i);
           liveset_.insert(i);
         }
+      }
+      else if (IsSSA<AllocaSSA>(val)) {
+        liveset_.insert(val.get());
       }
     }
     // TODO: scan RDF blocks
@@ -103,6 +107,9 @@ bool AggressiveDeadCodeElimPass::Sweep(FunctionSSA *func) {
       // TODO: handle RDF blocks
       // check if instruction is unmarked
       if (!liveset_.count(it->get())) {
+        for (const auto &i : (*it)->uses()) {
+          assert(!liveset_.count(i->user()));
+        }
         // break circular reference
         (*it)->ReplaceBy(nullptr);
         it = insts.erase(it);
