@@ -38,26 +38,26 @@ class AArch32ArchInfo : public ArchInfoBase {
     list.push_back(MakePass<BranchCombiningPass>(inst_gen_));
     list.push_back(MakePass<BranchEliminationPass>());
     if (opt_level) {
-      // list.push_back(MakePass<LeaCombiningPass>(inst_gen_));
-      // list.push_back(MakePass<LoadStorePropagationPass>());
+      list.push_back(MakePass<LeaCombiningPass>(inst_gen_));
+      list.push_back(MakePass<LoadStorePropagationPass>());
       list.push_back(MakePass<MovePropagationPass>());
       list.push_back(MakePass<MoveEliminatePass>());
     }
     list.push_back(MakePass<ImmSpillPass>(inst_gen_));
     InitRegAlloc(0, list);
-    // if (opt_level) {
-    //   list.push_back(MakePass<LeaCombiningPass>(inst_gen_));
-    // }
+    if (opt_level) {
+      list.push_back(MakePass<LeaCombiningPass>(inst_gen_));
+    }
     list.push_back(MakePass<LeaEliminationPass>(inst_gen_));
     list.push_back(MakePass<SlotSpillingPass>(inst_gen_));
     list.push_back(MakePass<FuncDecoratePass>(inst_gen_));
     list.push_back(MakePass<ImmNormalizePass>(inst_gen_));
-    // if (opt_level) {
-    //   list.push_back(MakePass<LoadStorePropagationPass>());
-    //   list.push_back(MakePass<MovePropagationPass>(IsAvaliableMove));
-    //   list.push_back(MakePass<MoveOverridingPass>());
-    //   list.push_back(MakePass<InstSchedulingPass>());
-    // }
+    if (opt_level) {
+      list.push_back(MakePass<LoadStorePropagationPass>());
+      list.push_back(MakePass<MovePropagationPass>(IsAvaliableMove));
+      list.push_back(MakePass<MoveOverridingPass>());
+      list.push_back(MakePass<InstSchedulingPass>());
+    }
     return list;
   }
 
