@@ -52,7 +52,7 @@ class AggressiveDeadCodeElimPass : public FunctionPass {
 
 // register current pass
 REGISTER_PASS(AggressiveDeadCodeElimPass, adce)
-    .set_min_opt_level(3)
+    .set_min_opt_level(1)
     .set_stages(PassStage::Opt);
 
 
