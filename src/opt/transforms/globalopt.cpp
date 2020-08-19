@@ -52,12 +52,17 @@ class GlobalOptPass : public ModulePass {
     return changed;
   }
 
+  void CleanUp() override {
+    visited_.clear();
+  }
+
   void RunOn(StoreSSA &ssa) override {
     // stored to a variable, so it's not a constant
     if (ssa.ptr().get() == last_visited_) not_a_const_ = true;
   }
 
   void RunOn(AccessSSA &ssa) override {
+    if (!visited_.insert(&ssa).second) return;
     auto last = UpdateLast(ssa);
     // traverse all users, try to find a store instruction
     for (const auto &i : ssa.uses()) {
@@ -67,9 +72,26 @@ class GlobalOptPass : public ModulePass {
   }
 
   void RunOn(CastSSA &ssa) override {
+    if (!visited_.insert(&ssa).second) return;
     auto last = UpdateLast(ssa);
     // traverse all users, try to find a store instruction
     for (const auto &i : ssa.uses()) {
+      i->user()->RunPass(*this);
+      if (not_a_const_) break;
+    }
+  }
+
+  void RunOn(PhiOperandSSA &ssa) override {
+    assert(ssa.uses().size() == 1);
+    ssa.uses().front()->user()->RunPass(*this);
+  }
+
+  void RunOn(PhiSSA &ssa) override {
+    if (!visited_.insert(&ssa).second) return;
+    auto last = UpdateLast(ssa);
+    // traverse all users, try to find a store instruction
+    for (const auto &i : ssa.uses()) {
+      if (IsSSA<PhiOperandSSA>(i->user())) continue;
       i->user()->RunPass(*this);
       if (not_a_const_) break;
     }
@@ -113,6 +135,8 @@ class GlobalOptPass : public ModulePass {
   bool not_a_const_;
   // last visited ssa value
   Value *last_visited_;
+  // all visited values
+  std::unordered_set<Value *> visited_;
 };
 
 }  // namespace
