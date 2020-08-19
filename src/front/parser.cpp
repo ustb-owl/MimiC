@@ -577,7 +577,7 @@ ASTPtr Parser::ParseUnary() {
     }
     NextToken();
     // get factor
-    auto expr = ParseFactor(false);
+    auto expr = ParseUnary();
     if (!expr) return nullptr;
     return MakeAST<UnaryAST>(log, op, std::move(expr));
   }
