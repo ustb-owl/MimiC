@@ -8,6 +8,7 @@
 #include "back/asm/arch/aarch32/passes/lsprop.h"
 #include "back/asm/mir/passes/movprop.h"
 #include "back/asm/mir/passes/movelim.h"
+#include "back/asm/arch/aarch32/passes/immspill.h"
 #include "back/asm/arch/aarch32/passes/liveness.h"
 #include "back/asm/mir/passes/linearscan.h"
 #include "back/asm/mir/passes/coloring.h"
@@ -42,6 +43,7 @@ class AArch32ArchInfo : public ArchInfoBase {
       list.push_back(MakePass<MovePropagationPass>());
       list.push_back(MakePass<MoveEliminatePass>());
     }
+    list.push_back(MakePass<ImmSpillPass>(inst_gen_));
     InitRegAlloc(0, list);
     // if (opt_level) {
     //   list.push_back(MakePass<LeaCombiningPass>(inst_gen_));

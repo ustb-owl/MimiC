@@ -32,21 +32,6 @@ class ImmNormalizePass : public PassInterface {
           }
           break;
         }
-        // instructions that allow register operands only
-        case OpCode::STR: case OpCode::STRB: case OpCode::MUL:
-        case OpCode::MLS: case OpCode::SMMUL: case OpCode::UMULL:
-        case OpCode::SDIV: case OpCode::UDIV: case OpCode::CLZ:
-        case OpCode::SXTB: case OpCode::UXTB: {
-          auto mask = GetRegMask(inst);
-          for (auto &&i : inst->oprs()) {
-            if (i.value()->IsImm()) {
-              auto temp = SelectTempReg(mask);
-              InsertMove(insts, it, i.value(), temp);
-              i.set_value(temp);
-            }
-          }
-          break;
-        }
         // instructions with only <imm8m> field
         case OpCode::ADD: case OpCode::SUB:
         case OpCode::SUBS: case OpCode::RSB: case OpCode::CMP:
