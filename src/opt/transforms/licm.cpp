@@ -89,7 +89,8 @@ REGISTER_PASS(LoopInvariantCodeMotionPass, licm)
     .set_stages(PassStage::Opt)
     .Requires("dom_info")
     .Requires("loop_info")
-    .Requires("loop_norm");
+    .Requires("loop_norm")
+    .Requires("loop_reduce");
 
 
 // check if value is an invariant
@@ -133,6 +134,19 @@ Value *LoopInvariantCodeMotionPass::GetBasePointer(Value *ptr) {
     else if (auto cast = SSADynCast<CastSSA>(ptr)) {
       ptr = cast->opr().get();
     }
+    else if (auto phi = SSADynCast<PhiSSA>(ptr)) {
+      // TODO: tricky implementation, fixme!
+      std::unordered_set<Value *> users;
+      for (const auto &i : phi->uses()) {
+        users.insert(i->user());
+      }
+      for (const auto &i : *phi) {
+        auto opr = SSACast<PhiOperandSSA>(i.value().get());
+        if (!users.count(opr->value().get())) {
+          ptr = opr->value().get();
+        }
+      }
+    }
     else {
       return ptr;
     }
@@ -145,19 +159,8 @@ void LoopInvariantCodeMotionPass::ProcessStores() {
   for (const auto &block : cur_loop_->body) {
     for (const auto &i : block->insts()) {
       if (auto store = SSADynCast<StoreSSA>(i.get())) {
-        auto ptr = store->ptr().get();
         // get base pointer of access/cast
-        for (;;) {
-          if (auto acc = SSADynCast<AccessSSA>(ptr)) {
-            ptr = acc->ptr().get();
-          }
-          else if (auto cast = SSADynCast<CastSSA>(ptr)) {
-            ptr = cast->opr().get();
-          }
-          else {
-            break;
-          }
-        }
+        auto ptr = GetBasePointer(store->ptr().get());
         // if stored to argument, treat all arguments as stored
         // to prevent pointer alias
         if (IsSSA<ArgRefSSA>(ptr)) {
@@ -166,7 +169,7 @@ void LoopInvariantCodeMotionPass::ProcessStores() {
             if (arg->type()->IsPointer()) stored_ptrs_.insert(arg.get());
           }
         }
-        stored_ptrs_.insert(GetBasePointer(ptr));
+        stored_ptrs_.insert(ptr);
       }
     }
   }
