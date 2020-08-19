@@ -231,6 +231,7 @@ REGISTER_PASS(FunctionInliningPass, inliner)
     .Requires("loop_info")
     .Requires("naive_unroll")
     .Requires("loop_conv")
+    .Requires("loop_reduce")
     .Invalidates("dom_info");
 
 

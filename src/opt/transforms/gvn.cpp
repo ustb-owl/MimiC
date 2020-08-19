@@ -241,7 +241,8 @@ REGISTER_PASS(GlobalValueNumberingPass, gvn)
     .set_stages(PassStage::Opt)
     .Requires("adce")
     .Requires("inliner")
-    .Requires("naive_unroll");
+    .Requires("naive_unroll")
+    .Invalidates("loop_info");
 
 
 /*
