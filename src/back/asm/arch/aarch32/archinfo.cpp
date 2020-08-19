@@ -44,7 +44,7 @@ class AArch32ArchInfo : public ArchInfoBase {
       list.push_back(MakePass<MoveEliminatePass>());
     }
     list.push_back(MakePass<ImmSpillPass>(inst_gen_));
-    InitRegAlloc(0, list);
+    InitRegAlloc(opt_level, list);
     if (opt_level) {
       list.push_back(MakePass<LeaCombiningPass>(inst_gen_));
     }
