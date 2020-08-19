@@ -58,7 +58,8 @@ class InstCombinePass : public FunctionPass {
   // erase instruction from it's parent block
   void RemoveFromParent(const UserPtr &inst) {
     auto it = parent_.find(inst.get());
-    assert(it != parent_.end());
+    // TODO: is this safe? fixme
+    if (it == parent_.end()) return;
     it->second->insts().remove_if(
         [&inst](const SSAPtr &i) { return i == inst; });
     parent_.erase(it);
@@ -550,8 +551,8 @@ struct FoldCmpLogical {
 // register current pass
 REGISTER_PASS(InstCombinePass, inst_comb)
     .set_min_opt_level(1)
-    .set_stages(PassStage::Opt);
-
+    .set_stages(PassStage::Opt)
+    .Invalidates("loop_info");
 
 // This performs a few simplifications for commutative
 // operators:
