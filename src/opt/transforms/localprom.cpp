@@ -177,6 +177,6 @@ class LocalArrayPromotionPass : public ModulePass {
 
 // register current pass
 REGISTER_PASS(LocalArrayPromotionPass, local_prom)
-    .set_min_opt_level(3)
+    .set_min_opt_level(2)
     .set_stages(PassStage::Opt);
 
