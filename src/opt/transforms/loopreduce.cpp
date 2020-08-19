@@ -5,6 +5,7 @@
 #include "opt/pass.h"
 #include "opt/passman.h"
 #include "opt/helper/inst.h"
+#include "opt/analysis/dominance.h"
 #include "opt/analysis/loopinfo.h"
 #include "opt/helper/const.h"
 #include "opt/helper/cast.h"
@@ -25,14 +26,18 @@ class LoopStrengthReductionPass : public FunctionPass {
 
   bool RunOnFunction(const FuncPtr &func) override {
     if (func->is_decl()) return false;
-    // initialize parent scanner
+    // prepare parent scanner
     ParentScanner parent(func);
     parent_ = &parent;
+    // prepare dominance checker
+    dom_ = &PassManager::GetPass<DominanceInfoPass>("dom_info");
     // run on loops
     const auto &li = PassManager::GetPass<LoopInfoPass>("loop_info");
     const auto &loops = li.GetLoopInfo(func.get());
+    changed_ = false;
     for (const auto &loop : loops) {
-      if (RunOnLoop(loop)) return true;
+      RunOnLoop(loop);
+      if (changed_) return true;
     }
     return false;
   }
@@ -41,9 +46,11 @@ class LoopStrengthReductionPass : public FunctionPass {
 
  private:
   bool CheckLoop(const LoopInfo &loop);
-  bool RunOnLoop(const LoopInfo &loop);
+  void RunOnLoop(const LoopInfo &loop);
+  bool IsValidPointer(const SSAPtr &ptr, BlockSSA *target);
 
   ParentScanner *parent_;
+  const DominanceInfoPass *dom_;
   bool changed_;
   const LoopInfo *cur_loop_;
   SSAPtr step_;
@@ -55,15 +62,15 @@ class LoopStrengthReductionPass : public FunctionPass {
 REGISTER_PASS(LoopStrengthReductionPass, loop_reduce)
     .set_min_opt_level(2)
     .set_stages(PassStage::Opt)
+    .Requires("dom_info")
     .Requires("loop_info")
-    .Requires("licm")
     .Requires("loop_conv");
 
 
 // check if the specific loop can be handled
 bool LoopStrengthReductionPass::CheckLoop(const LoopInfo &loop) {
   if (!loop.preheader || !loop.modifier || !loop.ind_var) return false;
-  // modifier must be an instruction like 'add %ind, %x'
+  // modifier must be an instruction like 'add %ind, %c'
   if (loop.modifier->op() != BinarySSA::Operator::Add) return false;
   if (loop.modifier->lhs().get() == loop.ind_var) {
     step_ = ConstantHelper::Fold(loop.modifier->rhs());
@@ -80,9 +87,8 @@ bool LoopStrengthReductionPass::CheckLoop(const LoopInfo &loop) {
 }
 
 // handle current loop
-bool LoopStrengthReductionPass::RunOnLoop(const LoopInfo &loop) {
-  changed_ = false;
-  if (!CheckLoop(loop)) return changed_;
+void LoopStrengthReductionPass::RunOnLoop(const LoopInfo &loop) {
+  if (!CheckLoop(loop)) return;
   // traverse all users of induction variable
   cur_loop_ = &loop;
   auto uses = loop.ind_var->uses();
@@ -92,17 +98,28 @@ bool LoopStrengthReductionPass::RunOnLoop(const LoopInfo &loop) {
       i->user()->RunPass(*this);
     }
   }
-  return changed_;
+}
+
+// check if the pointer of access can be handled
+bool LoopStrengthReductionPass::IsValidPointer(const SSAPtr &ptr,
+                                               BlockSSA *target) {
+  if (IsSSA<ArgRefSSA>(ptr) || IsSSA<GlobalVarSSA>(ptr)) return true;
+  if (dom_->IsDeadBlock(target)) return false;
+  auto block = parent_->GetParent(ptr.get());
+  return dom_->IsDominate(block, target);
 }
 
 void LoopStrengthReductionPass::RunOn(AccessSSA &ssa) {
   using AccTy = AccessSSA::AccessType;
   if (cur_loop_->ind_var != ssa.index().get()) return;
+  // get tail block & preheader block
   auto tail = SSACast<BlockSSA>(cur_loop_->tail->GetPointer());
-  // create initial value in preheader
   auto phdr = SSACast<BlockSSA>(cur_loop_->preheader->GetPointer());
-  auto mod = MakeModule(ssa.logger(), phdr, --phdr->insts().end());
+  // check pointer of access
   auto ptr = ssa.ptr();
+  if (!IsValidPointer(ptr, phdr.get())) return;
+  // create initial value in preheader
+  auto mod = MakeModule(ssa.logger(), phdr, --phdr->insts().end());
   if (ssa.acc_type() == AccTy::Element) {
     // create a cast instruction as pointer
     ptr = mod.CreateCast(ssa.ptr(), ssa.type());
