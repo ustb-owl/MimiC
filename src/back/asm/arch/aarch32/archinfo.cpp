@@ -44,7 +44,7 @@ class AArch32ArchInfo : public ArchInfoBase {
       list.push_back(MakePass<MoveEliminatePass>());
     }
     list.push_back(MakePass<ImmSpillPass>(inst_gen_));
-    InitRegAlloc(0, list);
+    InitRegAlloc(opt_level, list);
     if (opt_level) {
       list.push_back(MakePass<LeaCombiningPass>(inst_gen_));
     }
@@ -112,7 +112,7 @@ class AArch32ArchInfo : public ArchInfoBase {
                                              temp_regs_with_lr_, regs_);
     // create register allocator
     RegAllocPtr reg_alloc;
-    if (opt_level >= 2) {
+    if (opt_level >= 3) {
       const auto &fig = la->func_if_graphs();
       auto gcra = MakePass<GraphColoringRegAllocPass>(fig);
       reg_alloc = std::move(gcra);
