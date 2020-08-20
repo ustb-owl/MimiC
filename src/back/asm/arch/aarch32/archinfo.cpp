@@ -105,14 +105,15 @@ class AArch32ArchInfo : public ArchInfoBase {
 
   void InitRegAlloc(std::size_t opt_level, PassPtrList &list) {
     using LIType = LivenessAnalysisPass::LivenessInfoType;
+    bool use_gc = !inst_gen_.opt_level() && opt_level >= 2;
     // create liveness analyzer
-    auto li_type = opt_level >= 2 ? LIType::InterferenceGraph
-                                  : LIType::LiveIntervals;
+    auto li_type = use_gc ? LIType::InterferenceGraph
+                          : LIType::LiveIntervals;
     auto la = MakePass<LivenessAnalysisPass>(li_type, IsTempReg, temp_regs_,
                                              temp_regs_with_lr_, regs_);
     // create register allocator
     RegAllocPtr reg_alloc;
-    if (opt_level >= 3) {
+    if (use_gc) {
       const auto &fig = la->func_if_graphs();
       auto gcra = MakePass<GraphColoringRegAllocPass>(fig);
       reg_alloc = std::move(gcra);
