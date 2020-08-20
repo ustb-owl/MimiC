@@ -414,9 +414,7 @@ class LivenessAnalysisPass : public PassInterface {
       for (auto it = bb.insts.rbegin(); it != bb.insts.rend(); ++it) {
         const auto &i = *it;
         // update 'can_not_alloc_temp'
-        if ((i->dest() && temp_checker_(i->dest())) ||
-            (i->IsMove() && temp_checker_(i->oprs()[0].value())) ||
-            i->IsCall()) {
+        if ((i->dest() && temp_checker_(i->dest())) || i->IsCall()) {
           for (const auto &val : live_now) {
             can_not_alloc_temp.insert(val);
           }
@@ -443,7 +441,12 @@ class LivenessAnalysisPass : public PassInterface {
         // update 'suggest_same'
         if (i->IsMove()) {
           const auto &dest = i->dest(), &src = i->oprs()[0].value();
-          AddSuggestSame(if_graph, dest, src);
+          if (dest->IsVirtual() && temp_checker_(src)) {
+            can_not_alloc_temp.insert(dest);
+          }
+          else {
+            AddSuggestSame(if_graph, dest, src);
+          }
         }
       }
     }
