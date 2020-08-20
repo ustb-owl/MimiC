@@ -361,7 +361,7 @@ class LivenessAnalysisPass : public PassInterface {
           if (!opr.value()->IsVirtual()) continue;
           LogLiveInterval(live_intervals, opr.value(), pos, last_temp_pos);
         }
-        if (i->dest() && i->dest()->IsReg()) {
+        if (i->dest()) {
           const auto &dest = i->dest();
           if (dest->IsVirtual()) {
             LogLiveInterval(live_intervals, dest, pos, last_temp_pos);
@@ -370,6 +370,10 @@ class LivenessAnalysisPass : public PassInterface {
             // update 'last_temp_pos'
             last_temp_pos = pos;
           }
+        }
+        // update 'last_temp_pos' if current is a argument move
+        if (i->IsMove() && temp_checker_(i->oprs()[0].value())) {
+          last_temp_pos = pos;
         }
         // update 'last_temp_pos' if current is a call instruction
         if (i->IsCall()) last_temp_pos = pos;
@@ -457,7 +461,9 @@ class LivenessAnalysisPass : public PassInterface {
           UpdateCanAllocTemp(can_alloc_temp, i->dest(), pos, last_temp_pos);
         }
         // update 'last_temp_pos'
-        if ((i->dest() && temp_checker_(i->dest())) || i->IsCall()) {
+        if ((i->dest() && temp_checker_(i->dest())) ||
+            (i->IsMove() && temp_checker_(i->oprs()[0].value())) ||
+            i->IsCall()) {
           last_temp_pos = pos;
         }
         ++pos;
