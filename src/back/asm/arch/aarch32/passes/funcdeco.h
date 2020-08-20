@@ -67,17 +67,18 @@ class FuncDecoratePass : public PassInterface {
     }
     // generate instructions for stack pointer update
     if (neg_slot_size) UpdateSP(insts, neg_slot_size);
+    // update all positive-offset in-frame slots
     if (add_pos_offset) {
-      // update all positive-offset in-frame slots
-      for (const auto &[inst, slot] : poif_slots_) {
+      for (auto &&[inst, slot] : poif_slots_) {
         auto new_slot = gen_.GetSlot(slot->offset() + add_pos_offset);
         inst->oprs()[inst->opcode() == OpCode::STR].set_value(new_slot);
+        slot = static_cast<AArch32Slot *>(new_slot.get());
       }
     }
-    else {
-      // convert all positive-offset in-frame slots to sp-based slots
+    // convert all positive-offset in-frame slots to sp-based slots
+    if (!neg_slot_size) {
       for (const auto &[inst, slot] : poif_slots_) {
-        assert(!slot->based_on_sp());
+        assert(slot->base() == gen_.GetReg(RegName::R11));
         auto new_slot = gen_.GetSlot(true, slot->offset());
         inst->oprs()[inst->opcode() == OpCode::STR].set_value(new_slot);
       }
@@ -107,11 +108,12 @@ class FuncDecoratePass : public PassInterface {
   void LogSlotInfo(const OprPtr &opr, AArch32Inst *inst) {
     if (!opr->IsSlot()) return;
     auto slot = static_cast<AArch32Slot *>(opr.get());
-    if (slot->based_on_sp()) {
+    auto base_name = static_cast<AArch32Reg *>(slot->base().get())->name();
+    if (base_name == RegName::SP) {
       std::size_t ofs = slot->offset() + 4;
       if (ofs > preserved_slot_size_) preserved_slot_size_ = ofs;
     }
-    else if (slot->offset() >= 0) {
+    else if (base_name == RegName::R11 && slot->offset() >= 0) {
       poif_slots_.insert({inst, slot});
     }
   }

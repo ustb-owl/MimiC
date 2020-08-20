@@ -3,7 +3,6 @@
 
 #include <map>
 #include <vector>
-#include <queue>
 #include <unordered_map>
 #include <cstddef>
 #include <cassert>
@@ -18,20 +17,11 @@ namespace mimic::back::asmgen {
 */
 class LinearScanRegAllocPass : public RegAllocatorBase {
  public:
-  // live interval information
-  struct LiveInterval {
-    std::size_t start_pos;
-    std::size_t end_pos;
-  };
-  // live intervals in function
-  using LiveIntervals = std::unordered_map<OprPtr, LiveInterval>;
-  // live intervals of all functions
-  using FuncLiveIntervals = std::unordered_map<OprPtr, LiveIntervals>;
-
-  LinearScanRegAllocPass() {}
+  LinearScanRegAllocPass(const FuncLiveIntervals &func_live_intervals)
+      : func_live_intervals_(func_live_intervals) {}
 
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
-    Reset();
+    Reset(func_label);
     // perform allocation
     LinearScanAlloc(func_label);
     // apply to virtual registers
@@ -45,16 +35,6 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
         AllocateVRegTo(i->dest(), GetAllocatedOpr(i->dest()));
       }
     }
-  }
-
-  void AddAvaliableReg(const OprPtr &reg) override {
-    avaliable_regs_.push_back(reg);
-  }
-
-  // setter
-  void set_func_live_intervals(
-      const FuncLiveIntervals *func_live_intervals) {
-    func_live_intervals_ = func_live_intervals;
   }
 
  private:
@@ -79,12 +59,21 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
       std::multimap<const LiveInterval *, OprPtr, LiveIntervalEndCmp>;
 
   // reset for next run
-  void Reset() {
+  void Reset(const OprPtr &func_label) {
     // clear free register/slot pool
-    while (!free_regs_.empty()) free_regs_.pop();
-    while (!free_slots_.empty()) free_slots_.pop();
+    free_temps_.clear();
+    free_regs_.clear();
+    free_slots_.clear();
     // initialize free registers
-    for (const auto &i : avaliable_regs_) free_regs_.push(i);
+    const auto &temp_reg_list = GetTempRegList(func_label);
+    for (auto it = temp_reg_list.rbegin(); it != temp_reg_list.rend();
+         ++it) {
+      free_temps_.push_back(*it);
+    }
+    const auto &reg_list = GetRegList(func_label);
+    for (auto it = reg_list.rbegin(); it != reg_list.rend(); ++it) {
+      free_regs_.push_back(*it);
+    }
     // reset other stuffs
     vregs_.clear();
   }
@@ -94,26 +83,34 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
     IntervalStartMap start_map;
     IntervalEndMap active;
     // build up live interval map
-    auto it = func_live_intervals_->find(func_label);
-    assert(it != func_live_intervals_->end());
+    auto it = func_live_intervals_.find(func_label);
+    assert(it != func_live_intervals_.end());
     for (const auto &i : it->second) {
       start_map.insert({&i.second, i.first});
     }
     // perform allocation
     for (const auto &i : start_map) {
       ExpireOldIntervals(active, i.first);
-      if (!free_regs_.empty()) {
+      if (i.first->can_alloc_temp && !free_temps_.empty()) {
+        // allocate a free temporary register
+        auto temp = free_temps_.back();
+        free_temps_.pop_back();
+        vregs_[i.second] = temp;
+        // add to active
+        active.insert({i.first, i.second});
+      }
+      else if (!free_regs_.empty()) {
         // allocate a free register
-        auto reg = free_regs_.front();
-        free_regs_.pop();
+        auto reg = free_regs_.back();
+        free_regs_.pop_back();
         vregs_[i.second] = reg;
         // add to active
         active.insert({i.first, i.second});
       }
       else if (!free_slots_.empty()) {
         // allocate a free slot
-        auto slot = free_slots_.front();
-        free_slots_.pop();
+        auto slot = free_slots_.back();
+        free_slots_.pop_back();
         vregs_[i.second] = slot;
         // add to active
         active.insert({i.first, i.second});
@@ -130,12 +127,15 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
       if (it->first->end_pos >= i->start_pos) return;
       // free current element's register/slot
       const auto &opr = vregs_[it->second];
-      if (opr->IsReg()) {
-        free_regs_.push(opr);
+      if (IsTempReg(opr)) {
+        free_temps_.push_back(opr);
+      }
+      else if (opr->IsReg()) {
+        free_regs_.push_back(opr);
       }
       else {
         assert(opr->IsSlot());
-        free_slots_.push(opr);
+        free_slots_.push_back(opr);
       }
       // remove current element from active
       it = active.erase(it);
@@ -169,12 +169,10 @@ class LinearScanRegAllocPass : public RegAllocatorBase {
     return vregs_[vreg];
   }
 
-  // all avaliable registers
-  std::vector<OprPtr> avaliable_regs_;
-  // free register/slot pool (queue)
-  std::queue<OprPtr> free_regs_, free_slots_;
   // reference of live intervals
-  const FuncLiveIntervals *func_live_intervals_;
+  const FuncLiveIntervals &func_live_intervals_;
+  // free register/slot pool
+  std::vector<OprPtr> free_temps_, free_regs_, free_slots_;
   // allocated registers/slots of all virtual registers
   std::unordered_map<OprPtr, OprPtr> vregs_;
 };

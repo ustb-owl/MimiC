@@ -32,20 +32,6 @@ class ImmNormalizePass : public PassInterface {
           }
           break;
         }
-        // instructions that allow register operands only
-        case OpCode::STR: case OpCode::STRB: case OpCode::MUL:
-        case OpCode::MLS: case OpCode::SDIV: case OpCode::UDIV:
-        case OpCode::CLZ: case OpCode::SXTB: case OpCode::UXTB: {
-          auto mask = GetRegMask(inst);
-          for (auto &&i : inst->oprs()) {
-            if (i.value()->IsImm()) {
-              auto temp = SelectTempReg(mask);
-              InsertMove(insts, it, i.value(), temp);
-              i.set_value(temp);
-            }
-          }
-          break;
-        }
         // instructions with only <imm8m> field
         case OpCode::ADD: case OpCode::SUB:
         case OpCode::SUBS: case OpCode::RSB: case OpCode::CMP:
@@ -113,22 +99,15 @@ class ImmNormalizePass : public PassInterface {
   }
 
   OprPtr SelectTempReg(std::uint32_t &reg_mask) {
-    OprPtr temp;
     // try to use 'r12' first
+    OprPtr temp;
     if (!(reg_mask & (1 << static_cast<int>(RegName::R12)))) {
       reg_mask |= 1 << static_cast<int>(RegName::R12);
       temp = gen_.GetReg(RegName::R12);
     }
-    else {
-      // select other scratch registers
-      for (int i = static_cast<int>(RegName::R2);
-          i <= static_cast<int>(RegName::R3); ++i) {
-        if (!(reg_mask & (1 << i))) {
-          reg_mask |= 1 << i;
-          temp = gen_.GetReg(static_cast<RegName>(i));
-          break;
-        }
-      }
+    else if (!(reg_mask & (1 << static_cast<int>(RegName::R3)))) {
+      reg_mask |= 1 << static_cast<int>(RegName::R3);
+      temp = gen_.GetReg(RegName::R3);
     }
     assert(temp);
     return temp;

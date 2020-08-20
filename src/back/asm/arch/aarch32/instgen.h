@@ -1,7 +1,6 @@
 #ifndef BACK_ASM_ARCH_AARCH32_INSTGEN_H_
 #define BACK_ASM_ARCH_AARCH32_INSTGEN_H_
 
-#include <functional>
 #include <utility>
 #include <unordered_map>
 #include <vector>
@@ -13,6 +12,7 @@
 #include "back/asm/mir/passes/regalloc.h"
 #include "back/asm/mir/virtreg.h"
 #include "back/asm/mir/label.h"
+#include "utils/hashing.h"
 
 namespace mimic::back::asmgen::aarch32 {
 
@@ -65,23 +65,28 @@ class AArch32InstGen : public InstGenBase {
     }
     else {
       auto imm = std::make_shared<AArch32Imm>(val);
-      auto [it, _] = imms_.insert({val, std::move(imm)});
+      return imms_.insert({val, std::move(imm)}).first->second;
+    }
+  }
+
+  // get a slot
+  const OprPtr &GetSlot(const OprPtr &base, std::int32_t offset) {
+    assert(base->IsReg() && !base->IsVirtual());
+    auto it = slots_.find({base, offset});
+    if (it != slots_.end()) {
       return it->second;
+    }
+    else {
+      auto slot = std::make_shared<AArch32Slot>(base, offset);
+      return slots_.insert({{base, offset}, std::move(slot)}).first->second;
     }
   }
 
   // get a stack slot
   const OprPtr &GetSlot(bool based_on_sp, std::int32_t offset) {
-    auto index = (static_cast<std::uint64_t>(based_on_sp) << 32) | offset;
-    auto it = slots_.find(index);
-    if (it != slots_.end()) {
-      return it->second;
-    }
-    else {
-      auto slot = std::make_shared<AArch32Slot>(based_on_sp, offset);
-      auto [it, _] = slots_.insert({index, std::move(slot)});
-      return it->second;
-    }
+    using RegName = AArch32Reg::RegName;
+    auto reg_name = based_on_sp ? RegName::SP : RegName::R11;
+    return GetSlot(GetReg(reg_name), offset);
   }
 
   // get a in-frame stack slot
@@ -89,11 +94,16 @@ class AArch32InstGen : public InstGenBase {
     return GetSlot(false, offset);
   }
 
+  // get a virtual register
+  OprPtr GetVReg() { return vreg_fact_.GetReg(); }
+
   // getters
   // size of all allocated negative-offset in-frame slots
   const std::unordered_map<OprPtr, std::size_t> &alloc_slots() const {
     return alloc_slots_;
   }
+  // optimization level
+  std::size_t opt_level() const { return opt_level_; }
 
  private:
   // allocate next in-frame stack slot
@@ -104,30 +114,35 @@ class AArch32InstGen : public InstGenBase {
 
   // push a new instruction to current function
   template <typename... Args>
-  void PushInst(AArch32Inst::OpCode opcode, Args &&... args) {
-    AddInst(std::make_shared<AArch32Inst>(opcode,
-                                          std::forward<Args>(args)...));
+  std::shared_ptr<AArch32Inst> PushInst(AArch32Inst::OpCode opcode,
+                                        Args &&... args) {
+    auto inst = std::make_shared<AArch32Inst>(opcode,
+                                              std::forward<Args>(args)...);
+    AddInst(inst);
+    return inst;
   }
 
   // linkage type conversion
   LinkageTypes GetLinkType(mid::LinkageTypes link);
   // generate zeros
   OprPtr GenerateZeros(const define::TypePtr &type);
-  // load effective address
-  void LoadEffAddr(const OprPtr &dest_reg, const OprPtr &ptr,
-                   const OprPtr &offset);
   // generate 'memcpy'
   void GenerateMemCpy(const OprPtr &dest, const OprPtr &src,
                       std::size_t size);
+  // generate 'memset'
+  void GenerateMemSet(const OprPtr &dest, std::uint8_t data,
+                      std::size_t size);
   // dump instruction sequences
   void DumpSeqs(std::ostream &os, const InstSeqMap &seqs) const;
+  // get suggested optimization level
+  std::size_t GetSuggestedOptLevel();
 
   // map for registers
   std::unordered_map<AArch32Reg::RegName, OprPtr> regs_;
   // map for immediate numbers
   std::unordered_map<std::int32_t, OprPtr> imms_;
-  // map for stack slots
-  std::unordered_map<std::uint64_t, OprPtr> slots_;
+  // map for slots
+  std::unordered_map<std::pair<OprPtr, std::int32_t>, OprPtr> slots_;
   // size of allocated in-frame stack slots (per function)
   std::unordered_map<OprPtr, std::size_t> alloc_slots_;
   // for creating virtual registers
@@ -140,6 +155,8 @@ class AArch32InstGen : public InstGenBase {
   std::size_t in_global_;
   // used when generating constant arrays
   std::size_t arr_depth_;
+  // optimization level
+  std::size_t opt_level_;
 };
 
 }  // namespace mimic::back::asmgen::aarch32

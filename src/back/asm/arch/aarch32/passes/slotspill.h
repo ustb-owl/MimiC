@@ -90,16 +90,9 @@ class SlotSpillingPass : public PassInterface {
       reg_mask |= 1 << static_cast<int>(RegName::R12);
       temp = gen_.GetReg(RegName::R12);
     }
-    else {
-      // select other scratch registers
-      for (int i = static_cast<int>(RegName::R2);
-          i <= static_cast<int>(RegName::R3); ++i) {
-        if (!(reg_mask & (1 << i))) {
-          reg_mask |= 1 << i;
-          temp = gen_.GetReg(static_cast<RegName>(i));
-          break;
-        }
-      }
+    else if (!(reg_mask & (1 << static_cast<int>(RegName::R3)))) {
+      reg_mask |= 1 << static_cast<int>(RegName::R3);
+      temp = gen_.GetReg(RegName::R3);
     }
     assert(temp);
     return temp;
@@ -111,14 +104,14 @@ class SlotSpillingPass : public PassInterface {
     // get slot info
     assert(slot->IsSlot() && dest->IsReg());
     auto sl = static_cast<AArch32Slot *>(slot.get());
-    assert(!sl->based_on_sp() && sl->offset() < 0);
+    assert(sl->base() == gen_.GetReg(RegName::R11) && sl->offset() < 0);
     // generate load
     InstPtr inst;
     if (-sl->offset() >= 4096) {
       // calculate address of slot first
       auto r11 = gen_.GetReg(RegName::R11);
       auto ofs = gen_.GetImm(-sl->offset());
-      auto temp = dest->IsVirtual() ? gen_.GetReg(RegName::R2) : dest;
+      auto temp = dest->IsVirtual() ? gen_.GetReg(RegName::R3) : dest;
       inst = std::make_shared<AArch32Inst>(OpCode::SUB, temp, r11, ofs);
       pos = ++insts.insert(pos, inst);
       inst = std::make_shared<AArch32Inst>(OpCode::LDR, dest, temp);
@@ -137,7 +130,7 @@ class SlotSpillingPass : public PassInterface {
     assert(slot->IsSlot() && dest->IsReg() &&
            static_cast<AArch32Reg *>(dest.get())->name() == RegName::R12);
     auto sl = static_cast<AArch32Slot *>(slot.get());
-    assert(!sl->based_on_sp() && sl->offset() < 0);
+    assert(sl->base() == gen_.GetReg(RegName::R11) && sl->offset() < 0);
     // generate store
     InstPtr inst;
     if (-sl->offset() >= 4096) {
