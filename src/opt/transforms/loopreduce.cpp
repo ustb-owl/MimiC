@@ -60,7 +60,7 @@ class LoopStrengthReductionPass : public FunctionPass {
 
 // register current pass
 REGISTER_PASS(LoopStrengthReductionPass, loop_reduce)
-    .set_min_opt_level(2)
+    .set_min_opt_level(3)
     .set_stages(PassStage::Opt)
     .Requires("dom_info")
     .Requires("loop_info")
