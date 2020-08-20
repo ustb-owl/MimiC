@@ -34,6 +34,35 @@ void BFSTraverseHelperPass::RunOn(JumpSSA &ssa) {
   Push(ssa.target());
 }
 
+void DFSTraverseHelperPass::NextBlock() {
+  // try to push successors to queue
+  cur_block_->insts().back()->RunPass(*this);
+  // update current block
+  if (blocks_.empty()) {
+    cur_block_ = nullptr;
+  }
+  else {
+    cur_block_ = blocks_.top();
+    blocks_.pop();
+  }
+}
+
+void DFSTraverseHelperPass::Push(const SSAPtr &block) {
+  auto ptr = SSACast<BlockSSA>(block.get());
+  if (visited_.insert(ptr).second) blocks_.push(ptr);
+}
+
+void DFSTraverseHelperPass::RunOn(BranchSSA &ssa) {
+  // push true/false block to stack
+  Push(ssa.false_block());
+  Push(ssa.true_block());
+}
+
+void DFSTraverseHelperPass::RunOn(JumpSSA &ssa) {
+  // push target block to stack
+  Push(ssa.target());
+}
+
 void RPOTraverseHelperPass::TraverseRPO(BlockSSA *cur) {
   if (!visited_.insert(cur).second) return;
   // try to visit successors
