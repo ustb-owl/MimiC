@@ -102,6 +102,8 @@ class AArch32InstGen : public InstGenBase {
   const std::unordered_map<OprPtr, std::size_t> &alloc_slots() const {
     return alloc_slots_;
   }
+  // optimization level
+  std::size_t opt_level() const { return opt_level_; }
 
  private:
   // allocate next in-frame stack slot
@@ -132,6 +134,8 @@ class AArch32InstGen : public InstGenBase {
                       std::size_t size);
   // dump instruction sequences
   void DumpSeqs(std::ostream &os, const InstSeqMap &seqs) const;
+  // get suggested optimization level
+  std::size_t GetSuggestedOptLevel();
 
   // map for registers
   std::unordered_map<AArch32Reg::RegName, OprPtr> regs_;
@@ -151,6 +155,8 @@ class AArch32InstGen : public InstGenBase {
   std::size_t in_global_;
   // used when generating constant arrays
   std::size_t arr_depth_;
+  // optimization level
+  std::size_t opt_level_;
 };
 
 }  // namespace mimic::back::asmgen::aarch32
