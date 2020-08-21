@@ -1,1 +1,0 @@
-// fool the online judge
