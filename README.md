@@ -29,6 +29,10 @@ $ cmake .. && make -j8
 * Machine-level IR (MIR) for multi-architecture machine instruction abstraction.
 * MIR based passes for multi-architecture assembly generation.
 
+## Automated Testing Tools
+
+See [MimiC-autotest](https://github.com/MaxXSoft/MimiC-autotest).
+
 ## EBNF of the Extended SysY Lang
 
 ```ebnf
