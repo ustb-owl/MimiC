@@ -60,7 +60,7 @@ inline PassStage GetStageByName(std::string_view name) {
   if (name == "Promote" || name == "promote") return PassStage::Promote;
   if (name == "Opt" || name == "opt") return PassStage::Opt;
   if (name == "Demote" || name == "demote") return PassStage::Demote;
-  if (name == "PostOpt" || name == "PostOpt") return PassStage::PostOpt;
+  if (name == "PostOpt" || name == "postopt") return PassStage::PostOpt;
   return PassStage::None;
 }
 
