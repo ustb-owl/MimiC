@@ -42,6 +42,8 @@ class AsmCodeGen : public CodeGenInterface {
   // set target architecture of assembly generator
   // returns false if target is invalid
   bool SetTargetArch(std::string_view arch_name);
+  // display all avaliable architectures
+  void ShowAvaliableArchs(std::ostream &os);
 
   // setters
   void set_opt_level(std::size_t opt_level) { opt_level_ = opt_level; }

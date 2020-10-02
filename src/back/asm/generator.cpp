@@ -120,3 +120,7 @@ bool AsmCodeGen::SetTargetArch(std::string_view arch_name) {
     return true;
   }
 }
+
+void AsmCodeGen::ShowAvaliableArchs(std::ostream &os) {
+  ArchManager::ShowArchs(os);
+}
