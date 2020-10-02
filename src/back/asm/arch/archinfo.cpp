@@ -1,5 +1,6 @@
 #include "back/asm/arch/archinfo.h"
 
+#include <iomanip>
 #include <cassert>
 
 using namespace mimic::back::asmgen;
@@ -23,4 +24,17 @@ ArchInfoPtr ArchManager::GetArch(std::string_view name) {
   else {
     return nullptr;
   }
+}
+
+void ArchManager::ShowArchs(std::ostream &os) {
+  os << "supported target architectures:" << std::endl;
+  int count = 0;
+  for (const auto &[name, _] : GetArchs()) {
+    if (count % 5 == 0) os << "  ";
+    os << std::setw(16) << std::left << name;
+    if (count % 5 == 4) os << std::endl;
+    ++count;
+  }
+  assert(count);
+  if ((count - 1) % 5 != 4) os << std::endl;
 }

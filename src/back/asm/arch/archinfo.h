@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <string_view>
+#include <ostream>
 #include <unordered_map>
 #include <cstddef>
 
@@ -49,6 +50,8 @@ class ArchManager {
   // get architecture information by name
   // returns 'nullptr' if architecture not found
   static ArchInfoPtr GetArch(std::string_view name);
+  // show all registered architectures
+  static void ShowArchs(std::ostream &os);
 
  private:
   // get architecture info list
