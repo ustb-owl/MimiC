@@ -1,6 +1,7 @@
 #include "back/asm/arch/archinfo.h"
 
 #include "back/asm/arch/riscv32/instgen.h"
+#include "back/asm/arch/riscv32/passes/brcomb.h"
 #include "back/asm/mir/passes/movprop.h"
 #include "back/asm/mir/passes/movelim.h"
 #include "back/asm/mir/passes/movoverride.h"
@@ -39,6 +40,7 @@ class RISCV32ArchInfo : public ArchInfoBase {
 
   PassPtrList GetPassList(std::size_t opt_level) override {
     PassPtrList list;
+    list.push_back(MakePass<BranchCombiningPass>(inst_gen_));
     if (opt_level) {
       list.push_back(MakePass<MovePropagationPass>());
       list.push_back(MakePass<MoveEliminatePass>());
@@ -70,14 +72,14 @@ class RISCV32ArchInfo : public ArchInfoBase {
     if (!opr->IsReg() || opr->IsVirtual()) return false;
     auto name = static_cast<RISCV32Reg *>(opr.get())->name();
     auto id = static_cast<int>(name);
-    // x1, x5-x7, x10-x17, x28-x31
-    return id == 1 || (id >= 5 && id <= 7) || (id >= 10 && id <= 17) ||
+    // x1, x5-x7, x10-x16 (a7 for compiler), x28-x31
+    return id == 1 || (id >= 5 && id <= 7) || (id >= 10 && id <= 16) ||
            (id >= 28 && id <= 31);
   }
 
   static void InitTempRegs() {
     ADD_TEMP_REGS(5, 7);
-    ADD_TEMP_REGS(10, 17);
+    ADD_TEMP_REGS(10, 16);
     ADD_TEMP_REGS(28, 31);
     temp_regs_with_ra_.push_back(inst_gen_.GetReg(RegName::RA));
   }
