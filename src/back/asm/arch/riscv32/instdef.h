@@ -148,12 +148,11 @@ class RISCV32Inst : public InstBase {
     // arithmetic
     ADDI, SLTI, SLTIU, ADD, SUB, SLT, SLTU,
     MUL, DIV, DIVU, REM, REMU,
-    NEG,
-    // comparison
-    SEQZ,
+    NEG, SEQZ, SNEZ,
     // branch/jump
     CALL, RET, J,
-    BLT, BLE, BGT, BGE, BLTU, BLEU, BGTU, BGEU, BEQZ,
+    BEQ, BNE, BLT, BLE, BGT, BGE,
+    BLTU, BLEU, BGTU, BGEU, BEQZ,
     // data processing
     LA, LI, MV,
     // logical
@@ -172,11 +171,13 @@ class RISCV32Inst : public InstBase {
     ZERO, ASCIZ, LONG, BYTE,
   };
 
-  // add/sub/...
+  // add/sub/beq/br...
   RISCV32Inst(OpCode opcode, const OprPtr &dest, const OprPtr &opr1,
               const OprPtr &opr2)
       : opcode_(opcode) {
-    if (opcode == OpCode::BR) {
+    if ((static_cast<int>(opcode_) >= static_cast<int>(OpCode::BEQ) &&
+         static_cast<int>(opcode_) <= static_cast<int>(OpCode::BGEU)) ||
+        opcode_ == OpCode::BR) {
       set_dest(nullptr);
       AddOpr(dest);
     }
@@ -186,11 +187,12 @@ class RISCV32Inst : public InstBase {
     AddOpr(opr1);
     AddOpr(opr2);
   }
-  // lw/mv/...
+  // lw/beqz/mv/...
   RISCV32Inst(OpCode opcode, const OprPtr &dest, const OprPtr &opr)
       : opcode_(opcode) {
-    if (opcode_ == OpCode::SW || opcode_ == OpCode::SB) {
-      // SW/SB does not have destination register
+    if (opcode_ == OpCode::SW || opcode_ == OpCode::SB ||
+        opcode_ == OpCode::BEQZ) {
+      // SW/SB/BEQZ does not have destination register
       set_dest(nullptr);
       AddOpr(dest);
     }
@@ -199,7 +201,7 @@ class RISCV32Inst : public InstBase {
     }
     AddOpr(opr);
   }
-  // label/...
+  // call/j/label/...
   RISCV32Inst(OpCode opcode, const OprPtr &opr)
       : opcode_(opcode) {
     set_dest(nullptr);
