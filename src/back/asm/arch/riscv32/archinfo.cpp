@@ -5,6 +5,10 @@
 #include "back/asm/arch/riscv32/passes/brelim.h"
 #include "back/asm/mir/passes/movprop.h"
 #include "back/asm/mir/passes/movelim.h"
+#include "back/asm/arch/riscv32/passes/liveness.h"
+#include "back/asm/mir/passes/linearscan.h"
+#include "back/asm/mir/passes/coloring.h"
+#include "back/asm/arch/riscv32/passes/immconv.h"
 #include "back/asm/mir/passes/movoverride.h"
 
 using namespace mimic::back::asmgen;
@@ -46,6 +50,10 @@ class RISCV32ArchInfo : public ArchInfoBase {
     if (opt_level) {
       list.push_back(MakePass<MovePropagationPass>());
       list.push_back(MakePass<MoveEliminatePass>());
+    }
+    InitRegAlloc(opt_level, list);
+    list.push_back(MakePass<ImmConversionPass>());
+    if (opt_level) {
       list.push_back(MakePass<MovePropagationPass>(IsAvaliableMove));
       list.push_back(MakePass<MoveOverridingPass>());
     }
@@ -89,6 +97,39 @@ class RISCV32ArchInfo : public ArchInfoBase {
   static void InitRegs() {
     ADD_REGS(8, 9);
     ADD_REGS(18, 27);
+  }
+
+  void InitRegAlloc(std::size_t opt_level, PassPtrList &list) {
+    using LIType = LivenessAnalysisPass::LivenessInfoType;
+    bool use_gc = opt_level >= 2;
+    // create liveness analyzer
+    auto li_type = use_gc ? LIType::InterferenceGraph
+                          : LIType::LiveIntervals;
+    auto la = MakePass<LivenessAnalysisPass>(li_type, IsTempReg, temp_regs_,
+                                             temp_regs_with_ra_, regs_);
+    // create register allocator
+    RegAllocPtr reg_alloc;
+    if (use_gc) {
+      const auto &fig = la->func_if_graphs();
+      auto gcra = MakePass<GraphColoringRegAllocPass>(fig);
+      reg_alloc = std::move(gcra);
+    }
+    else {
+      const auto &fli = la->func_live_intervals();
+      auto lsra = MakePass<LinearScanRegAllocPass>(fli);
+      reg_alloc = std::move(lsra);
+    }
+    // initialize register lists
+    InitTempRegs();
+    InitRegs();
+    // initialize register allocator
+    reg_alloc->set_func_temp_reg_list(&la->func_temp_regs());
+    reg_alloc->set_func_reg_list(&la->func_regs());
+    reg_alloc->set_allocator(inst_gen_.GetSlotAllocator());
+    reg_alloc->set_temp_checker(IsTempReg);
+    // add to pass list
+    list.push_back(std::move(la));
+    list.push_back(std::move(reg_alloc));
   }
 
   static RISCV32InstGen inst_gen_;
