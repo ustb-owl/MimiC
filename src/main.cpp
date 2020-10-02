@@ -155,6 +155,8 @@ int main(int argc, const char *argv[]) {
     asmgen::AsmCodeGen gen;
     if (!gen.SetTargetArch(argp.GetValue<string>("target-arch"))) {
       Logger::LogRawError("invalid target architecture");
+      std::cerr << std::endl;
+      gen.ShowAvaliableArchs(std::cerr);
       return 1;
     }
     gen.set_opt_level(comp.opt_level());
