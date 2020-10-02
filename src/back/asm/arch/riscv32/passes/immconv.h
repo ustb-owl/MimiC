@@ -23,7 +23,8 @@ class ImmConversionPass : public PassInterface {
       switch (inst->opcode()) {
         case OpCode::ADD: case OpCode::SLT: case OpCode::SLTU:
         case OpCode::XOR: case OpCode::OR: case OpCode::AND:
-        case OpCode::SLL: case OpCode::SRL: case OpCode::SRA: {
+        case OpCode::SLL: case OpCode::SRL: case OpCode::SRA:
+        case OpCode::MV: {
           if (inst->oprs().back().value()->IsImm()) {
             inst->set_opcode(GetConvertedOpCode(inst->opcode()));
           }
@@ -48,6 +49,7 @@ class ImmConversionPass : public PassInterface {
       case OpCode::SLL: return OpCode::SLLI;
       case OpCode::SRL: return OpCode::SRLI;
       case OpCode::SRA: return OpCode::SRAI;
+      case OpCode::MV: return OpCode::LI;
       default: assert(false); return OpCode::ADD;
     }
   }
