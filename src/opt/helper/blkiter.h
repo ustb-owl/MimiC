@@ -32,7 +32,7 @@ class BFSTraverseHelperPass : public HelperPass {
     }
 
     // get current block
-    mid::BlockSSA *operator*() const { return parent_->block_; }
+    mid::BlockSSA *&operator*() const { return parent_->block_; }
 
    private:
     friend class BFSTraverseHelperPass;
@@ -82,7 +82,7 @@ class DFSTraverseHelperPass : public HelperPass {
     }
 
     // get current block
-    mid::BlockSSA *operator*() const { return parent_->cur_block_; }
+    mid::BlockSSA *&operator*() const { return parent_->cur_block_; }
 
    private:
     friend class DFSTraverseHelperPass;
