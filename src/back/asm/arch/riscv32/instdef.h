@@ -217,6 +217,9 @@ class RISCV32Inst : public InstBase {
   bool IsCall() const override { return opcode_ == OpCode::CALL; }
   void Dump(std::ostream &os) const override;
 
+  // setters
+  void set_opcode(OpCode opcode) { opcode_ = opcode; }
+
   // getters
   OpCode opcode() const { return opcode_; }
 
