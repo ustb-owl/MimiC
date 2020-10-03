@@ -105,7 +105,7 @@ class SlotSpillingPass : public PassInterface {
     assert(sl->base() == gen_.GetReg(RegName::FP) && sl->offset() < 0);
     // generate load
     InstPtr inst;
-    if (-sl->offset() >= 4096) {
+    if (-sl->offset() >= 2048) {
       // calculate address of slot first
       auto fp = gen_.GetReg(RegName::FP);
       auto ofs = gen_.GetImm(-sl->offset());
@@ -131,7 +131,7 @@ class SlotSpillingPass : public PassInterface {
     assert(sl->base() == gen_.GetReg(RegName::FP) && sl->offset() < 0);
     // generate store
     InstPtr inst;
-    if (-sl->offset() >= 4096) {
+    if (-sl->offset() >= 2048) {
       // calculate address of slot first
       auto temp = gen_.GetReg(RegName::A7);
       auto fp = gen_.GetReg(RegName::FP);
