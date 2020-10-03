@@ -10,7 +10,9 @@
 #include "back/asm/mir/passes/coloring.h"
 #include "back/asm/arch/riscv32/passes/leaelim.h"
 #include "back/asm/arch/riscv32/passes/slotspill.h"
+#include "back/asm/arch/riscv32/passes/funcdeco.h"
 #include "back/asm/arch/riscv32/passes/immconv.h"
+#include "back/asm/arch/riscv32/passes/immnorm.h"
 #include "back/asm/mir/passes/movoverride.h"
 
 using namespace mimic::back::asmgen;
@@ -56,7 +58,9 @@ class RISCV32ArchInfo : public ArchInfoBase {
     InitRegAlloc(opt_level, list);
     list.push_back(MakePass<LeaEliminationPass>(inst_gen_));
     list.push_back(MakePass<SlotSpillingPass>(inst_gen_));
+    list.push_back(MakePass<FuncDecoratePass>(inst_gen_));
     list.push_back(MakePass<ImmConversionPass>(inst_gen_));
+    list.push_back(MakePass<ImmNormalizePass>(inst_gen_));
     if (opt_level) {
       list.push_back(MakePass<MovePropagationPass>(IsAvaliableMove));
       list.push_back(MakePass<MoveOverridingPass>());
