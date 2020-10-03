@@ -8,6 +8,7 @@
 #include "back/asm/arch/riscv32/passes/liveness.h"
 #include "back/asm/mir/passes/linearscan.h"
 #include "back/asm/mir/passes/coloring.h"
+#include "back/asm/arch/riscv32/passes/leaelim.h"
 #include "back/asm/arch/riscv32/passes/immconv.h"
 #include "back/asm/mir/passes/movoverride.h"
 
@@ -52,6 +53,7 @@ class RISCV32ArchInfo : public ArchInfoBase {
       list.push_back(MakePass<MoveEliminatePass>());
     }
     InitRegAlloc(opt_level, list);
+    list.push_back(MakePass<LeaEliminationPass>(inst_gen_));
     list.push_back(MakePass<ImmConversionPass>());
     if (opt_level) {
       list.push_back(MakePass<MovePropagationPass>(IsAvaliableMove));
@@ -82,14 +84,14 @@ class RISCV32ArchInfo : public ArchInfoBase {
     if (!opr->IsReg() || opr->IsVirtual()) return false;
     auto name = static_cast<RISCV32Reg *>(opr.get())->name();
     auto id = static_cast<int>(name);
-    // x1, x5-x7, x10-x16 (a7 for compiler), x28-x31
-    return id == 1 || (id >= 5 && id <= 7) || (id >= 10 && id <= 16) ||
+    // x1, x5-x7, x10-x15 (a6, a7 for compiler), x28-x31
+    return id == 1 || (id >= 5 && id <= 7) || (id >= 10 && id <= 15) ||
            (id >= 28 && id <= 31);
   }
 
   static void InitTempRegs() {
     ADD_TEMP_REGS(5, 7);
-    ADD_TEMP_REGS(10, 16);
+    ADD_TEMP_REGS(10, 15);
     ADD_TEMP_REGS(28, 31);
     temp_regs_with_ra_.push_back(inst_gen_.GetReg(RegName::RA));
   }
