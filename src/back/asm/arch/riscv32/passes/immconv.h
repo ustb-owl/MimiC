@@ -15,7 +15,7 @@ namespace mimic::back::asmgen::riscv32 {
 */
 class ImmConversionPass : public PassInterface {
  public:
-  ImmConversionPass() {}
+  ImmConversionPass(RISCV32InstGen &gen) : gen_(gen) {}
 
   void RunOn(const OprPtr &func_label, InstPtrList &insts) override {
     for (const auto &i : insts) {
@@ -27,6 +27,16 @@ class ImmConversionPass : public PassInterface {
         case OpCode::MV: {
           if (inst->oprs().back().value()->IsImm()) {
             inst->set_opcode(GetConvertedOpCode(inst->opcode()));
+          }
+          break;
+        }
+        case OpCode::SUB: {
+          auto &last_opr = inst->oprs().back();
+          if (last_opr.value()->IsImm()) {
+            inst->set_opcode(OpCode::ADDI);
+            // update immediate
+            auto imm = static_cast<RISCV32Imm *>(last_opr.value().get());
+            last_opr.set_value(gen_.GetImm(-imm->val()));
           }
           break;
         }
@@ -53,6 +63,8 @@ class ImmConversionPass : public PassInterface {
       default: assert(false); return OpCode::ADD;
     }
   }
+
+  RISCV32InstGen &gen_;
 };
 
 }  // namespace mimic::back::asmgen::riscv32
