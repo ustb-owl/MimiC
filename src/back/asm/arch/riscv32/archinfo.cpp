@@ -9,6 +9,7 @@
 #include "back/asm/mir/passes/linearscan.h"
 #include "back/asm/mir/passes/coloring.h"
 #include "back/asm/arch/riscv32/passes/leaelim.h"
+#include "back/asm/arch/riscv32/passes/slotspill.h"
 #include "back/asm/arch/riscv32/passes/immconv.h"
 #include "back/asm/mir/passes/movoverride.h"
 
@@ -54,7 +55,8 @@ class RISCV32ArchInfo : public ArchInfoBase {
     }
     InitRegAlloc(opt_level, list);
     list.push_back(MakePass<LeaEliminationPass>(inst_gen_));
-    list.push_back(MakePass<ImmConversionPass>());
+    list.push_back(MakePass<SlotSpillingPass>(inst_gen_));
+    list.push_back(MakePass<ImmConversionPass>(inst_gen_));
     if (opt_level) {
       list.push_back(MakePass<MovePropagationPass>(IsAvaliableMove));
       list.push_back(MakePass<MoveOverridingPass>());
@@ -69,8 +71,8 @@ class RISCV32ArchInfo : public ArchInfoBase {
     if (opr->IsReg() && !opr->IsVirtual()) {
       auto name = static_cast<RISCV32Reg *>(opr.get())->name();
       auto id = static_cast<int>(name);
-      // x8-x9, x18-x27
-      return (id >= 8 && id <= 9) || (id >= 18 && id <= 27);
+      // x9 (without frame pointer), x18-x27
+      return id == 9 || (id >= 18 && id <= 27);
     }
     return false;
   }
@@ -97,8 +99,11 @@ class RISCV32ArchInfo : public ArchInfoBase {
   }
 
   static void InitRegs() {
-    ADD_REGS(8, 9);
-    ADD_REGS(18, 27);
+    regs_.push_back(inst_gen_.GetReg(RegName::S1));
+    for (int i = 18; i <= 27; ++i) {
+      const auto &reg = inst_gen_.GetReg(static_cast<RegName>(i));
+      regs_.push_back(reg);
+    }
   }
 
   void InitRegAlloc(std::size_t opt_level, PassPtrList &list) {
