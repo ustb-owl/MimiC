@@ -57,6 +57,15 @@ std::ostream &operator<<(std::ostream &os, const std::vector<Use> &oprs) {
   return os;
 }
 
+void DumpMemOpr(std::ostream &os, const OprPtr &opr) {
+  if (opr->IsReg()) {
+    os << "0(" << opr << ')';
+  }
+  else {
+    os << opr;
+  }
+}
+
 }  // namespace
 
 void RISCV32Reg::Dump(std::ostream &os) const {
@@ -88,11 +97,26 @@ void RISCV32Inst::Dump(std::ostream &os) const {
   }
   else {
     os << '\t' << opcode_ << '\t';
-    if (!dest() && !oprs().empty()) {
-      os << oprs();
-    }
-    else if (dest()) {
-      os << dest() << ", " << oprs();
+    switch (opcode_) {
+      case OpCode::LW: case OpCode::LB: case OpCode::LBU: {
+        os << dest() << ", ";
+        DumpMemOpr(os, oprs()[0].value());
+        break;
+      }
+      case OpCode::SW: case OpCode::SB: {
+        os << oprs()[0].value() << ", ";
+        DumpMemOpr(os, oprs()[1].value());
+        break;
+      }
+      default: {
+        if (!dest() && !oprs().empty()) {
+          os << oprs();
+        }
+        else if (dest()) {
+          os << dest() << ", " << oprs();
+        }
+        break;
+      }
     }
   }
   os << std::endl;
