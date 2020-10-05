@@ -3,6 +3,8 @@
 #include "back/asm/arch/riscv32/instgen.h"
 #include "back/asm/arch/riscv32/passes/brcomb.h"
 #include "back/asm/arch/riscv32/passes/brelim.h"
+#include "back/asm/arch/riscv32/passes/leacomb.h"
+#include "back/asm/arch/riscv32/passes/lsprop.h"
 #include "back/asm/mir/passes/movprop.h"
 #include "back/asm/mir/passes/movelim.h"
 #include "back/asm/arch/riscv32/passes/liveness.h"
@@ -52,16 +54,22 @@ class RISCV32ArchInfo : public ArchInfoBase {
     list.push_back(MakePass<BranchCombiningPass>(inst_gen_));
     list.push_back(MakePass<BranchEliminationPass>());
     if (opt_level) {
+      list.push_back(MakePass<LeaCombiningPass>(inst_gen_));
+      list.push_back(MakePass<LoadStorePropagationPass>());
       list.push_back(MakePass<MovePropagationPass>());
       list.push_back(MakePass<MoveEliminatePass>());
     }
     InitRegAlloc(opt_level, list);
+    if (opt_level) {
+      list.push_back(MakePass<LeaCombiningPass>(inst_gen_));
+    }
     list.push_back(MakePass<LeaEliminationPass>(inst_gen_));
     list.push_back(MakePass<SlotSpillingPass>(inst_gen_));
     list.push_back(MakePass<FuncDecoratePass>(inst_gen_));
     list.push_back(MakePass<ImmConversionPass>(inst_gen_));
     list.push_back(MakePass<ImmNormalizePass>(inst_gen_));
     if (opt_level) {
+      list.push_back(MakePass<LoadStorePropagationPass>());
       list.push_back(MakePass<MovePropagationPass>(IsAvaliableMove));
       list.push_back(MakePass<MoveOverridingPass>());
     }
