@@ -55,13 +55,14 @@ class ImmNormalizePass : public PassInterface {
           break;
         }
         // instructions that allow register operands only
-        case OpCode::ADD: case OpCode::SUB: case OpCode::SLT:
-        case OpCode::SLTU: case OpCode::MUL: case OpCode::DIV:
-        case OpCode::DIVU: case OpCode::REM: case OpCode::REMU:
-        case OpCode::BEQ: case OpCode::BNE: case OpCode::BLT:
-        case OpCode::BLE: case OpCode::BGT: case OpCode::BGE:
-        case OpCode::BLTU: case OpCode::BLEU: case OpCode::BGTU:
-        case OpCode::BGEU: case OpCode::XOR: case OpCode::OR:
+        case OpCode::SW: case OpCode::SB: case OpCode::ADD:
+        case OpCode::SUB: case OpCode::SLT: case OpCode::SLTU:
+        case OpCode::MUL: case OpCode::DIV: case OpCode::DIVU:
+        case OpCode::REM: case OpCode::REMU: case OpCode::BEQ:
+        case OpCode::BNE: case OpCode::BLT: case OpCode::BLE:
+        case OpCode::BGT: case OpCode::BGE: case OpCode::BLTU:
+        case OpCode::BLEU: case OpCode::BGTU: case OpCode::BGEU:
+        case OpCode::BEQZ: case OpCode::XOR: case OpCode::OR:
         case OpCode::AND: case OpCode::SLL: case OpCode::SRL:
         case OpCode::SRA: {
           auto mask = GetRegMask(inst);
