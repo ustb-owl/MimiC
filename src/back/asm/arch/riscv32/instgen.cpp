@@ -257,7 +257,7 @@ OprPtr RISCV32InstGen::GenerateOn(UnarySSA &ssa) {
     default: assert(false);
   }
   // generate unary operation
-  PushInst(OpCode::NEG, dest, opr);
+  PushInst(opcode, dest, opr);
   return dest;
 }
 
