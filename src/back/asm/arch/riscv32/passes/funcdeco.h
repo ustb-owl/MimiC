@@ -132,8 +132,8 @@ class FuncDecoratePass : public PassInterface {
                 std::int32_t slot_size) {
     /*
       old sp -->  +-----------------+   ^
-      fp          |   saved  regs   |   | saved size
-                  +-----------------+   X
+                  |   saved  regs   |   | saved size
+      fp     -->  +-----------------+   X
                   | spilled  values |   |
                   +-----------------+   | slot size
                   |  spilled  args  |   |
@@ -158,7 +158,7 @@ class FuncDecoratePass : public PassInterface {
     // update frame pointer
     if (slot_size) {
       pos = InsertBefore(insts, pos, OpCode::ADDI, fp, sp,
-                         gen_.GetImm(saved_size + slot_size));
+                         gen_.GetImm(slot_size));
     }
   }
 
