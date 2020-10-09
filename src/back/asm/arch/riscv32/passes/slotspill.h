@@ -59,7 +59,7 @@ class SlotSpillingPass : public PassInterface {
           inst->set_dest(alloc_to);
         }
         else {
-          auto temp = gen_.GetReg(RegName::A6);
+          auto temp = gen_.GetReg(RegName::T0);
           inst->set_dest(temp);
           InsertStore(insts, it, alloc_to, temp);
         }
@@ -85,8 +85,8 @@ class SlotSpillingPass : public PassInterface {
 
   OprPtr SelectTempReg(std::uint32_t &reg_mask) {
     OprPtr temp;
-    for (int i = static_cast<int>(RegName::A6);
-         i <= static_cast<int>(RegName::A7); ++i) {
+    for (int i = static_cast<int>(RegName::T0);
+         i <= static_cast<int>(RegName::T2); ++i) {
       if (!(reg_mask & (1 << i))) {
         reg_mask |= 1 << i;
         temp = gen_.GetReg(static_cast<RegName>(i));
@@ -109,7 +109,7 @@ class SlotSpillingPass : public PassInterface {
       // calculate address of slot first
       auto fp = gen_.GetReg(RegName::FP);
       auto ofs = gen_.GetImm(-sl->offset());
-      auto temp = dest->IsVirtual() ? gen_.GetReg(RegName::A7) : dest;
+      auto temp = dest->IsVirtual() ? gen_.GetReg(RegName::T1) : dest;
       inst = std::make_shared<RISCV32Inst>(OpCode::SUB, temp, fp, ofs);
       pos = ++insts.insert(pos, inst);
       inst = std::make_shared<RISCV32Inst>(OpCode::LW, dest, temp);
@@ -126,14 +126,14 @@ class SlotSpillingPass : public PassInterface {
     // get slot info
     // TODO: do not hard code the argument 'dest'
     assert(slot->IsSlot() && dest->IsReg() &&
-           static_cast<RISCV32Reg *>(dest.get())->name() == RegName::A6);
+           static_cast<RISCV32Reg *>(dest.get())->name() == RegName::T0);
     auto sl = static_cast<RISCV32Slot *>(slot.get());
     assert(sl->base() == gen_.GetReg(RegName::FP) && sl->offset() < 0);
     // generate store
     InstPtr inst;
     if (-sl->offset() >= 2048) {
       // calculate address of slot first
-      auto temp = gen_.GetReg(RegName::A7);
+      auto temp = gen_.GetReg(RegName::T1);
       auto fp = gen_.GetReg(RegName::FP);
       auto ofs = gen_.GetImm(-sl->offset());
       inst = std::make_shared<RISCV32Inst>(OpCode::SUB, temp, fp, ofs);
