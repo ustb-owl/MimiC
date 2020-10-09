@@ -296,16 +296,16 @@ OprPtr RISCV32InstGen::GenerateOn(CallSSA &ssa) {
   for (std::size_t i = 1; i < ssa.size(); ++i) {
     // generate destination
     OprPtr dest;
-    if (i <= 7) {
+    if (i <= 8) {
       auto arg0 = static_cast<int>(RegName::A0);
       dest = GetReg(static_cast<RegName>(arg0 + i - 1));
     }
     else {
-      dest = GetSlot(true, (i - 5) * 4);
+      dest = GetSlot(true, (i - 9) * 4);
     }
     // put value to destination
     auto val = GetOpr(ssa[i].value());
-    if (i <= 4) {
+    if (i <= 8) {
       PushInst(OpCode::MV, dest, val);
     }
     else {
@@ -360,15 +360,15 @@ OprPtr RISCV32InstGen::GenerateOn(FunctionSSA &ssa) {
   for (std::size_t i = 0; i < ssa.args().size(); ++i) {
     OprPtr arg = GetVReg(), src;
     // get source of arguments
-    if (i < 7) {
+    if (i < 8) {
       auto arg0 = static_cast<int>(RegName::A0);
       src = GetReg(static_cast<RegName>(arg0 + i));
     }
     else {
-      src = GetSlot((i - 4) * 4);
+      src = GetSlot((i - 8) * 4);
     }
     // put argument to register
-    PushInst(i < 4 ? OpCode::MV : OpCode::LW, arg, src);
+    PushInst(i < 8 ? OpCode::MV : OpCode::LW, arg, src);
     args_.push_back(std::move(arg));
   }
   // generate label of blocks
