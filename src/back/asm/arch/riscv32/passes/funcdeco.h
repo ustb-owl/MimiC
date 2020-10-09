@@ -118,7 +118,7 @@ class FuncDecoratePass : public PassInterface {
   }
 
   std::size_t GetUsedRegCount() {
-    std::bitset<16> b(used_regs_);
+    std::bitset<32> b(used_regs_);
     return b.count();
   }
 
@@ -167,7 +167,7 @@ class FuncDecoratePass : public PassInterface {
     const auto &sp = gen_.GetReg(RegName::SP);
     // restore all saved registers
     auto cur_ofs = saved_size + slot_size - 4;
-    for (std::size_t i = 0; i < 16; ++i) {
+    for (std::size_t i = 0; i < 32; ++i) {
       if (used_regs_ & (1 << i)) {
         const auto &reg = gen_.GetReg(static_cast<RegName>(i));
         const auto &slot = gen_.GetSlot(true, cur_ofs);
