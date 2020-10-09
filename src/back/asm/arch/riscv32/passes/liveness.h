@@ -161,7 +161,7 @@ class LivenessAnalysisPass : public PassInterface {
         // check for branch instructions
         if (IsBranch(inst->opcode())) {
           // update predecessor & successor
-          auto bid = GetBlockId(inst->oprs()[0].value().get());
+          auto bid = GetBlockId(inst->oprs().back().value().get());
           cur_bb.succs.push_back(bid);
           bbs_[bid].preds.push_back(cur_bid);
           // check if next instruction is b/label
