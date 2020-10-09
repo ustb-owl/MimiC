@@ -375,7 +375,7 @@ OprPtr RISCV32InstGen::GenerateOn(FunctionSSA &ssa) {
   for (const auto &i : ssa) {
     i.value()->set_metadata(label_fact_.GetLabel());
   }
-  // generate all blocks in BFS order
+  // generate all blocks in DFS order
   auto entry = SSACast<BlockSSA>(ssa.entry().get());
   for (const auto &i : DFSTraverse(entry)) GenerateCode(*i);
   return label;
