@@ -100,8 +100,8 @@ class ImmNormalizePass : public PassInterface {
 
   OprPtr SelectTempReg(std::uint32_t &reg_mask) {
     OprPtr temp;
-    for (int i = static_cast<int>(RegName::A6);
-         i <= static_cast<int>(RegName::A7); ++i) {
+    for (int i = static_cast<int>(RegName::T0);
+         i <= static_cast<int>(RegName::T2); ++i) {
       if (!(reg_mask & (1 << i))) {
         reg_mask |= 1 << i;
         temp = gen_.GetReg(static_cast<RegName>(i));

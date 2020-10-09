@@ -46,7 +46,7 @@ class LeaEliminationPass : public PassInterface {
     // check if 'offset' is immediate zero
     bool ofs_zero = offset->IsImm() &&
                     !static_cast<RISCV32Imm *>(offset.get())->val();
-    const auto &temp = ofs_zero ? dest : gen_.GetReg(RegName::A7);
+    const auto &temp = ofs_zero ? dest : gen_.GetReg(RegName::T0);
     // handle by pointer type
     if (ptr->IsSlot()) {
       // get base register
