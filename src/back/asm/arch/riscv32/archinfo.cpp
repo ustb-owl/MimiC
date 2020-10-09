@@ -29,14 +29,6 @@ using namespace mimic::back::asmgen::riscv32;
     }                                                              \
   } while (0)
 
-#define ADD_REGS(l, r)                                             \
-  do {                                                             \
-    for (int i = (l); i <= (r); ++i) {                             \
-      const auto &reg = inst_gen_.GetReg(static_cast<RegName>(i)); \
-      regs_.push_back(reg);                                        \
-    }                                                              \
-  } while (0)
-
 namespace {
 
 class RISCV32ArchInfo : public ArchInfoBase {
@@ -98,14 +90,12 @@ class RISCV32ArchInfo : public ArchInfoBase {
     if (!opr->IsReg() || opr->IsVirtual()) return false;
     auto name = static_cast<RISCV32Reg *>(opr.get())->name();
     auto id = static_cast<int>(name);
-    // x1, x5-x7, x10-x15 (a6, a7 for compiler), x28-x31
-    return id == 1 || (id >= 5 && id <= 7) || (id >= 10 && id <= 15) ||
-           (id >= 28 && id <= 31);
+    // x1, (t0-t2 for compiler), x10-x17, x28-x31
+    return id == 1 || (id >= 10 && id <= 17) || (id >= 28 && id <= 31);
   }
 
   static void InitTempRegs() {
-    ADD_TEMP_REGS(5, 7);
-    ADD_TEMP_REGS(10, 15);
+    ADD_TEMP_REGS(10, 17);
     ADD_TEMP_REGS(28, 31);
     temp_regs_with_ra_.push_back(inst_gen_.GetReg(RegName::RA));
   }
