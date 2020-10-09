@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.5)
 project(MimiC VERSION "0.0.1")
 
 # # set compiler path
-# set(CMAKE_C_COMPILER "/usr/local/opt/gcc/bin/gcc-9")
-# set(CMAKE_CXX_COMPILER "/usr/local/opt/gcc/bin/g++-9")
+# set(CMAKE_C_COMPILER "/usr/local/opt/gcc/bin/gcc-10")
+# set(CMAKE_CXX_COMPILER "/usr/local/opt/gcc/bin/g++-10")
 # set(CMAKE_CXX_COMPILER_ID "GNU")
 
 # C++17 standard support
