@@ -138,6 +138,8 @@ class FuncDecoratePass : public PassInterface {
                   +-----------------+   | slot size
                   |  spilled  args  |   |
       new sp -->  +-----------------+   V
+
+      NOTE: non-standard implementation!!
     */
     const auto &sp = gen_.GetReg(RegName::SP);
     const auto &fp = gen_.GetReg(RegName::FP);
