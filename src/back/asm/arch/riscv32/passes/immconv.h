@@ -21,11 +21,18 @@ class ImmConversionPass : public PassInterface {
     for (const auto &i : insts) {
       auto inst = static_cast<RISCV32Inst *>(i.get());
       switch (inst->opcode()) {
+        case OpCode::MV: {
+          // convert all move instructions with immediate operand
+          // to immediate loads
+          if (inst->oprs().back().value()->IsImm()) {
+            inst->set_opcode(OpCode::LI);
+          }
+          break;
+        }
         case OpCode::ADD: case OpCode::SLT: case OpCode::SLTU:
         case OpCode::XOR: case OpCode::OR: case OpCode::AND:
-        case OpCode::SLL: case OpCode::SRL: case OpCode::SRA:
-        case OpCode::MV: {
-          if (inst->oprs().back().value()->IsImm()) {
+        case OpCode::SLL: case OpCode::SRL: case OpCode::SRA: {
+          if (IsValidImm(inst->oprs().back().value())) {
             inst->set_opcode(GetConvertedOpCode(inst->opcode()));
           }
           break;
@@ -33,10 +40,13 @@ class ImmConversionPass : public PassInterface {
         case OpCode::SUB: {
           auto &last_opr = inst->oprs().back();
           if (last_opr.value()->IsImm()) {
-            inst->set_opcode(OpCode::ADDI);
-            // update immediate
             auto imm = static_cast<RISCV32Imm *>(last_opr.value().get());
-            last_opr.set_value(gen_.GetImm(-imm->val()));
+            auto val = -imm->val();
+            if (val >= -2048 && val <= 2047) {
+              // update opcode & immediate
+              inst->set_opcode(OpCode::ADDI);
+              last_opr.set_value(gen_.GetImm(val));
+            }
           }
           break;
         }
@@ -47,6 +57,12 @@ class ImmConversionPass : public PassInterface {
 
  private:
   using OpCode = RISCV32Inst::OpCode;
+
+  bool IsValidImm(const OprPtr &opr) {
+    if (!opr->IsImm()) return false;
+    auto imm = static_cast<RISCV32Imm *>(opr.get())->val();
+    return imm >= -2048 && imm <= 2047;
+  }
 
   OpCode GetConvertedOpCode(OpCode opcode) {
     switch (opcode) {
