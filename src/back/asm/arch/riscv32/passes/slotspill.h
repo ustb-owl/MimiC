@@ -90,6 +90,7 @@ class SlotSpillingPass : public PassInterface {
       if (!(reg_mask & (1 << i))) {
         reg_mask |= 1 << i;
         temp = gen_.GetReg(static_cast<RegName>(i));
+        break;
       }
     }
     assert(temp);
