@@ -145,8 +145,7 @@ class LivenessAnalysisPass : public PassInterface {
         // check prevoius instruction
         auto pi = GetPrevInst(insts, it);
         if (!pi ||
-            (pi->opcode() != OpCode::CALL && pi->opcode() != OpCode::RET &&
-             pi->opcode() != OpCode::J)) {
+            (pi->opcode() != OpCode::RET && pi->opcode() != OpCode::J)) {
           // update predecessor & successor
           bbs_[cur_bid].succs.push_back(next_bid);
           bbs_[next_bid].preds.push_back(cur_bid);
