@@ -25,9 +25,19 @@ $ cmake .. && make -j8
 * Strong typed IR in SSA form.
 * Optimizer based on pass and pass manager.
 * Auto-scheduling, multi-stage, iterative pass execution.
-* Abstracted general purpose backend interface.
+* Abstracted unified backend interface.
 * Machine-level IR (MIR) for multi-architecture machine instruction abstraction.
 * MIR based passes for multi-architecture assembly generation.
+
+## Architecture
+
+### Optimizer
+
+![optimizer](images/optimizer.png)
+
+### Backend
+
+![backend](images/backend.png)
 
 ## Automated Testing Tools
 
