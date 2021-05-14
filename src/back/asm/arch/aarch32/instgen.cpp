@@ -482,6 +482,7 @@ OprPtr AArch32InstGen::GenerateOn(ConstStrSSA &ssa) {
 OprPtr AArch32InstGen::GenerateOn(ConstStructSSA &ssa) {
   // not implemented
   assert(false);
+  return nullptr;
 }
 
 OprPtr AArch32InstGen::GenerateOn(ConstArraySSA &ssa) {

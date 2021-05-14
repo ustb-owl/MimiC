@@ -452,6 +452,7 @@ OprPtr RISCV32InstGen::GenerateOn(ConstStrSSA &ssa) {
 OprPtr RISCV32InstGen::GenerateOn(ConstStructSSA &ssa) {
   // not implemented
   assert(false);
+  return nullptr;
 }
 
 OprPtr RISCV32InstGen::GenerateOn(ConstArraySSA &ssa) {
