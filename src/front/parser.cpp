@@ -478,7 +478,7 @@ ASTPtr Parser::ParseControl() {
     case Keyword::Break: type = Type::Break; break;
     case Keyword::Continue: type = Type::Continue; break;
     case Keyword::Return: type = Type::Return; break;
-    default: assert(false);
+    default: assert(false); type = Type::Break; break;
   }
   NextToken();
   // get expression (return value)

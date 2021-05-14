@@ -1156,9 +1156,9 @@ UserPtr InstCombinePass::RunOnCmp(BinarySSA &ssa) {
                   using namespace mimic::define;
                   PrimType::Type type;
                   switch (x->type()->GetSize()) {
-                    case 1: type = PrimType::Type::Int8;
-                    case 4: type = PrimType::Type::Int32;
-                    default: assert(false);
+                    case 1: type = PrimType::Type::Int8; break;
+                    case 4: type = PrimType::Type::Int32; break;
+                    default: assert(false); type = PrimType::Type::Int32; break;
                   }
                   auto ty = MakePrimType(type, false);
                   auto cast = InstCast(mod.CreateCast(x, ty));
