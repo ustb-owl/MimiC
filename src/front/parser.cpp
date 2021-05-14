@@ -390,6 +390,13 @@ ASTPtr Parser::ParseStmt() {
     // block
     return ParseBlock();
   }
+  else if (IsTokenChar(';')) {
+    // empty statement
+    auto ast = MakeAST<IntAST>(0);
+    // eat ';'
+    NextToken();
+    return ast;
+  }
   else if (cur_token_ == Token::Keyword) {
     switch (lexer_.key_val()) {
       // if-else
