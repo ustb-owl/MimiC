@@ -109,6 +109,7 @@ bool AggressiveDeadCodeElimPass::Sweep(FunctionSSA *func) {
       if (!liveset_.count(it->get())) {
         for (const auto &i : (*it)->uses()) {
           assert(!liveset_.count(i->user()));
+          static_cast<void>(i);
         }
         // break circular reference
         (*it)->ReplaceBy(nullptr);
