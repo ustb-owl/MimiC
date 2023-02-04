@@ -88,7 +88,7 @@ class Analyzer {
   // used when analyzing function related stuffs
   bool in_func_;
   define::TypePtr cur_ret_;
-  std::unordered_map<std::string_view, FuncInfo> funcs_;
+  std::unordered_map<std::string, FuncInfo> funcs_;
   // used when analyzing structs
   std::string_view last_struct_name_;
   define::TypePairList struct_elems_;

@@ -3,7 +3,6 @@
 
 #include <utility>
 #include <string>
-#include <string_view>
 #include <unordered_map>
 #include <stack>
 
@@ -75,7 +74,7 @@ class IRBuilder {
   xstl::NestedMapPtr<std::string, SSAPtr> vals_;
   // used when generating functions
   bool in_func_;
-  std::unordered_map<std::string_view, UserPtr> funcs_;
+  std::unordered_map<std::string, UserPtr> funcs_;
   SSAPtr ret_val_;
   BlockPtr func_entry_, func_exit_;
   // used when generating loops
