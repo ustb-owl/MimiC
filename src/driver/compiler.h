@@ -64,8 +64,8 @@ class Compiler {
  private:
   front::Lexer lexer_;
   front::Parser parser_;
-  mid::Analyzer ana_;
   mid::Evaluator eval_;
+  mid::Analyzer ana_;
   mid::IRBuilder irb_;
   opt::PassManager pass_man_;
   // options
